@@ -1,0 +1,29 @@
+dify:
+  api-key: "app-h2yIzEsq6W2C5eHN0MtDVRt2"   # Dify应用的API密钥
+  base-url: "http://localhost:5001/v1" # Dify API服务的地址
+  connect-timeout: 10                     # 连接超时（秒）
+  read-timeout: 120                       # 读取超时（秒）
+  file-base-url: "http://localhost:3000"  # Dify web服务的URL
+
+spring:
+  application:
+    name: "core"
+  datasource:
+    url: jdbc:mysql://localhost:3306/javascene
+    username: root
+    password: ""
+    driver-class-name: com.mysql.cj.jdbc.Driver
+
+logging:
+  level:
+    com.amlve: debug
+    reactor.netty.http.client: DEBUG
+    org.springframework.web.reactive.function.client: DEBUG
+temp:
+  dir: "E:/IntelliJ IDEA 2025.1.4.1/document/JavaScene/temp/"
+
+python:
+  exe: "E:\\Program Files (x86)\\py3.11.5\\python.exe"
+  script:
+    md_to_docx_path: "E:/IntelliJ IDEA 2025.1.4.1/document/JavaScene/common/src/main/java/com/amlve/common/pyscript/md_to_docx.py"
+    docx_to_md_path: "E:/IntelliJ IDEA 2025.1.4.1/document/JavaScene/common/src/main/java/com/amlve/common/pyscript/docx_to_md.py"
