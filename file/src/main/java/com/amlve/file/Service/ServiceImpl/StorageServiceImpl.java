@@ -1,0 +1,52 @@
+package com.amlve.file.Service.ServiceImpl;
+
+import com.amlve.file.Service.StorageService;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
+
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
+
+@Service
+@Slf4j
+
+public class StorageServiceImpl implements StorageService {
+    @Value("${temp.zip}")
+    private String tempZip;
+
+
+    /**
+     * 存储文件
+     * @param file 文件对象
+     * @param fileId 文件ID
+     * @return 文件路径字符串
+     * @throws IOException
+     */
+    @Override
+    public String store(MultipartFile file, String fileId) throws IOException {
+        // 按日期生成文件夹
+        String dir = LocalDate.now().format(DateTimeFormatter.ofPattern("yyyy/MM/dd"));
+        Path basePath = Paths.get(tempZip).resolve(dir);
+        String filePath = tempZip + dir;
+        Files.createDirectories(basePath);
+        // 生成唯一文件名
+        String fileName = fileId + ".zip";
+        Path targetPath = basePath.resolve(fileName);
+        file.transferTo(targetPath);
+
+        return targetPath.toString();
+
+    }
+
+    @Override
+    public String delete(String fileId) {
+        return "";
+    }
+}

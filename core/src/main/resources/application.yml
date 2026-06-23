@@ -20,7 +20,10 @@ logging:
     reactor.netty.http.client: DEBUG
     org.springframework.web.reactive.function.client: DEBUG
 temp:
-  dir: "E:/IntelliJ IDEA 2025.1.4.1/document/JavaScene/temp/"
+  word: "E:/IntelliJ IDEA 2025.1.4.1/document/JavaScene/temp/word"
+  excel: "E:/IntelliJ IDEA 2025.1.4.1/document/JavaScene/temp/excel"
+  zip: "E:/IntelliJ IDEA 2025.1.4.1/document/JavaScene/temp/zip"
+
 
 python:
   exe: "E:\\Program Files (x86)\\py3.11.5\\python.exe"

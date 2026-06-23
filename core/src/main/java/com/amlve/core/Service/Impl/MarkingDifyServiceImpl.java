@@ -39,8 +39,10 @@ public class MarkingDifyServiceImpl implements MarkingDifyService {
     private String mdToDocxScriptPath;
     @Value("${python.exe}")
     private String pythonExe;
-    @Value("${temp.dir}")
-    private String tempDir;
+    @Value("${temp.word}")
+    private String tempWord;
+    @Value("${temp.excel")
+    private String tempExcel;
 
     private final DownloadFile downloadFile;
     private final DifyProperty difyProperty;
@@ -202,25 +204,18 @@ public class MarkingDifyServiceImpl implements MarkingDifyService {
 
 
     @Override
-    public Map<String, String>  mdConvertToWord(String difyResponseJson, String type) {
+    public Map<String, String>  mdConvertToWord(String difyResponseJson) {
         Path tempFile = null;
         // 校验输入参数
         if (null == difyResponseJson || difyResponseJson.isEmpty()) {
             throw new ServerDocumentParsingException(ErrorConstant.MD_CONTENT_EMPTY);
         }
         log.info(difyResponseJson);
-        // 校验type参数
-        if (!type.equals("common_files") && !type.equals("project_zip")) {
-            throw new ServerDocumentParsingException(ErrorConstant.MD_CONTENT_INVALID);
-        }
+
         String outputJson = extractOutputAsJson(difyResponseJson);
         // 校验outputJson是否为空
         if(outputJson == null){
             throw new ServerDocumentParsingException(ErrorConstant.MD_CONTENT_INVALID);
-        }
-        // project_zip类型需要提取学号姓名
-        if (type.equals("project_zip")) {
-            outputJson = handleProject_zip(outputJson);
         }
 
 
@@ -238,7 +233,7 @@ public class MarkingDifyServiceImpl implements MarkingDifyService {
             command.add(pythonExe);
             command.add(mdToDocxScriptPath);
             command.add(tempFile.toAbsolutePath().toString()); // 传入路径
-            command.add(tempDir); // 传入临时目录路径参数
+            command.add(tempWord); // 传入临时目录路径参数
 
             ProcessBuilder pb = new ProcessBuilder(command);
             pb.redirectErrorStream(true);
@@ -282,10 +277,40 @@ public class MarkingDifyServiceImpl implements MarkingDifyService {
         return null;
     }
 
-    private String handleProject_zip(String outputJson) {
-        return null;
+    private Map<String, Object> handleProject_zip(String outputJson) {
+        Map<String, Object> result = new HashMap<>();
+        List<String> reviews = new ArrayList<>();
+        try{
+            JsonNode root = mapper.readTree(outputJson);
+            if (!root.has("output")) {
+                throw new ServerDocumentParsingException(ErrorConstant.MD_CONTENT_INVALID);
+            }
+            JsonNode dataNode = root.get("output");
+            if(dataNode.isArray()){
+                for (JsonNode student : dataNode) {
+                    String studentName = student.get("stu_name").asText();
+                    String studentId = student.get("stu_id").asText();
+                    String totalScore = student.get("total_score").asText();
+                    String review =  student.get("review").asText();
+                    // key = 学生学号，value = list（name,totalScore）用于生成execl文件
+                    result.put(studentId, List.of(studentName, totalScore));
+                    // 存储review，用于生成word文档
+                    reviews.add(review);
+                }
+                result.put("reviews", reviews);
+            }
+            return result;
+        } catch (Exception e) {
+            log.error("JSON 解析失败: " + e.getMessage());
+            return null;
+        }
     }
 
+    /**
+     * 从Dify工作流响应中提取output字段
+     * @param difyResponseJson
+     * @return
+     */
     public String extractOutputAsJson(String difyResponseJson) {
 
         try {
@@ -350,7 +375,7 @@ public class MarkingDifyServiceImpl implements MarkingDifyService {
         try {
             String result = difyClient.runWorkflowBlocking(difyProperty.getApiKey(), requestBody);
             log.info("Dify工作流成功调用，开始转换为Word文档");
-            return mdConvertToWord(result, "common_files");
+            return mdConvertToWord(result).get("wordPath");
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
@@ -382,7 +407,16 @@ public class MarkingDifyServiceImpl implements MarkingDifyService {
             try {
                 String result = difyClient.runWorkflowBlocking(difyProperty.getApiKey(), requestBody);
                 log.info("Dify工作流成功调用，开始转换为Word文档");
-                return mdConvertToWord(result, "project_zip");
+                Map<String, Object> json = handleProject_zip(result);
+                JsonNode outputNode = mapper.valueToTree(json.getOrDefault("reviews", null));
+                ObjectNode resultJson = mapper.createObjectNode();
+                resultJson.set("output", outputNode);
+                String wordJsonStr = mapper.writeValueAsString(resultJson);
+                String wordPath = mdConvertToWord(wordJsonStr).get("wordPath");
+                log.info("开始生成Excel文档");
+                json.remove("reviews");
+                String excelPath = generateExcel(json).get("excelPath");
+                return "wordPath=" + wordPath + "&excelPath=" + excelPath;
             } catch (Exception e) {
                 throw new RuntimeException(e);
             }
@@ -390,6 +424,15 @@ public class MarkingDifyServiceImpl implements MarkingDifyService {
             throw new RuntimeException(ErrorConstant.UNKNOWN_ERROR, e);
         }
 
+    }
+
+    /**
+     * 生成Excel文档
+     * @param json
+     * @return
+     */
+    private Map<String, String> generateExcel(Map<String, Object> json) {
+        
     }
 
 

@@ -13,7 +13,7 @@ import java.util.Map;
 
 @Slf4j
 @RestController
-@RequestMapping("/dify/api")
+@RequestMapping("/api/marking")
 @RequiredArgsConstructor
 public class DifyContorller {
 
@@ -35,7 +35,7 @@ public class DifyContorller {
         return Result.success(mdFiles);
     }
 
-    @PostMapping("/mark")
+    @PostMapping("/start")
     public Result<String>  mark(@RequestBody MarkRequestDTO dto) {
         log.info("dify传来待批阅文件{}, rubric={}",dto.getFileUrls(), dto.getRubric());
         String result = markingDifyService.runWorkflowWithCommonFiles(dto.getFileUrls(), dto.getRubric());
