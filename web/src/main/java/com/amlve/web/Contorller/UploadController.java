@@ -1,14 +1,12 @@
 package com.amlve.web.Contorller;
 
 import com.amlve.common.Constant.ErrorConstant;
+import com.amlve.common.PageResult;
 import com.amlve.common.Result;
 import com.amlve.file.Service.UploadService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
@@ -28,5 +26,12 @@ public class UploadController {
         return Result.success(uploadService.uploadZip(file));
     }
 
+    @GetMapping("/records")
+    public PageResult<String> records (@RequestParam(defaultValue = "1") Long pageNum
+            ,@RequestParam(defaultValue = "10") Long pageSize
+            ,@RequestParam(required = false) String fileName
+            ,@RequestParam(defaultValue = "false") Boolean isAsc ) throws IOException {
+        return Result.success(uploadService.records(pageNum,pageSize,fileName,isAsc));
+    }
 
 }
