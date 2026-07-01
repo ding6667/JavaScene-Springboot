@@ -3,6 +3,8 @@ package com.amlve.web.Contorller;
 import com.amlve.common.Constant.ErrorConstant;
 import com.amlve.common.PageResult;
 import com.amlve.common.Result;
+import com.amlve.common.VO.UploadFileVO;
+
 import com.amlve.file.Service.UploadService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -27,10 +29,10 @@ public class UploadController {
     }
 
     @GetMapping("/records")
-    public PageResult<String> records (@RequestParam(defaultValue = "1") Long pageNum
-            ,@RequestParam(defaultValue = "10") Long pageSize
-            ,@RequestParam(required = false) String fileName
-            ,@RequestParam(defaultValue = "false") Boolean isAsc ) throws IOException {
+    public Result<PageResult<UploadFileVO>> records (@RequestParam(defaultValue = "1") Long pageNum
+            , @RequestParam(defaultValue = "10") Long pageSize
+            , @RequestParam(required = false) String fileName
+            , @RequestParam(defaultValue = "false") Boolean isAsc ) throws IOException {
         return Result.success(uploadService.records(pageNum,pageSize,fileName,isAsc));
     }
 
