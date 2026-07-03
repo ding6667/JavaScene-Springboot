@@ -1,6 +1,7 @@
 package com.amlve.core.Service.Impl;
 
-import com.amlve.core.Service.MarkingDifyService;
+import com.amlve.ai.Service.Impl.MarkingDifyServiceImpl;
+import com.amlve.ai.Service.MarkingDifyService;
 import lombok.RequiredArgsConstructor;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;

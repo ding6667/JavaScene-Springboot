@@ -1,9 +1,6 @@
-package com.amlve.ai.Service;
+package com.amlve.ai.Service.Bean;
 
 import com.amlve.common.Properties.DifyProperty;
-import io.github.guoshiqiufeng.dify.workflow.client.DifyWorkflowClient;
-import io.github.guoshiqiufeng.dify.workflow.dto.request.WorkflowRunRequest;
-import io.github.guoshiqiufeng.dify.workflow.dto.response.WorkflowRunStreamResponse;
 import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -14,7 +11,6 @@ import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
-import java.time.Duration;
 import java.util.HashMap;
 import java.util.Map;
 

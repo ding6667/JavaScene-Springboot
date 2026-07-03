@@ -1,21 +1,19 @@
-package com.amlve.core.Service.Impl;
+package com.amlve.ai.Service.Impl;
 
-import com.amlve.ai.Service.DifyClient;
+import com.amlve.ai.Service.Bean.DifyClient;
 import com.amlve.common.Constant.ErrorConstant;
 import com.amlve.common.Exception.FilesNotFoundException;
 import com.amlve.common.Exception.ServerDocumentParsingException;
 import com.amlve.common.Properties.DifyProperty;
-import com.amlve.common.Utils.DownloadFile;
 import com.amlve.common.Utils.ZipUtil;
-import com.amlve.common.entities.StudentHomework;
-import com.amlve.core.Service.MarkingDifyService;
+import com.amlve.common.Entities.StudentHomework;
+import com.amlve.ai.Service.MarkingDifyService;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.tomcat.util.http.fileupload.FileUtils;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
@@ -44,7 +42,7 @@ public class MarkingDifyServiceImpl implements MarkingDifyService {
     @Value("${temp.excel")
     private String tempExcel;
 
-    private final DownloadFile downloadFile;
+
     private final DifyProperty difyProperty;
     private final DifyClient difyClient;
 
@@ -428,11 +426,12 @@ public class MarkingDifyServiceImpl implements MarkingDifyService {
 
     /**
      * 生成Excel文档
+     * TODO
      * @param json
      * @return
      */
     private Map<String, String> generateExcel(Map<String, Object> json) {
-        
+        return null;
     }
 
 

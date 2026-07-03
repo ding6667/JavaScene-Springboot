@@ -1,4 +1,4 @@
-package com.amlve.core.Service;
+package com.amlve.ai.Service;
 
 import java.util.List;
 import java.util.Map;

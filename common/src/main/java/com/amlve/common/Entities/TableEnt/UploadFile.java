@@ -1,11 +1,9 @@
-package com.amlve.common.entities;
+package com.amlve.common.Entities.TableEnt;
 
 import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
-import lombok.Builder;
-import lombok.Data;
-import lombok.EqualsAndHashCode;
+import lombok.*;
 import lombok.experimental.Accessors;
 
 import java.time.LocalDateTime;
@@ -14,10 +12,11 @@ import java.time.LocalDateTime;
  * 上传文件记录表实体类
  */
 @Data
+@NoArgsConstructor
+@AllArgsConstructor
 @EqualsAndHashCode(callSuper = false)
 @Accessors(chain = true)
 @TableName("upload_file")
-@Builder
 public class UploadFile {
 
     /**

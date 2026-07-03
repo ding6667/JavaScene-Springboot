@@ -2,7 +2,7 @@ package com.amlve.file.Service.ServiceImpl;
 
 import com.amlve.common.PageResult;
 import com.amlve.common.VO.UploadFileVO;
-import com.amlve.common.entities.UploadFile;
+import com.amlve.common.Entities.TableEnt.UploadFile;
 import com.amlve.file.Mapper.UploadMapper;
 import com.amlve.file.Service.StorageService;
 import com.amlve.file.Service.UploadService;
@@ -43,14 +43,13 @@ public class UploadServiceImpl extends ServiceImpl<UploadMapper,UploadFile> impl
         String uploadId = UUID.randomUUID().toString().replace("-", "");
 
         String filePath = storageService.store(file,uploadId);
-        UploadFile uploadFile = UploadFile.builder()
-                .id(uploadId)
-                .fileName(file.getOriginalFilename())
-                .fileSize(file.getSize())
-                .storagePath(filePath)
-                .uploadTime(LocalDateTime.now())
-                .expireTime(LocalDateTime.now().plusDays(7))
-                .build();
+        UploadFile uploadFile = new UploadFile();
+        uploadFile.setId(uploadId);
+        uploadFile.setFileName(file.getOriginalFilename());
+        uploadFile.setFileSize(file.getSize());
+        uploadFile.setStoragePath(filePath);
+        uploadFile.setUploadTime(LocalDateTime.now());
+        uploadFile.setExpireTime(LocalDateTime.now().plusDays(7));
 
         uploadMapper.insert(uploadFile);
         return uploadId;

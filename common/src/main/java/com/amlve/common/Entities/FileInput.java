@@ -1,4 +1,4 @@
-package com.amlve.common.entities;
+package com.amlve.common.Entities;
 
 import lombok.Builder;
 import lombok.Data;

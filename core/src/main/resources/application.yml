@@ -11,7 +11,7 @@ spring:
   datasource:
     url: jdbc:mysql://localhost:3306/javascene
     username: root
-    password: ""
+    password: 123456
     driver-class-name: com.mysql.cj.jdbc.Driver
 
 logging:
@@ -30,3 +30,6 @@ python:
   script:
     md_to_docx_path: "E:/IntelliJ IDEA 2025.1.4.1/document/JavaScene/common/src/main/java/com/amlve/common/pyscript/md_to_docx.py"
     docx_to_md_path: "E:/IntelliJ IDEA 2025.1.4.1/document/JavaScene/common/src/main/java/com/amlve/common/pyscript/docx_to_md.py"
+mybatis-plus:
+  type-aliases-package: com.amlve.common.Entities.TableEnt
+  mapper-locations: classpath*:mapper/**/*.xml

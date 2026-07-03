@@ -34,7 +34,7 @@ public class StorageServiceImpl implements StorageService {
         // 按日期生成文件夹
         String dir = LocalDate.now().format(DateTimeFormatter.ofPattern("yyyy/MM/dd"));
         Path basePath = Paths.get(tempZip).resolve(dir);
-        String filePath = tempZip + dir;
+
         Files.createDirectories(basePath);
         // 生成唯一文件名
         String fileName = fileId + ".zip";
