@@ -96,4 +96,12 @@ public class UploadServiceImpl extends ServiceImpl<UploadMapper,UploadFile> impl
         pageResult.setSize(pageData.getSize());
         return pageResult;
     }
+
+    @Override
+    public Integer delete(String id) {
+        int deleteInTable = uploadMapper.deleteById(id);
+        String path = uploadMapper.selectById(id).getStoragePath();
+        Integer deleteFile = storageService.delete(path);
+        return deleteInTable > 0 && deleteFile > 0 ? 1 : 0;
+    }
 }

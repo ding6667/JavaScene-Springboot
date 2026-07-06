@@ -11,8 +11,6 @@ import org.springframework.context.annotation.ComponentScan;
 @MapperScan(basePackages = "com.amlve.*.Mapper")
 @Slf4j
 public class WebApplication {
-
-
     public static void main(String[] args) {
         SpringApplication.run(WebApplication.class, args);
 

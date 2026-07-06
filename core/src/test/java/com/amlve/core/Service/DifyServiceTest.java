@@ -1,7 +1,7 @@
 package com.amlve.core.Service;
 
 
-import com.amlve.ai.Service.MarkingDifyService;
+import com.amlve.ai.Service.GradingService;
 import com.amlve.core.WebApplication;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -11,7 +11,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 public class DifyServiceTest {
 
     @Autowired
-    MarkingDifyService difyService;
+    GradingService difyService;
 
     @Test
     public void testWordConvertToMd() {

@@ -6,5 +6,5 @@ import java.io.IOException;
 
 public interface StorageService {
     String store(MultipartFile file,String fileId) throws IOException;
-    String delete(String fileId);
+    Integer delete(String filePath);
 }

@@ -4,7 +4,7 @@ import lombok.Data;
 
 import java.util.List;
 @Data
-public class MarkRequestDTO {
+public class GradingStartCommonDTO {
     private List<String> fileUrls;
     private String rubric;
 

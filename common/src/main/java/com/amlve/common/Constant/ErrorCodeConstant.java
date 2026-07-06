@@ -83,4 +83,7 @@ public class ErrorCodeConstant {
      * 例如：订单状态不允许取消、余额不足
      */
     public static final int BUSINESS_ERROR = 3000;
+
+    //未知错误
+    public static final int UNKNOWN_ERROR = 3001;
 }

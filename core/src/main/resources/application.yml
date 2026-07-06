@@ -20,16 +20,16 @@ logging:
     reactor.netty.http.client: DEBUG
     org.springframework.web.reactive.function.client: DEBUG
 temp:
-  word: "E:/IntelliJ IDEA 2025.1.4.1/document/JavaScene/temp/word"
-  excel: "E:/IntelliJ IDEA 2025.1.4.1/document/JavaScene/temp/excel"
-  zip: "E:/IntelliJ IDEA 2025.1.4.1/document/JavaScene/temp/zip"
-
+  word: "./temp/word"
+  excel: "./temp/excel"
+  zip: "./temp/zip"
+  expire_time: 7 # 临时文件过期时间，7天
 
 python:
-  exe: "E:\\Program Files (x86)\\py3.11.5\\python.exe"
+  exe: "E:python"
   script:
-    md_to_docx_path: "E:/IntelliJ IDEA 2025.1.4.1/document/JavaScene/common/src/main/java/com/amlve/common/pyscript/md_to_docx.py"
-    docx_to_md_path: "E:/IntelliJ IDEA 2025.1.4.1/document/JavaScene/common/src/main/java/com/amlve/common/pyscript/docx_to_md.py"
+    md_to_docx_path: "./PyScript/md_to_docx.py"
+    docx_to_md_path: "./PyScript/docx_to_md.py"
 mybatis-plus:
   type-aliases-package: com.amlve.common.Entities.TableEnt
   mapper-locations: classpath*:mapper/**/*.xml

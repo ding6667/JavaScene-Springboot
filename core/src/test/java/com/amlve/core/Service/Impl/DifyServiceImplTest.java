@@ -1,16 +1,16 @@
 package com.amlve.core.Service.Impl;
 
-import com.amlve.ai.Service.Impl.MarkingDifyServiceImpl;
-import com.amlve.ai.Service.MarkingDifyService;
+import com.amlve.ai.Service.Impl.GradingServiceImpl;
+import com.amlve.ai.Service.GradingService;
 import lombok.RequiredArgsConstructor;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
 
 @RequiredArgsConstructor
-@SpringBootTest(classes = MarkingDifyServiceImpl.class)
+@SpringBootTest(classes = GradingServiceImpl.class)
 public class DifyServiceImplTest {
 
-    private final MarkingDifyService difyService;
+    private final GradingService difyService;
 
     @Test
     void wordConvertToMd() {

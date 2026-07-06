@@ -1,13 +1,24 @@
 package com.amlve.ai.Service.Impl;
 
 import com.amlve.ai.Service.Bean.DifyClient;
+import com.amlve.common.Constant.ErrorCodeConstant;
 import com.amlve.common.Constant.ErrorConstant;
+import com.amlve.common.Entities.TableEnt.GradingResult;
+import com.amlve.common.Entities.TableEnt.GradingTask;
+import com.amlve.common.Entities.TableEnt.UploadFile;
+import com.amlve.common.Exception.BusinessException;
 import com.amlve.common.Exception.FilesNotFoundException;
 import com.amlve.common.Exception.ServerDocumentParsingException;
 import com.amlve.common.Properties.DifyProperty;
 import com.amlve.common.Utils.ZipUtil;
 import com.amlve.common.Entities.StudentHomework;
-import com.amlve.ai.Service.MarkingDifyService;
+import com.amlve.ai.Service.GradingService;
+import com.amlve.file.Mapper.GradingResultMapper;
+import com.amlve.file.Mapper.GradingTaskMapper;
+import com.amlve.file.Mapper.UploadMapper;
+import com.amlve.file.Service.GradingResultService;
+import com.amlve.file.Service.GradingTaskService;
+import com.amlve.file.Service.UploadService;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
@@ -21,6 +32,7 @@ import java.io.*;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.LocalDateTime;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
@@ -29,7 +41,7 @@ import java.util.regex.Pattern;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-public class MarkingDifyServiceImpl implements MarkingDifyService {
+public class GradingServiceImpl implements GradingService {
 
     @Value("${python.script.docx_to_md_path}")
     private String pythonScriptPath;
@@ -43,15 +55,17 @@ public class MarkingDifyServiceImpl implements MarkingDifyService {
     private String tempExcel;
 
 
+
     private final DifyProperty difyProperty;
     private final DifyClient difyClient;
+    private final GradingTaskMapper gradingTaskMapper;
+    private final GradingResultMapper gradingResultMapper;
+    private final UploadMapper uploadMapper;
 
     private final ObjectMapper mapper =  new ObjectMapper();
 
     //匹配学号和姓名
     private static final Pattern STUDENT_INFO_PATTERN = Pattern.compile("^(\\d{10})(\\s*)([\\u4e00-\\u9fa5·]{2,16})$");
-
-
 
 
     /**
@@ -368,11 +382,9 @@ public class MarkingDifyServiceImpl implements MarkingDifyService {
         }
         requestBody.put("upload_filesOFmd", mdFiles);
         requestBody.put("handle_type", "common_files");
-        log.info("调用Dify工作流");
         //工作流返回的Markdown字符串，转换为Word文档
         try {
             String result = difyClient.runWorkflowBlocking(difyProperty.getApiKey(), requestBody);
-            log.info("Dify工作流成功调用，开始转换为Word文档");
             return mdConvertToWord(result).get("wordPath");
         } catch (Exception e) {
             throw new RuntimeException(e);
@@ -381,19 +393,34 @@ public class MarkingDifyServiceImpl implements MarkingDifyService {
 
     /**
      * 调用Dify工作流
-     * @param zipFilePath 项目zip文件路径
+     * @param uploadFileId 项目zip文件id
      * @param rubric 评分标准
      * @return 完整拼接后的字符串（包含 Dify 吐出来的所有块）
      */
     @Override
-    public String runWorkflowWithProjectZip(String zipFilePath, String rubric) {
-        // 先解压zip文件，转为md文件并
+    public String runWorkflowWithProjectZip(String uploadFileId, String rubric) {
+        // 准备初始数据
+        UploadFile zip = uploadMapper.selectById(uploadFileId);
+        String zipFilePath = zip.getStoragePath();
+
+        GradingTask gradingTask = new GradingTask();
+        gradingTask.setId(UUID.randomUUID().toString());
+        gradingTask.setFileId(uploadFileId);
+        gradingTask.setStatus(0);
+        gradingTask.setCreateTime(LocalDateTime.now());
+
+        GradingResult gradingResult = new GradingResult();
+        gradingResult.setTaskId(gradingTask.getId());
+        gradingResult.setStatus(1);
+        gradingResult.setCreateTime(LocalDateTime.now());
+
+        // 先解压zip文件，转为md文件并调用Dify工作流
         try {
             List<StudentHomework> studentHomeworks = extractFromTotalZip(zipFilePath);
             // 调用Dify工作流
             // 检查学生作业列表是否为空
             if (studentHomeworks.isEmpty()) {
-                throw new FilesNotFoundException(ErrorConstant.FILES_NOT_FOUND);}
+                throw new BusinessException(ErrorCodeConstant.FILE_NOT_FOUND,ErrorConstant.FILES_NOT_FOUND);}
             Map<String, Object> requestBody  = new HashMap<>();
             if (null != rubric && !rubric.isEmpty()) {
                 requestBody.put("rubric", rubric);
@@ -414,12 +441,37 @@ public class MarkingDifyServiceImpl implements MarkingDifyService {
                 log.info("开始生成Excel文档");
                 json.remove("reviews");
                 String excelPath = generateExcel(json).get("excelPath");
+
+                // 保存处理成功文件到数据库
+                gradingTask.setStatus(2);
+                gradingTask.setFinishTime(LocalDateTime.now());
+                gradingTaskMapper.insert(gradingTask);
+                
+                gradingResult.setStatus(0);
+                gradingResult.setWordPath(wordPath);
+                gradingResult.setExcelPath(excelPath);
+                gradingResult.setExpireTime(LocalDateTime.now().plusDays(7));
+                gradingResultMapper.insert(gradingResult);
                 return "wordPath=" + wordPath + "&excelPath=" + excelPath;
+
+
             } catch (Exception e) {
-                throw new RuntimeException(e);
+                log.error(e.getMessage());
+                throw new BusinessException(ErrorCodeConstant.UNKNOWN_ERROR,ErrorConstant.UNKNOWN_ERROR);
             }
-        } catch (Exception e) {
-            throw new RuntimeException(ErrorConstant.UNKNOWN_ERROR, e);
+        } catch (BusinessException e) {
+            if(e.getCode() == ErrorCodeConstant.FILE_NOT_FOUND){
+                // 保存处理失败文件到数据库
+                gradingTask.setStatus(4);
+                gradingTask.setErrorMessage(e.getMessage());
+                gradingTask.setRetryCount(0);
+                gradingTask.setFinishTime(LocalDateTime.now());
+                gradingTaskMapper.insert(gradingTask);
+            }
+            throw e;
+        }catch (Exception e) {
+            log.error(e.getMessage());
+            throw new BusinessException(ErrorCodeConstant.UNKNOWN_ERROR,ErrorConstant.UNKNOWN_ERROR);
         }
 
     }

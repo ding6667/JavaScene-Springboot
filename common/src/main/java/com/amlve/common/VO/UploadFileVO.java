@@ -19,6 +19,10 @@ import java.time.LocalDateTime;
 @TableName("upload_file")
 @Builder
 public class UploadFileVO {
+    /**
+     * id
+     */
+    private String id;
 
     /**
      * 原始文件名

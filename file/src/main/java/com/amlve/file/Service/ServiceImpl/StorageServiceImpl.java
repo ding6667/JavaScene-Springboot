@@ -1,5 +1,7 @@
 package com.amlve.file.Service.ServiceImpl;
 
+import com.amlve.common.Constant.ErrorConstant;
+import com.amlve.common.Exception.BusinessException;
 import com.amlve.file.Service.StorageService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -46,7 +48,15 @@ public class StorageServiceImpl implements StorageService {
     }
 
     @Override
-    public String delete(String fileId) {
-        return "";
+    public Integer delete(String filePath) {
+        try {
+            Files.delete(Path.of(filePath));
+            return 1;
+        } catch (IOException e) {
+            log.error("删除文件失败", e);
+            return 0;
+
+        }
+
     }
 }
