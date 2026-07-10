@@ -1,6 +1,6 @@
 package com.amlve.web.Contorller;
 
-import com.amlve.common.Constant.ErrorConstant;
+import com.amlve.common.Constant.ErrorMessageConstant;
 import com.amlve.common.PageResult;
 import com.amlve.common.Result;
 import com.amlve.common.VO.UploadFileVO;
@@ -29,7 +29,7 @@ public class UploadController {
     @PostMapping("/zip")
     public Result<String> UploadZip(@RequestParam("file") MultipartFile file) throws IOException {
         if (file.isEmpty()) {
-            return Result.error(ErrorConstant.FILE_IS_EMPTY);
+            return Result.error(ErrorMessageConstant.FILE_IS_EMPTY);
         }
         return Result.success(uploadService.uploadZip(file));
     }
@@ -63,6 +63,6 @@ public class UploadController {
         if (uploadService.delete(id) == 1){
             return Result.success(1);
         }
-        return  Result.error(ErrorConstant.DELETE_FAILED);
+        return  Result.error(ErrorMessageConstant.DELETE_FAILED);
     }
 }

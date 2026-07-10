@@ -1,6 +1,6 @@
 package com.amlve.common.Constant;
 
-public class ErrorConstant {
+public class ErrorMessageConstant {
     public static final String FILES_NOT_FOUND = "文件路径列表为空";
     public static final String MD_CONTENT_EMPTY = "服务端文档解析错误，Markdown内容为空";
     public static final String MD_CONTENT_INVALID = "服务端文档解析错误，Markdown内容无效";

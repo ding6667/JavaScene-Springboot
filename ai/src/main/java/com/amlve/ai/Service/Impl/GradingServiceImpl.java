@@ -2,7 +2,7 @@ package com.amlve.ai.Service.Impl;
 
 import com.amlve.ai.Service.Bean.DifyClient;
 import com.amlve.common.Constant.ErrorCodeConstant;
-import com.amlve.common.Constant.ErrorConstant;
+import com.amlve.common.Constant.ErrorMessageConstant;
 import com.amlve.common.Entities.TableEnt.GradingResult;
 import com.amlve.common.Entities.TableEnt.GradingTask;
 import com.amlve.common.Entities.TableEnt.UploadFile;
@@ -16,9 +16,6 @@ import com.amlve.ai.Service.GradingService;
 import com.amlve.file.Mapper.GradingResultMapper;
 import com.amlve.file.Mapper.GradingTaskMapper;
 import com.amlve.file.Mapper.UploadMapper;
-import com.amlve.file.Service.GradingResultService;
-import com.amlve.file.Service.GradingTaskService;
-import com.amlve.file.Service.UploadService;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
@@ -220,14 +217,14 @@ public class GradingServiceImpl implements GradingService {
         Path tempFile = null;
         // 校验输入参数
         if (null == difyResponseJson || difyResponseJson.isEmpty()) {
-            throw new ServerDocumentParsingException(ErrorConstant.MD_CONTENT_EMPTY);
+            throw new ServerDocumentParsingException(ErrorMessageConstant.MD_CONTENT_EMPTY);
         }
         log.info(difyResponseJson);
 
         String outputJson = extractOutputAsJson(difyResponseJson);
         // 校验outputJson是否为空
         if(outputJson == null){
-            throw new ServerDocumentParsingException(ErrorConstant.MD_CONTENT_INVALID);
+            throw new ServerDocumentParsingException(ErrorMessageConstant.MD_CONTENT_INVALID);
         }
 
 
@@ -295,7 +292,7 @@ public class GradingServiceImpl implements GradingService {
         try{
             JsonNode root = mapper.readTree(outputJson);
             if (!root.has("output")) {
-                throw new ServerDocumentParsingException(ErrorConstant.MD_CONTENT_INVALID);
+                throw new ServerDocumentParsingException(ErrorMessageConstant.MD_CONTENT_INVALID);
             }
             JsonNode dataNode = root.get("output");
             if(dataNode.isArray()){
@@ -375,7 +372,7 @@ public class GradingServiceImpl implements GradingService {
         // 调用Dify工作流
         // 检查文件路径列表是否为空
         if (fileUrls.isEmpty()) {
-            throw new FilesNotFoundException(ErrorConstant.FILES_NOT_FOUND);}
+            throw new FilesNotFoundException(ErrorMessageConstant.FILES_NOT_FOUND);}
         Map<String, Object> requestBody  = new HashMap<>();
         if (null != rubric && !rubric.isEmpty()) {
             requestBody.put("rubric", rubric);
@@ -420,7 +417,7 @@ public class GradingServiceImpl implements GradingService {
             // 调用Dify工作流
             // 检查学生作业列表是否为空
             if (studentHomeworks.isEmpty()) {
-                throw new BusinessException(ErrorCodeConstant.FILE_NOT_FOUND,ErrorConstant.FILES_NOT_FOUND);}
+                throw new BusinessException(ErrorCodeConstant.FILE_NOT_FOUND, ErrorMessageConstant.FILES_NOT_FOUND);}
             Map<String, Object> requestBody  = new HashMap<>();
             if (null != rubric && !rubric.isEmpty()) {
                 requestBody.put("rubric", rubric);
@@ -457,7 +454,7 @@ public class GradingServiceImpl implements GradingService {
 
             } catch (Exception e) {
                 log.error(e.getMessage());
-                throw new BusinessException(ErrorCodeConstant.UNKNOWN_ERROR,ErrorConstant.UNKNOWN_ERROR);
+                throw new BusinessException(ErrorCodeConstant.UNKNOWN_ERROR, ErrorMessageConstant.UNKNOWN_ERROR);
             }
         } catch (BusinessException e) {
             if(e.getCode() == ErrorCodeConstant.FILE_NOT_FOUND){
@@ -471,7 +468,7 @@ public class GradingServiceImpl implements GradingService {
             throw e;
         }catch (Exception e) {
             log.error(e.getMessage());
-            throw new BusinessException(ErrorCodeConstant.UNKNOWN_ERROR,ErrorConstant.UNKNOWN_ERROR);
+            throw new BusinessException(ErrorCodeConstant.UNKNOWN_ERROR, ErrorMessageConstant.UNKNOWN_ERROR);
         }
 
     }

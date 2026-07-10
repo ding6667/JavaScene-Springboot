@@ -31,6 +31,7 @@ public class DifyClient {
         this.webClient = WebClient.create(difyProperty.getBaseUrl());
     }
 
+
     public String runWorkflowBlocking(String apiKey, Map<String, Object> extraInputs) {
         Map<String, Object> requestBody = new HashMap<>();
         requestBody.put("inputs", extraInputs != null ? extraInputs : new HashMap<>());
@@ -76,13 +77,11 @@ public class DifyClient {
      * @return Flux<String> 纯净的 SSE 流式响应字符串
      */
     public Flux<String> streamWorkflow(String apiKey, Map<String, Object> extraInputs) {
-        // 2. 组装标准 Dify API 请求体
         Map<String, Object> requestBody = new HashMap<>();
         requestBody.put("inputs", extraInputs != null ? extraInputs : new HashMap<>());
         requestBody.put("user", "user-" + System.currentTimeMillis());
         requestBody.put("response_mode", "streaming"); // 关键：声明采用流式接收
 
-        // 3. 发起标准的 HTTP POST 请求
         return webClient.post()
                 .uri("/workflows/run")
                 // 动态塞入方法参数里的 apiKey，实现随时切换工作流
@@ -106,7 +105,6 @@ public class DifyClient {
                                     return Mono.error(new RuntimeException("Dify 服务暂时不可用: " + errorBody));
                                 })
                 )
-                // 4. 将底层的 DataBuffer 流直接转换为响应式的文本流
                 .bodyToFlux(String.class)
                 .onErrorResume(e -> {
                     log.error("原生 HTTP 流式请求发生崩溃", e);

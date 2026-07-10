@@ -34,17 +34,6 @@ public class GlobalExceptionHandler {
     // ==================== 业务异常 ====================
 
     /**
-     * 未见失踪异常
-     * @param ex
-     * @return
-     */
-    @ExceptionHandler(FilesNotFoundException.class)
-    @ResponseStatus(HttpStatus.BAD_REQUEST)
-    public Result<Void> handleFilesNotFoundException(FilesNotFoundException ex) {
-        log.error("文件未找到,message = {}" ,ex.getMessage());
-        return Result.error(ex.getCode(), ex.getMessage());
-    }
-    /**
      * 自定义业务异常（如参数校验失败、业务状态不允许等）
      */
     @ExceptionHandler(BusinessException.class)
