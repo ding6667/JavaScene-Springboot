@@ -1,19 +1,10 @@
-dify:
-  api-key: "app-h2yIzEsq6W2C5eHN0MtDVRt2"   # Dify应用的API密钥
-  base-url: "http://localhost:5001/v1" # Dify API服务的地址
-  connect-timeout: 10                     # 连接超时（秒）
-  read-timeout: 120                       # 读取超时（秒）
-  file-base-url: "http://localhost:3000"  # Dify web服务的URL
-
 spring:
+  profiles:
+    active: dev
   application:
     name: "core"
   datasource:
-    url: jdbc:mysql://localhost:3306/javascene
-    username: root
-    password: 123456
     driver-class-name: com.mysql.cj.jdbc.Driver
-
 logging:
   level:
     com.amlve: debug
@@ -24,12 +15,19 @@ temp:
   excel: "./temp/excel"
   zip: "./temp/zip"
   expire_time: 7 # 临时文件过期时间，7天
-
 python:
-  exe: "E:python"
   script:
     md_to_docx_path: "./PyScript/md_to_docx.py"
     docx_to_md_path: "./PyScript/docx_to_md.py"
 mybatis-plus:
+  configuration:
+    map-underscore-to-camel-case: true
+    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+  global-config:
+    db-config:
+      logic-delete-field: deleted
   type-aliases-package: com.amlve.common.Entities.TableEnt
   mapper-locations: classpath*:mapper/**/*.xml
+dify:
+  connect-timeout: 10                     # 连接超时（秒）
+  read-timeout: 120                       # 读取超时（秒）

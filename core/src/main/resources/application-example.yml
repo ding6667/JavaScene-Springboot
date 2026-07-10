@@ -1,0 +1,13 @@
+# 拉取后请复制该文件并在同级目录下，重命名为application-dev.yml,并将相关配置改为自己的配置
+
+spring:
+  datasource:
+    url: jdbc:mysql://localhost:3306/javascene  # 数据库连接URL
+    username: root  # 数据库用户名
+    password: 123456  # 数据库密码
+python:
+  exe: "E:python" #python3.11以上的路径或者环境变量中的python路径
+dify:
+  api-key: "app-h2yIzEsq6W2C5eHN0MtDVRt2"   # Dify应用的API密钥
+  base-url: "http://localhost:5001/v1" # Dify API服务的地址
+  file-base-url: "http://localhost:3000"  # Dify web服务的URL
