@@ -14,27 +14,13 @@ import java.util.Map;
 
 @Slf4j
 @RestController
-@RequestMapping("/marking")
+@RequestMapping("/grading")
 @RequiredArgsConstructor
 public class GradingController {
 
     private final GradingService gradingService;
 
 
-    /**
-     * 转换word文件为Markdown格式
-     * mcp方法
-     * TODO 后续整理到file模块
-     * @param dto
-     * @return
-     */
-    @Deprecated
-    @GetMapping("/convert")
-    public Result<Map<String, List<String>>> wordConvertToMd(@RequestBody DifyConvertRequestDTO dto) {
-        log.info("dify传来待转换文件{}, way={}",dto.getFileUrl(), dto.getWay());
-        Map<String, List<String>> mdFiles = gradingService.wordConvertToMd(List.of(dto.getFileUrl()));
-        return Result.success(mdFiles);
-    }
 
     /**
      * 调用Dify批阅普通文件
@@ -57,19 +43,10 @@ public class GradingController {
      */
     @PostMapping("/startProject")
     public Result<String> startProject(@RequestBody GradingStartProjectDTO dto) {
-        String result = gradingService.runWorkflowWithProjectZip(dto.getId(), dto.getRubric());
+        String result = gradingService.startBatchReviewFromZip(dto.getUploadId(), dto.getStandardConfigId());
         return Result.success(result);
     }
 
-    /**
-     * 转换Markdown格式为Word格式
-     * TODO 后续整理到file模块
-     * @return
-     */
-    @Deprecated
-    @GetMapping("/mdToWord")
-    public Result<String> mdToWord() {
-        return null;
-    }
+
 
 }

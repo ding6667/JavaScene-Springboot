@@ -10,5 +10,9 @@ public class ErrorMessageConstant {
     public static final String UNKNOWN_ERROR = "未知错误";
     //删除失败
     public static final String DELETE_FAILED = "删除文件失败";
+    //打印失败
+    public static final String PRINT_FAILED = "打印文件失败";
+    //批阅任务异常终止
+    public static final String GRADING_TASK_EXCEPTION_TERMINATED = "批阅任务异常终止";
 
 }

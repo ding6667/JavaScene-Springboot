@@ -36,9 +36,9 @@ public class UploadFile {
     private Long fileSize;
 
     /**
-     * 服务器存储路径（相对或绝对路径）
+     * 上传源文件路径
      */
-    private String storagePath;
+    private String rawStoragePath;
 
     /**
      * 上传时间
@@ -49,4 +49,11 @@ public class UploadFile {
      * 过期时间（用于定时清理）
      */
     private LocalDateTime expireTime;
+    /**
+     * 解压后的文件路径
+     */
+    private String unzipStoragePath;
+
+    //是否删除：0-未删除 1-已删除
+    private Integer deleted;
 }

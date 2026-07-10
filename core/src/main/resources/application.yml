@@ -14,6 +14,7 @@ temp:
   word: "./temp/word"
   excel: "./temp/excel"
   zip: "./temp/zip"
+  unzip: "./temp/unzip"
   expire_time: 7 # 临时文件过期时间，7天
 python:
   script:
@@ -23,6 +24,7 @@ mybatis-plus:
   configuration:
     map-underscore-to-camel-case: true
     log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+    default-enum-type-handler: org.apache.ibatis.type.EnumOrdinalTypeHandler # 默认枚举类型处理类
   global-config:
     db-config:
       logic-delete-field: deleted

@@ -4,6 +4,6 @@ import lombok.Data;
 
 @Data
 public class DifyConvertRequestDTO {
-    private String fileUrl;
-    private String way;
+    private String fileId;
 }
+

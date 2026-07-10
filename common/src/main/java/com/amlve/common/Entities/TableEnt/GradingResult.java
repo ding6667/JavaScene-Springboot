@@ -39,6 +39,8 @@ public class GradingResult {
      */
     private String excelPath;
 
+    private Integer changed;
+
     /**
      * 批阅状态：0-已完成 1-失败
      */
@@ -53,4 +55,6 @@ public class GradingResult {
      * 过期时间（用于定时清理）
      */
     private LocalDateTime expireTime;
+
+    private Integer deleted;
 }

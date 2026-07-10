@@ -47,7 +47,7 @@ public class UploadServiceImpl extends ServiceImpl<UploadMapper,UploadFile> impl
         uploadFile.setId(uploadId);
         uploadFile.setFileName(file.getOriginalFilename());
         uploadFile.setFileSize(file.getSize());
-        uploadFile.setStoragePath(filePath);
+        uploadFile.setRawStoragePath(filePath);
         uploadFile.setUploadTime(LocalDateTime.now());
         uploadFile.setExpireTime(LocalDateTime.now().plusDays(7));
 
@@ -70,7 +70,7 @@ public class UploadServiceImpl extends ServiceImpl<UploadMapper,UploadFile> impl
         //条件构造器
         var wrapper = Wrappers.lambdaQuery(UploadFile.class);
         //查询字段
-        wrapper.select(UploadFile::getFileName,UploadFile::getFileSize,UploadFile::getUploadTime,UploadFile::getStoragePath);
+        wrapper.select(UploadFile::getFileName,UploadFile::getFileSize,UploadFile::getUploadTime,UploadFile::getRawStoragePath);
         //模糊查询
         wrapper.like(fileName != null && !fileName.isBlank() , UploadFile::getFileName,fileName);
         //升降序
@@ -100,7 +100,7 @@ public class UploadServiceImpl extends ServiceImpl<UploadMapper,UploadFile> impl
     @Override
     public Integer delete(String id) {
         int deleteInTable = uploadMapper.deleteById(id);
-        String path = uploadMapper.selectById(id).getStoragePath();
+        String path = uploadMapper.selectById(id).getRawStoragePath();
         Integer deleteFile = storageService.delete(path);
         return deleteInTable > 0 && deleteFile > 0 ? 1 : 0;
     }
