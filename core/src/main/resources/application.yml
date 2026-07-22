@@ -11,9 +11,7 @@ logging:
     reactor.netty.http.client: DEBUG
     org.springframework.web.reactive.function.client: DEBUG
 temp:
-  word: "./temp/word"
-  excel: "./temp/excel"
-  zip: "./temp/zip"
+  upload: "./temp/upload"
   unzip: "./temp/unzip"
   expire_time: 7 # 临时文件过期时间，7天
 python:

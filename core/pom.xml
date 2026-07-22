@@ -31,12 +31,6 @@
     </properties>
     <dependencies>
         <dependency>
-            <groupId>com.amlve</groupId>
-            <artifactId>ai</artifactId>
-            <version>${project.version}</version>
-        </dependency>
-
-        <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-web</artifactId>
         </dependency>
