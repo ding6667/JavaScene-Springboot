@@ -2,7 +2,8 @@ package com.amlve.file.service.serviceImpl;
 
 import com.amlve.common.dto.UploadFileDTO;
 import com.amlve.common.request.PageResult;
-import com.amlve.file.mapper.UploadFileMapMapper;
+import com.amlve.common.utils.UserContext;
+import com.amlve.file.converter.UploadFileMapMapper;
 import com.amlve.file.vo.UploadFileVO;
 import com.amlve.file.tableEnt.UploadFile;
 import com.amlve.file.mapper.UploadMapper;
@@ -12,7 +13,7 @@ import com.amlve.file.service.UploadService;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
-import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.baomidou.mybatisplus.spring.service.impl.ServiceImpl;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
@@ -47,6 +48,7 @@ public class UploadServiceImpl extends ServiceImpl<UploadMapper,UploadFile> impl
         String filePath = storageService.store(file,uploadId);
         UploadFile uploadFile = new UploadFile();
         uploadFile.setId(uploadId);
+        uploadFile.setUserId(UserContext.getUserId());
         uploadFile.setFileName(file.getOriginalFilename());
         uploadFile.setFileSize(file.getSize());
         uploadFile.setRawStoragePath(filePath);

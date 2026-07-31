@@ -106,7 +106,7 @@ public class GradingServiceImpl implements GradingService {
      */
     @Override
     @Async("coordinatorExecutor")
-    public void runWorkflowWithCommonFiles(List<String> uploadIds, String standardConfigId) {
+    public void runWorkflowWithCommonFiles(List<String> uploadIds, Long standardConfigId) {
         if (uploadIds.isEmpty()) {
             throw new BusinessException(ErrorMessageConstant.FILES_NOT_FOUND);
         }
@@ -117,20 +117,45 @@ public class GradingServiceImpl implements GradingService {
                         .map(entry ->{
                             String taskId = entry.getKey();
                             StudentHomework studentHomework = entry.getValue();
-                            return CompletableFuture.runAsync(() -> processSingleFile(taskId,studentHomework,rubric),gradingExecutor);
-                                }).toList();
+                            TaskContext taskContext = new TaskContext(taskId);
+                            activeTasks.put(taskId,taskContext);
+                            taskContext.rubric = rubric;
+                            CompletableFuture<Void> future = CompletableFuture.runAsync(() -> processSingleFile(taskId,studentHomework,rubric,taskContext),gradingExecutor);
+                            taskContext.future = future;
+                            return future;
+                        }).toList();
+
 
         CompletableFuture.allOf(futures.toArray(new CompletableFuture[0])).join();
+        studentHomeworks.keySet().forEach(taskId -> {
+            TaskContext ctx = activeTasks.get(taskId);
+            if (ctx != null && ctx.future != null && ctx.future.isDone()) {
+                activeTasks.remove(taskId);
+            }
+        });
     }
 
-    private void processSingleFile(String taskId,StudentHomework studentHomework, List<RubricItem> rubric) {
-        Map<String, Object> requestBody = new HashMap<>();
-        requestBody.put(BusinessConstant.RUBRIC, rubric);
-        requestBody.put(BusinessConstant.CONTENT, List.of(studentHomework));
-        requestBody.put(BusinessConstant.HANDLE_TYPE, BusinessConstant.COMMON);
-
+    private void processSingleFile(String taskId,StudentHomework studentHomework, List<RubricItem> rubric,TaskContext ctx) {
         GradingTask gradingTask = gradingTaskMapper.selectById(taskId);
         try {
+            if(ctx.cancelled){
+                throw new InterruptedException(ErrorMessageConstant.TASK_CANCELLED);
+            }
+            Map<String, Object> requestBody = new HashMap<>();
+            requestBody.put(BusinessConstant.RUBRIC, rubric);
+            requestBody.put(BusinessConstant.CONTENT, List.of(studentHomework));
+            requestBody.put(BusinessConstant.HANDLE_TYPE, BusinessConstant.COMMON);
+
+
+            if (ctx.paused) {
+                ctx.pauseLock.lock();
+                try {
+                    ctx.pausedCondition.await();
+                } finally {
+                    ctx.pauseLock.unlock();
+                }
+            }
+
             gradingTask.setStatus(GradingTaskStatus.PROCESSING);
             gradingTask.setProcessedStudentCount(1);
             gradingTaskMapper.updateById(gradingTask);
@@ -167,11 +192,20 @@ public class GradingServiceImpl implements GradingService {
                     .build();
             saveProgress(List.of(studentResult), taskId);
             updateGradingTaskStatus(taskId,GradingTaskStatus.SUCCESS);
+        }catch (InterruptedException e) {
+            // 处理中断（来自取消或暂停时的 await 被中断）
+            Thread.currentThread().interrupt(); // 恢复中断状态
+            log.warn("任务 {} 被中断", taskId);
+            gradingTask.setStatus(GradingTaskStatus.CANCELLED);
+            gradingTask.setErrorMessage(ErrorMessageConstant.TASK_CANCELLED);
+            gradingTaskMapper.updateById(gradingTask);
         } catch (Exception e) {
             gradingTask.setStatus(GradingTaskStatus.FAILED);
             gradingTask.setErrorMessage(ErrorMessageConstant.GRADING_TASK_EXCEPTION_TERMINATED);
             gradingTaskMapper.updateById(gradingTask);
             throw new BusinessException(ErrorCodeConstant.UNKNOWN_ERROR,ErrorMessageConstant.GRADING_TASK_EXCEPTION_TERMINATED);
+        }finally {
+            activeTasks.remove(taskId);
         }
     }
 
@@ -181,7 +215,7 @@ public class GradingServiceImpl implements GradingService {
      * @param standardConfigId 评分标准ID
      * @return 任务ID到学生作业对象的映射
      */
-    private Map<String,StudentHomework> initRecordsAndReturnMdFiles(List<String> uploadIds,String standardConfigId){
+    private Map<String,StudentHomework> initRecordsAndReturnMdFiles(List<String> uploadIds,Long standardConfigId){
         Map<String,StudentHomework> mdFiles = new HashMap<>();
         uploadIds.forEach(uploadId -> {
             String taskId = UUID.randomUUID().toString();
@@ -211,7 +245,7 @@ public class GradingServiceImpl implements GradingService {
      * 解压、创建学生记录、批阅全部在线程池中异步执行。
      */
     @Override
-    public String startBatchReviewFromZip(String uploadId, String standardConfigId) {
+    public String startBatchReviewFromZip(String uploadId, Long standardConfigId) {
         String taskId = UUID.randomUUID().toString();
 
         GradingTask task = new GradingTask();
@@ -229,7 +263,7 @@ public class GradingServiceImpl implements GradingService {
             try {
                 // 获取评分标准
                 List<RubricItem> rubric = null;
-                if (standardConfigId != null && !standardConfigId.isEmpty()) {
+                if (standardConfigId != null) {
                     StandardConfigDTO config = standardConfigService.selectById(standardConfigId);
                     if (config != null) {
                         rubric = config.getStandardContent();
@@ -237,8 +271,8 @@ public class GradingServiceImpl implements GradingService {
                 }
 
                 // 解压总 zip，提取学生作业
-                String rawStoragePath = uploadService.selectById(uploadId).getRawStoragePath();
-                List<StudentHomework> homeworks = extractFromTotalZip(rawStoragePath);
+
+                List<StudentHomework> homeworks = extractFromTotalZip(taskId,uploadId);
 
                 if (homeworks.isEmpty()) {
                     throw new BusinessException(ErrorCodeConstant.FILE_NOT_FOUND, ErrorMessageConstant.FILES_NOT_FOUND);
@@ -612,10 +646,14 @@ public class GradingServiceImpl implements GradingService {
      *  └── ...
      * </pre>
      */
-    private List<StudentHomework> extractFromTotalZip(String totalZipPath) throws Exception {
+    private List<StudentHomework> extractFromTotalZip(String taskId ,String uploadId) throws Exception {
         Path baseDir = Path.of(tempUnzipDir, UUID.randomUUID().toString());
         List<StudentHomework> results = new ArrayList<>();
 
+        UploadFileDTO uploadFileDTO = uploadService.selectById(uploadId);
+        String totalZipPath = uploadFileDTO.getRawStoragePath();
+        uploadFileDTO.setUnzipStoragePath(baseDir.toString());
+        uploadService.updateById(uploadFileDTO);
 
         Files.createDirectories(baseDir);
 

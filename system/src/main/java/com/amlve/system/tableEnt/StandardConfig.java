@@ -3,6 +3,7 @@ package com.amlve.system.tableEnt;
 
 import com.amlve.common.entity.RubricItem;
 import com.baomidou.mybatisplus.annotation.*;
+import com.baomidou.mybatisplus.extension.handlers.JacksonTypeHandler;
 import jakarta.persistence.Column;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -21,7 +22,7 @@ import java.util.List;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-@TableName("standard_config")
+@TableName(value = "standard_config",autoResultMap = true)
 public class StandardConfig {
 
     /**
@@ -36,10 +37,9 @@ public class StandardConfig {
     private String standardName;
 
     /**
-     * 评分标准内容(Markdown)
+     * 评分标准内容Json
      */
-    @JdbcTypeCode(SqlTypes.JSON)
-    @Column(columnDefinition = "json")
+    @TableField(typeHandler = JacksonTypeHandler.class)
     private List<RubricItem> standardContent;
 
     /**
@@ -50,7 +50,7 @@ public class StandardConfig {
     /**
      * 创建人/来源
      */
-    private String createdBy;
+    private Long userId;
 
     /**
      * 创建时间（由数据库自动生成）

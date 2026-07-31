@@ -4,8 +4,8 @@ import java.util.List;
 
 public interface GradingService {
 
-   void runWorkflowWithCommonFiles(List<String> uploadIds, String standardConfigId);
-   String startBatchReviewFromZip(String uploadId, String standardConfigId);
+   void runWorkflowWithCommonFiles(List<String> uploadIds, Long standardConfigId);
+   String startBatchReviewFromZip(String uploadId, Long standardConfigId);
 
    /** 暂停指定批阅任务 */
    void pauseReview(String taskId);

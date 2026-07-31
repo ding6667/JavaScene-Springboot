@@ -5,19 +5,30 @@ spring:
     name: "core"
   datasource:
     driver-class-name: com.mysql.cj.jdbc.Driver
+  ai:
+    deepseek:
+      base-url: https://api.deepseek.com/
+      chat:
+        options:
+          model: "deepseek-3.5"
+          temperature: 0.7
+          max-tokens: 1000
+          presence-penalty: 0.0
+          frequency-penalty: 0.0
 logging:
   level:
     com.amlve: debug
     reactor.netty.http.client: DEBUG
     org.springframework.web.reactive.function.client: DEBUG
 temp:
-  upload: "./temp/upload"
-  unzip: "./temp/unzip"
+  upload: "${user.dir}/temp/upload"
+  unzip: "${user.dir}/temp/unzip"
+  zip: "${user.dir}/temp/zip"
   expire_time: 7 # 临时文件过期时间，7天
 python:
   script:
-    md_to_docx_path: "./PyScript/md_to_docx.py"
-    docx_to_md_path: "./PyScript/docx_to_md.py"
+    md_to_docx_path: "${user.dir}/common/src/main/java/com/amlve/common/PyScript/md_to_docx.py"
+    docx_to_md_path: "${user.dir}/common/src/main/java/com/amlve/common/PyScript/docx_to_md.py"
 mybatis-plus:
   configuration:
     map-underscore-to-camel-case: true
@@ -31,3 +42,5 @@ mybatis-plus:
 dify:
   connect-timeout: 10                     # 连接超时（秒）
   read-timeout: 120                       # 读取超时（秒）
+jwt:
+  secret: "abcdefghabcdefghabcdefgh12345678"

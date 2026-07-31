@@ -1,4 +1,4 @@
-package com.amlve.file.mapper;
+package com.amlve.file.converter;
 
 import com.amlve.common.dto.UploadFileDTO;
 import com.amlve.file.tableEnt.UploadFile;

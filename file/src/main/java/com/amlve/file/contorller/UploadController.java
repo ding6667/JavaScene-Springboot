@@ -15,7 +15,7 @@ import java.io.IOException;
 
 @Slf4j
 @RestController
-@RequestMapping("/upload")
+@RequestMapping("/api/upload")
 @RequiredArgsConstructor
 public class UploadController {
     private final UploadService uploadService;
@@ -27,8 +27,8 @@ public class UploadController {
      * @throws IOException
      */
     @PostMapping("/zip")
-    public Result<String> UploadZip(@RequestParam("file") MultipartFile file) throws IOException {
-        if (file.isEmpty()) {
+    public Result<String> UploadZip(@RequestParam(value = "file", required = false) MultipartFile file) throws IOException {
+        if (file == null || file.isEmpty()) {
             return Result.error(ErrorMessageConstant.FILE_IS_EMPTY);
         }
         return Result.success(uploadService.uploadZip(file));

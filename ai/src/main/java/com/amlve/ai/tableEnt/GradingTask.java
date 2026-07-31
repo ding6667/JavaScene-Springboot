@@ -23,8 +23,10 @@ public class GradingTask {
     private String id;
     //关联的上传文件ID
     private String fileId;
+    //关联的用户ID
+    private Long userId;
     //批阅评分标准id
-    private String rubricId;
+    private Long rubricId;
     //学生总人数
     private Integer studentCount;
     //已处理学生人数

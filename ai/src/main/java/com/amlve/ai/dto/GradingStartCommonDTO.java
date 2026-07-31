@@ -6,7 +6,7 @@ import java.util.List;
 @Data
 public class GradingStartCommonDTO {
     private List<String> uploadIds;
-    private String standardConfigId;
+    private Long standardConfigId;
 
 }
 

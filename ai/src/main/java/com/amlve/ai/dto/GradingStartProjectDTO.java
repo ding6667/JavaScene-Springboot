@@ -4,5 +4,5 @@ import lombok.Data;
 @Data
 public class GradingStartProjectDTO {
     private String uploadId;
-    private String standardConfigId;
+    private Long standardConfigId;
 }

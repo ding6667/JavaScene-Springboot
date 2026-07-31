@@ -11,7 +11,7 @@ import org.springframework.web.bind.annotation.*;
 
 @Slf4j
 @RestController
-@RequestMapping("/grading")
+@RequestMapping("/api/grading")
 @RequiredArgsConstructor
 public class GradingController {
 
@@ -43,5 +43,19 @@ public class GradingController {
     }
 
 
-
+    @PostMapping("/pause")
+    public Result<Void> pause(@RequestBody String taskId) {
+        gradingService.pauseReview(taskId);
+        return Result.success(null);
+    }
+    @PostMapping("/resume")
+    public Result<Void> resume(@RequestBody String taskId) {
+        gradingService.resumeReview(taskId);
+        return Result.success(null);
+    }
+    @PostMapping("/cancel")
+    public Result<Void> cancel(@RequestBody String taskId) {
+        gradingService.cancelReview(taskId);
+        return Result.success(null);
+    }
 }

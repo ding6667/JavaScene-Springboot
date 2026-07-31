@@ -46,6 +46,11 @@ public class ErrorCodeConstant {
      */
     public static final int UNSUPPORTED_MEDIA_TYPE = 1005;
 
+    /**
+     * token 过期
+     */
+    public static final int TOKEN_EXPIRED = 1006;
+
 
     // ===== 文件相关错误码（2000-2099） =====
 

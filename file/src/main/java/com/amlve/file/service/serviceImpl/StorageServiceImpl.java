@@ -17,7 +17,7 @@ import java.time.format.DateTimeFormatter;
 @Slf4j
 
 public class StorageServiceImpl implements StorageService {
-    @Value("${temp.zip}")
+    @Value("${temp.zip:./temp/zip}")
     private String tempZip;
 
 

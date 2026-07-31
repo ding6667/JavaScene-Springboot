@@ -8,7 +8,11 @@ import org.springframework.context.annotation.ComponentScan;
 
 @SpringBootApplication(scanBasePackages = "com.amlve")
 @ComponentScan(basePackages = "com.amlve")
-@MapperScan(basePackages = "com.amlve.*.mapper")
+@MapperScan(basePackages = {
+        "com.amlve.system.mapper",
+        "com.amlve.file.mapper",
+        "com.amlve.ai.mapper"
+})
 @Slf4j
 public class WebApplication {
     public static void main(String[] args) {

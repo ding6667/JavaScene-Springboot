@@ -22,9 +22,10 @@ public class UploadFile {
     /**
      * 文件ID（即 uploadId，由程序生成 32 位 UUID）
      */
-    @TableId(type = IdType.INPUT)
+    @TableId(type = IdType.ASSIGN_UUID)
     private String id;
 
+    private Long userId;
     /**
      * 原始文件名
      */
