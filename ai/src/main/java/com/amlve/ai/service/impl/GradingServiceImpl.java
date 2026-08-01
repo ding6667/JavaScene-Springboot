@@ -1,6 +1,8 @@
 package com.amlve.ai.service.impl;
 
 import com.amlve.ai.bean.DifyClient;
+import com.amlve.ai.dto.ContentDTO;
+import com.amlve.ai.dto.RubricDTO;
 import com.amlve.ai.service.GradingService;
 import com.amlve.ai.constant.BusinessConstant;
 import com.amlve.ai.constant.ErrorCodeConstant;
@@ -17,6 +19,7 @@ import com.amlve.common.service.StandardService;
 import com.amlve.common.service.UploadService;
 import com.amlve.ai.tableEnt.StudentResult;
 import com.amlve.common.utils.FileFormatUtil;
+import com.amlve.common.utils.UserContext;
 import com.amlve.common.utils.ZipUtil;
 import com.amlve.ai.mapper.GradingTaskMapper;
 import com.amlve.ai.mapper.StudentResultMapper;
@@ -142,8 +145,8 @@ public class GradingServiceImpl implements GradingService {
                 throw new InterruptedException(ErrorMessageConstant.TASK_CANCELLED);
             }
             Map<String, Object> requestBody = new HashMap<>();
-            requestBody.put(BusinessConstant.RUBRIC, rubric);
-            requestBody.put(BusinessConstant.CONTENT, List.of(studentHomework));
+            requestBody.put(BusinessConstant.RUBRIC, new RubricDTO(rubric));
+            requestBody.put(BusinessConstant.CONTENT, new ContentDTO(List.of(studentHomework)));
             requestBody.put(BusinessConstant.HANDLE_TYPE, BusinessConstant.COMMON);
 
 
@@ -222,6 +225,7 @@ public class GradingServiceImpl implements GradingService {
             GradingTask task = new GradingTask();
             task.setId(taskId);
             task.setFileId(uploadId);
+            task.setUserId(UserContext.getUserId());
             task.setRubricId(standardConfigId);
             task.setStatus(GradingTaskStatus.PENDING);
             task.setCreateTime(LocalDateTime.now());
@@ -251,6 +255,7 @@ public class GradingServiceImpl implements GradingService {
         GradingTask task = new GradingTask();
         task.setId(taskId);
         task.setFileId(uploadId);
+        task.setUserId(UserContext.getUserId());
         task.setRubricId(standardConfigId);
         task.setStatus(GradingTaskStatus.PENDING);
         task.setCreateTime(LocalDateTime.now());
@@ -516,12 +521,12 @@ public class GradingServiceImpl implements GradingService {
 
         try {
             Map<String, Object> requestBody = new HashMap<>();
-            requestBody.put(BusinessConstant.RUBRIC, rubric);
-            requestBody.put(BusinessConstant.CONTENT, homeworks);
+            requestBody.put(BusinessConstant.RUBRIC, new RubricDTO(rubric));
+            requestBody.put(BusinessConstant.CONTENT, new ContentDTO(homeworks));
             requestBody.put(BusinessConstant.HANDLE_TYPE, BusinessConstant.COMMON);
 
             String response = difyClient.runWorkflowBlocking(difyProperty.getApiKey(), requestBody);
-
+            log.info("Dify 响应: {}", response);
             String outputJson = extractOutputAsJson(response);
             if (outputJson == null) {
                 for (StudentResult s : studentMap.values()) {
@@ -547,7 +552,7 @@ public class GradingServiceImpl implements GradingService {
                 String stuId = studentNode.path("stu_id").asText("");
                 String stuName = studentNode.path("stu_name").asText("");
                 String totalScore = studentNode.path("total_score").asText("");
-                String review = studentNode.path("review").asText("");
+                String content = studentNode.path("content").asText("");
 
                 if (stuId.isEmpty()) {
                     log.warn("跳过缺少学号的返回记录");
@@ -562,7 +567,7 @@ public class GradingServiceImpl implements GradingService {
 
                 sr.setStudentName(stuName.isEmpty() ? sr.getStudentName() : stuName);
                 sr.setRawScore(totalScore);
-                sr.setAiComment(review);
+                sr.setAiComment(content);
                 sr.setStatus(GradingTaskStatus.SUCCESS);
                 sr.setErrorMessage(null);
                 respondedIds.add(stuId);

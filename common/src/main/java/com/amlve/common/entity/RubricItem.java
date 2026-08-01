@@ -6,5 +6,5 @@ import lombok.Data;
 public class RubricItem {
     private String moduleName;
     private String detail;
-    private Integer score;
+    private String score;
 }
