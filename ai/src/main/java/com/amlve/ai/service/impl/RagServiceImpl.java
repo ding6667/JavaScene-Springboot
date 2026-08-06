@@ -5,13 +5,18 @@ import com.alibaba.dashscope.embeddings.TextEmbeddingParam;
 import com.alibaba.dashscope.embeddings.TextEmbeddingResult;
 import com.alibaba.dashscope.embeddings.TextEmbeddingResultItem;
 import com.alibaba.dashscope.exception.NoApiKeyException;
+import com.amlve.ai.entity.EmbdItem;
 import com.amlve.ai.service.RagService;
 import com.amlve.ai.service.RouterLlmService;
+import com.amlve.ai.util.EmbeddingUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
+import org.springframework.ai.chat.client.ChatClient;
+import org.springframework.ai.deepseek.DeepSeekChatModel;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+import reactor.core.publisher.Flux;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -22,32 +27,46 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class RagServiceImpl implements RagService {
 
-    @Value("${ai.alibaba.api-key}")
-    private String apiKey;
+
     private final RouterLlmService routerLlmService;
+    private final TextEmbedding embedding;
+    private final EmbeddingUtil embeddingUtil;
+    private final ChatClient chatClient;
 
-    List<String> users = List.of("美食", "建筑", "旅行");
-    static String query = "汉堡";
+
     @Override
-    public void find() {
-        log.info("find {}", query);
-        double maxSimilarity = -1.0;
-        int index = 0;
+    public Flux<String> answer(String message) {
+        List<String> users = List.of("美食", "建筑", "旅行");
 
+        int topK = 3;
+        double threshold = 0.5;
 
+        log.info("answer {}", message);
+        List<EmbdItem> similarities = new ArrayList<>();
         List<double[]> embed = embed(users);
-        List<String> q =  new ArrayList<>();
-        q.add(query);
-
+        List<String> context = new ArrayList<>();
         for(int i = 0;i < users.size();i++){
-            double v = cosineSimilarity(embed.get(i), embed(q).get(0));
-            if(maxSimilarity < v){
-                maxSimilarity = v;
-                index = i;
+            double[] q = embed(message);
+            double v = cosineSimilarity(embed.get(i), q);
+            if(v > threshold){
+                similarities.add(new EmbdItem(i, q));
             }
-            log.info("cur similarity {},{}", v ,  users.get(i));
         }
-        log.info("max similarity {},{}", maxSimilarity ,  users.get(index));
+        similarities.sort((a, b) -> Double.compare(b.getSimilarities()[0], a.getSimilarities()[0]));
+        // 取topK个相似度最高的,并添加上下文
+        similarities.subList(0, topK).forEach(v -> {
+            if(v.getIndex() - 1 >= 0)
+                context.add(users.get(v.getIndex() - 1));
+            context.add(users.get(v.getIndex()));
+            if(v.getIndex() + 1 < users.size())
+                context.add(users.get(v.getIndex() + 1));
+        });
+        String contextStr = String.join("\n", context);
+        return chatClient.prompt()
+                .user(message + contextStr + "\n")
+                .stream()
+                .content();
+
     }
 
     private double cosineSimilarity(double[] vectorA, double[] vectorB) {
@@ -72,18 +91,9 @@ public class RagServiceImpl implements RagService {
     }
 
     public List<double[]> embed(List<String> texts) {
-        // 构建参数（必须指定 textType 以优化检索效果）
-        TextEmbeddingParam param = TextEmbeddingParam.builder()
-                .apiKey(apiKey)
-                .model("text-embedding-v4")
-                .texts(texts)
-                .dimension(1024)
-                .textType(TextEmbeddingParam.TextType.QUERY) // 或 DOCUMENT
-                // .instruct("Given a product review, retrieve similar reviews") // 仅当 textType=QUERY 时生效
-                .build();
 
-        // 调用模型
-        TextEmbedding embedding = new TextEmbedding();
+        TextEmbeddingParam param = embeddingUtil.param(texts);
+
         try {
             TextEmbeddingResult result = embedding.call(param);
 
@@ -106,5 +116,9 @@ public class RagServiceImpl implements RagService {
         } catch (Exception e) {
             throw new RuntimeException("向量化调用失败", e);
         }
+    }
+
+    public double[] embed(String text) {
+        return embed(List.of(text)).get(0);
     }
 }

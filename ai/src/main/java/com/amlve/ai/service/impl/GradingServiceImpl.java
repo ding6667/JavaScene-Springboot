@@ -180,7 +180,7 @@ public class GradingServiceImpl implements GradingService {
 
             for (JsonNode studentNode : outputArray) {
                 totalScore = studentNode.path("total_score").asText("");
-                review = studentNode.path("review").asText("");
+                review = studentNode.path("content").asText("");
             }
             StudentResult studentResult = StudentResult.builder()
                     .taskId(taskId)
@@ -239,7 +239,7 @@ public class GradingServiceImpl implements GradingService {
             if (studentInfoParts == null || studentInfoParts.length != 2 ) {
                 throw new BusinessException(ErrorMessageConstant.FILE_NAME_INVALID);
             }
-            mdFiles.put(taskId,new StudentHomework(studentInfoParts[0],studentInfoParts[1],content));
+            mdFiles.put(taskId,new StudentHomework(studentInfoParts[0],studentInfoParts[1],content,rawStoragePath));
         });
         return mdFiles;
     }

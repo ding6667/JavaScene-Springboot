@@ -8,7 +8,7 @@ import java.io.IOException;
 
 public interface UploadService {
 
-    String uploadZip(MultipartFile file) throws IOException;
+    String uploadFile(MultipartFile file) throws IOException;
 
     PageResult<UploadFileVO> records(Long pageNum, Long pageSize, String fileName, Boolean isAsc);
 

@@ -1,6 +1,9 @@
 spring:
   profiles:
     active: dev
+  autoconfigure:
+    exclude:
+      - org.springframework.ai.vectorstore.milvus.autoconfigure.MilvusVectorStoreAutoConfiguration
   application:
     name: "core"
   datasource:
@@ -9,19 +12,31 @@ spring:
     deepseek:
       base-url: https://api.deepseek.com/
       chat:
-        options:
-          model: "deepseek-3.5"
-          temperature: 0.7
-          max-tokens: 1000
-          presence-penalty: 0.0
-          frequency-penalty: 0.0
+        frequency-penalty: 0.0
+        presence-penalty: 0.0
+        max-tokens: 1000
+        temperature: 0.7
+        model: "deepseek-3.5"
+    vectorstore:
+      milvus:
+        client:
+          host: "localhost"
+          port: 19530
+          username: "root"
+          password: "milvus"
+        databaseName: "default"
+        collectionName: "vector_store"
+        embeddingDimension: 1536
+        indexType: IVF_FLAT
+        metricType: COSINE
+
 logging:
   level:
     com.amlve: debug
     reactor.netty.http.client: DEBUG
     org.springframework.web.reactive.function.client: DEBUG
 temp:
-  upload: "${user.dir}/temp/upload"
+  commonFile: "${user.dir}/temp/commonFile"
   unzip: "${user.dir}/temp/unzip"
   zip: "${user.dir}/temp/zip"
   expire_time: 7 # 临时文件过期时间，7天

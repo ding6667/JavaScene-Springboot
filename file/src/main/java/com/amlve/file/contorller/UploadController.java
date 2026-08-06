@@ -12,6 +12,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.util.Objects;
 
 @Slf4j
 @RestController
@@ -21,17 +22,21 @@ public class UploadController {
     private final UploadService uploadService;
 
     /**
-     * 上传zip文件
-     * @param file 上传的zip文件
+     * 上传任意文件
+     * @param file 上传的文件
      * @return 上传后的文件id
      * @throws IOException
      */
-    @PostMapping("/zip")
-    public Result<String> UploadZip(@RequestParam(value = "file", required = false) MultipartFile file) throws IOException {
+    @PostMapping("/file")
+    public Result<String> UploadFile(@RequestParam(value = "file", required = false) MultipartFile file) throws IOException {
         if (file == null || file.isEmpty()) {
             return Result.error(ErrorMessageConstant.FILE_IS_EMPTY);
+        }else if(file.getSize() <= 0){
+            return Result.error(ErrorMessageConstant.FILE_SIZE_INVALID);
+        }else if(Objects.requireNonNull(file.getOriginalFilename()).isEmpty()){
+            return Result.error(ErrorMessageConstant.FILE_NAME_INVALID);
         }
-        return Result.success(uploadService.uploadZip(file));
+        return Result.success(uploadService.uploadFile(file));
     }
 
     /**

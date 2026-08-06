@@ -3,16 +3,12 @@ package com.amlve.system.dto;
 
 import com.amlve.common.entity.RubricItem;
 import com.baomidou.mybatisplus.annotation.*;
-import jakarta.persistence.Column;
+
 import jakarta.validation.constraints.NotBlank;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import org.hibernate.annotations.JdbcTypeCode;
-import org.hibernate.type.SqlTypes;
-
-import java.time.LocalDateTime;
 import java.util.List;
 
 

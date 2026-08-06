@@ -1,5 +1,6 @@
 package com.amlve.file.service.serviceImpl;
 
+import com.amlve.file.constant.ErrorMessageConstant;
 import com.amlve.file.service.StorageService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -19,6 +20,9 @@ import java.time.format.DateTimeFormatter;
 public class StorageServiceImpl implements StorageService {
     @Value("${temp.zip:./temp/zip}")
     private String tempZip;
+    @Value("${user.dir}/temp/commonFile")
+    private String tempCommonFile;
+
 
 
     /**
@@ -32,11 +36,20 @@ public class StorageServiceImpl implements StorageService {
     public String store(MultipartFile file, String fileId) throws IOException {
         // 按日期生成文件夹
         String dir = LocalDate.now().format(DateTimeFormatter.ofPattern("yyyy/MM/dd"));
-        Path basePath = Paths.get(tempZip).resolve(dir);
+        String originalFilename = file.getOriginalFilename();
+        if (originalFilename == null || originalFilename.isEmpty()) {
+            throw new IllegalArgumentException(ErrorMessageConstant.FILE_NAME_INVALID);
+        }
+        int dotIndex = originalFilename.lastIndexOf(".");
+        String fileType = (dotIndex == -1) ? "" : originalFilename.substring(dotIndex);
+        Path basePath = switch (fileType) {
+            case ".zip" -> Paths.get(tempZip).resolve(dir);
+            default -> Paths.get(tempCommonFile).resolve(dir);
+        };
 
         Files.createDirectories(basePath);
         // 生成唯一文件名
-        String fileName = fileId + ".zip";
+        String fileName = fileId + fileType;
         Path targetPath = basePath.resolve(fileName);
         file.transferTo(targetPath);
 

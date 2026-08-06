@@ -6,9 +6,12 @@ import com.amlve.common.exception.BusinessException;
 import com.amlve.common.service.StandardService;
 import com.amlve.system.constant.ErrorMessageConstant;
 import com.amlve.system.converter.StandardConfigMapMapper;
+import com.amlve.system.enumeration.UserConfigKeyEnum;
+import com.amlve.system.mapper.SettingsMapper;
 import com.amlve.system.mapper.StandardConfigMapper;
 import com.amlve.system.service.StandardConfigService;
 import com.amlve.system.tableEnt.StandardConfig;
+import com.amlve.system.tableEnt.UserConfig;
 import com.amlve.system.vo.StandardConfigVO;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
@@ -27,6 +30,7 @@ public class StandardConfigServiceImpl extends ServiceImpl<StandardConfigMapper,
 
     private final StandardConfigMapper standardConfigMapper;
     private final StandardConfigMapMapper standardConfigMapMapper;
+    private final SettingsMapper userConfigMapper;
 
     @Override
     public StandardConfigDTO selectByName(String name) {
@@ -70,7 +74,13 @@ public class StandardConfigServiceImpl extends ServiceImpl<StandardConfigMapper,
         if (rows != 1) {
             throw new BusinessException(ErrorMessageConstant.CREATE_FAILED);
         }
-
+        UserConfig userConfig = UserConfig.builder()
+                .userId(userId.toString())
+                .configKey(UserConfigKeyEnum.STANDARD_CONFIG.getConfigKey())
+                .configValue(sc.getId())
+                .updateTime(LocalDateTime.now().toString())
+                .build();
+        userConfigMapper.insert(userConfig);
         return StandardConfigVO.builder()
                 .id(sc.getId())
                 .standardName(standardConfigDTO.getStandardName())
