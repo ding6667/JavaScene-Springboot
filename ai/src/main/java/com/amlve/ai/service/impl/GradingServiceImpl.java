@@ -3,11 +3,14 @@ package com.amlve.ai.service.impl;
 import com.amlve.ai.bean.DifyClient;
 import com.amlve.ai.dto.ContentDTO;
 import com.amlve.ai.dto.RubricDTO;
+import com.amlve.ai.dto.StudentRagInsertDTO;
+import com.amlve.ai.entity.CommentJson;
 import com.amlve.ai.service.GradingService;
 import com.amlve.ai.constant.BusinessConstant;
 import com.amlve.ai.constant.ErrorCodeConstant;
 import com.amlve.ai.constant.ErrorMessageConstant;
 import com.amlve.ai.entity.StudentHomework;
+import com.amlve.ai.service.RagService;
 import com.amlve.ai.tableEnt.GradingTask;
 import com.amlve.ai.enumeration.GradingTaskStatus;
 import com.amlve.common.dto.StandardConfigDTO;
@@ -24,6 +27,7 @@ import com.amlve.common.utils.ZipUtil;
 import com.amlve.ai.mapper.GradingTaskMapper;
 import com.amlve.ai.mapper.StudentResultMapper;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
@@ -55,6 +59,8 @@ import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 @RequiredArgsConstructor
 public class GradingServiceImpl implements GradingService {
 
+    private final ObjectMapper objectMapper;
+    private final RagService ragService;
     @Value("${temp.unzip}")
     private String tempUnzipDir;
     @Value("${temp.expire_time}")
@@ -445,7 +451,7 @@ public class GradingServiceImpl implements GradingService {
 
                 log.info("开始处理第 {}/{} 批 ({} 个学生, taskId={})", batchIdx + 1, totalBatches, batch.size(), ctx.taskId);
 
-                callDifyForBatch(batch, ctx.rubric);
+                callDifyForBatch(batch, ctx.rubric, ctx.taskId);
 
                 for (StudentResult s : batch) {
                     if (GradingTaskStatus.SUCCESS == s.getStatus()) {
@@ -485,12 +491,11 @@ public class GradingServiceImpl implements GradingService {
         }
     }
 
-    // ==================== Dify 调用 ====================
 
     /**
      * 一次性调用 Dify 批阅整批学生作业
      */
-    private void callDifyForBatch(List<StudentResult> batch, List<RubricItem> rubric) {
+    private void callDifyForBatch(List<StudentResult> batch, List<RubricItem> rubric, String taskId) {
         List<StudentHomework> homeworks = new ArrayList<>();
         Map<String, StudentResult> studentMap = new LinkedHashMap<>();
 
@@ -546,13 +551,13 @@ public class GradingServiceImpl implements GradingService {
                 return;
             }
 
-
+            List<StudentRagInsertDTO> ragInsertDTOs = new ArrayList<>();
             Set<String> respondedIds = new HashSet<>();
             for (JsonNode studentNode : outputArray) {
                 String stuId = studentNode.path("stu_id").asText("");
                 String stuName = studentNode.path("stu_name").asText("");
                 String totalScore = studentNode.path("total_score").asText("");
-                String content = studentNode.path("content").asText("");
+                String contentJson = studentNode.path("content").asText("");
 
                 if (stuId.isEmpty()) {
                     log.warn("跳过缺少学号的返回记录");
@@ -565,15 +570,31 @@ public class GradingServiceImpl implements GradingService {
                     continue;
                 }
 
+                String content = joinContent(contentJson);
+                CommentJson commentJson = objectMapper.readValue(contentJson, CommentJson.class);
+
+                StudentRagInsertDTO ragInsertDTO = StudentRagInsertDTO.builder()
+                        .score(Float.parseFloat(totalScore))
+                        .text(content)
+                        .studentId(stuId)
+                        .taskId(taskId)
+                        .commentJson(commentJson)
+                        .submitTime(System.currentTimeMillis())
+                        .semester(stuId.substring(0,4))
+                        .build();
+                ragInsertDTOs.add(ragInsertDTO);
+
                 sr.setStudentName(stuName.isEmpty() ? sr.getStudentName() : stuName);
                 sr.setRawScore(totalScore);
                 sr.setAiComment(content);
+                sr.setCommentJson(commentJson);
                 sr.setStatus(GradingTaskStatus.SUCCESS);
                 sr.setErrorMessage(null);
                 respondedIds.add(stuId);
                 log.info("学生 {} 批阅完成: 得分={}", stuId, totalScore);
             }
 
+            ragService.addContent(ragInsertDTOs);
             for (StudentResult s : studentMap.values()) {
                 if (!respondedIds.contains(s.getStudentId())) {
                     s.setStatus(GradingTaskStatus.FAILED);
@@ -589,6 +610,21 @@ public class GradingServiceImpl implements GradingService {
                 s.setErrorMessage(e.getMessage());
             }
         }
+    }
+
+    private String joinContent(String contentJson) throws JsonProcessingException {
+        JsonNode node = objectMapper.readTree(contentJson);
+        if (node == null || !node.isObject()) {
+            return "";
+        }
+        StringBuilder sb = new StringBuilder();
+        Iterator<JsonNode> elements = node.elements();
+        while (elements.hasNext()) {
+            JsonNode element = elements.next();
+            sb.append(element.asText());
+            sb.append("\n");
+        }
+        return sb.toString();
     }
 
 

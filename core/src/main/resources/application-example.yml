@@ -8,9 +8,8 @@ spring:
   ai:
     deepseek:
       api-key: "sk-ed1212127594b12a5269024f8f0dbf5" # Deepseek API密钥
-ai:
-  alibaba:
-    api-key: sk-b6b4ae1bc44dcd8cd2b6ac44bb13a9
+    dashscope:
+      api-key: "sk-b69b4a321e1bcb44dc3132d8cd2b6ac4413a9"
 python:
   exe: "E:python" #python3.11以上的路径或者环境变量中的python路径
 dify:

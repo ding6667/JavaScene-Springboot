@@ -1,9 +1,6 @@
 spring:
   profiles:
     active: dev
-  autoconfigure:
-    exclude:
-      - org.springframework.ai.vectorstore.milvus.autoconfigure.MilvusVectorStoreAutoConfiguration
   application:
     name: "core"
   datasource:
@@ -12,11 +9,12 @@ spring:
     deepseek:
       base-url: https://api.deepseek.com/
       chat:
-        frequency-penalty: 0.0
-        presence-penalty: 0.0
-        max-tokens: 1000
-        temperature: 0.7
-        model: "deepseek-3.5"
+        options:
+          model: "deepseek-3.5"
+          frequency-penalty: 0.0
+          presence-penalty: 0.0
+          max-tokens: 1000
+          temperature: 0.7
     vectorstore:
       milvus:
         client:
@@ -25,11 +23,16 @@ spring:
           username: "root"
           password: "milvus"
         databaseName: "default"
-        collectionName: "vector_store"
-        embeddingDimension: 1536
+        collectionName: "javascene"
+        embeddingDimension: 1024
         indexType: IVF_FLAT
         metricType: COSINE
-
+    dashscope:
+      embedding:
+        enabled: true
+        options:
+          dimensions: 1024
+          model: "text-embedding-v3"
 logging:
   level:
     com.amlve: debug

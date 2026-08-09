@@ -1,7 +1,9 @@
 package com.amlve.ai.tableEnt;
 
+import com.amlve.ai.entity.CommentJson;
 import com.amlve.ai.enumeration.GradingTaskStatus;
 import com.baomidou.mybatisplus.annotation.*;
+import com.baomidou.mybatisplus.extension.handlers.JacksonTypeHandler;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -49,7 +51,11 @@ public class StudentResult {
      * AI批阅评语(Markdown格式)
      */
     private String aiComment;
-
+    /**
+     * AI批阅评语(JSON格式)
+     */
+    @TableField(typeHandler = JacksonTypeHandler.class)
+    private CommentJson commentJson;
     /**
      * 教师修改后的分数
      */
