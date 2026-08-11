@@ -1,18 +1,19 @@
 package com.amlve.system.service.impl;
 
 
-import com.amlve.common.dto.StandardConfigDTO;
+import com.amlve.system.converter.StandardConfigConverter;
+import com.amlve.system.dto.StandardConfigRequest;
+import com.amlve.systemapi.dto.StandardConfigDTO;
 import com.amlve.common.exception.BusinessException;
-import com.amlve.common.service.StandardService;
+import com.amlve.system.service.StandardConfigService;
 import com.amlve.system.constant.ErrorMessageConstant;
-import com.amlve.system.converter.StandardConfigMapMapper;
 import com.amlve.system.enumeration.UserConfigKeyEnum;
 import com.amlve.system.mapper.SettingsMapper;
 import com.amlve.system.mapper.StandardConfigMapper;
-import com.amlve.system.service.StandardConfigService;
 import com.amlve.system.tableEnt.StandardConfig;
 import com.amlve.system.tableEnt.UserConfig;
-import com.amlve.system.vo.StandardConfigVO;
+import com.amlve.system.vo.StandardConfigResponse;
+import com.amlve.systemapi.service.StandardService;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.spring.service.impl.ServiceImpl;
@@ -29,7 +30,7 @@ import java.time.LocalDateTime;
 public class StandardConfigServiceImpl extends ServiceImpl<StandardConfigMapper,StandardConfig> implements StandardConfigService , StandardService {
 
     private final StandardConfigMapper standardConfigMapper;
-    private final StandardConfigMapMapper standardConfigMapMapper;
+    private final StandardConfigConverter standardConfigMapMapper;
     private final SettingsMapper userConfigMapper;
 
     @Override
@@ -45,13 +46,13 @@ public class StandardConfigServiceImpl extends ServiceImpl<StandardConfigMapper,
     }
 
     @Override
-    public Integer update(StandardConfigDTO standardConfigDTO) {
+    public Integer update(StandardConfigRequest standardConfigDTO) {
         return standardConfigMapper.updateById(standardConfigMapMapper.toEntity(standardConfigDTO));
     }
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public StandardConfigVO createStandardSettings(Long userId, com.amlve.system.dto.StandardConfigDTO standardConfigDTO) {
+    public StandardConfigResponse createStandardSettings(Long userId, StandardConfigRequest standardConfigDTO) {
         StandardConfig standardConfig = standardConfigMapper.selectOne(Wrappers.lambdaQuery(StandardConfig.class).eq(StandardConfig::getStandardName, standardConfigDTO.getStandardName()));
         if (standardConfig != null) {
             throw new BusinessException(ErrorMessageConstant.STANDARD_NAME_EXIST);
@@ -81,7 +82,7 @@ public class StandardConfigServiceImpl extends ServiceImpl<StandardConfigMapper,
                 .updateTime(LocalDateTime.now().toString())
                 .build();
         userConfigMapper.insert(userConfig);
-        return StandardConfigVO.builder()
+        return StandardConfigResponse.builder()
                 .id(sc.getId())
                 .standardName(standardConfigDTO.getStandardName())
                 .standardContent(standardConfigDTO.getStandardContent())

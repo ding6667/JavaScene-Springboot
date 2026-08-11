@@ -1,10 +1,10 @@
 package com.amlve.system.service;
 
-import com.amlve.common.dto.StandardConfigDTO;
-import com.amlve.system.vo.StandardConfigVO;
+import com.amlve.system.dto.StandardConfigRequest;
+import com.amlve.system.vo.StandardConfigResponse;
 
 public interface StandardConfigService {
-    Integer update(StandardConfigDTO standardConfigDTO);
-    StandardConfigVO createStandardSettings(Long userId, com.amlve.system.dto.StandardConfigDTO standardConfigDTO);
+    Integer update(StandardConfigRequest standardConfigRequest);
+    StandardConfigResponse createStandardSettings(Long userId, StandardConfigRequest standardConfigRequest);
 
 }

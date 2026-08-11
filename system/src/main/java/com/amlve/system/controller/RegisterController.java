@@ -1,7 +1,7 @@
 package com.amlve.system.controller;
 
 import com.amlve.common.request.Result;
-import com.amlve.system.dto.RegisterDTO;
+import com.amlve.system.dto.RegisterRequest;
 import com.amlve.system.service.UserService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -21,8 +21,7 @@ public class RegisterController {
      * @return
      */
     @PostMapping("/register")
-    public Result<String> register(@RequestBody RegisterDTO dto) {
-
-        return Result.success(userService.register(dto.getUsername(),dto.getPassword()));
+    public Result<String> register(@RequestBody RegisterRequest registerRequest) {
+        return Result.success(userService.register(registerRequest.getUsername(),registerRequest.getPassword()));
     }
 }

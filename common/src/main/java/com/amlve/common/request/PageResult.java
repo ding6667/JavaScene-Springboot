@@ -1,6 +1,5 @@
 package com.amlve.common.request;
 
-import com.baomidou.mybatisplus.core.metadata.IPage;
 import lombok.Data;
 
 import java.util.List;
@@ -12,12 +11,5 @@ public class PageResult<T> {
     private long current;   // 当前页
     private long size;      // 每页条数
 
-    public static <T> PageResult<T> convert(IPage<T> page) {
-        PageResult<T> result = new PageResult<>();
-        result.setRecords(page.getRecords());
-        result.setTotal(page.getTotal());
-        result.setCurrent(page.getCurrent());
-        result.setSize(page.getSize());
-        return result;
-    }
+
 }

@@ -1,6 +1,6 @@
 package com.amlve.file.service.serviceImpl;
 
-import com.amlve.common.dto.UploadFileDTO;
+import com.amlve.fileapi.dto.UploadFileDTO;
 import com.amlve.common.request.PageResult;
 import com.amlve.common.utils.UserContext;
 import com.amlve.file.converter.UploadFileMapMapper;
@@ -31,7 +31,7 @@ import java.util.UUID;
 @Service
 @Slf4j
 @RequiredArgsConstructor
-public class UploadServiceImpl extends ServiceImpl<UploadMapper,UploadFile> implements UploadService , com.amlve.common.service.UploadService {
+public class UploadServiceImpl extends ServiceImpl<UploadMapper,UploadFile> implements UploadService , com.amlve.fileapi.service.UploadService {
 
     private final UploadMapper uploadMapper;
     private final StorageService storageService;
