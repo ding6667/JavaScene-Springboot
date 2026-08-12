@@ -53,11 +53,11 @@ public class GradingTaskServiceImpl extends ServiceImpl<GradingTaskMapper, Gradi
         Page<GradingTask> pageResult = baseMapper.selectPage(new Page<>(page, size), wrapper);
         List<String> fileIds = pageResult.getRecords().stream()
                 .map(GradingTask::getFileId).filter(Objects::nonNull).distinct().collect(Collectors.toList());
-        Map<String, String> fileNameMap = fileIds.stream().collect(Collectors.toMap(
-                id -> id, id -> {
-                    UploadFileDTO f = uploadService.selectById(id);
-                    return f != null ? f.getFileName() : null;
-                }, (a, b) -> a));
+        Map<String, String> fileNameMap = new HashMap<>();
+        for (String id : fileIds) {
+            UploadFileDTO f = uploadService.selectById(id);
+            fileNameMap.put(id, f != null ? f.getFileName() : null);
+        }
         List<GradingTaskResponse> records = pageResult.getRecords().stream()
                 .map(t -> toResponse(t, fileNameMap.get(t.getFileId()))).collect(Collectors.toList());
 
@@ -88,11 +88,11 @@ public class GradingTaskServiceImpl extends ServiceImpl<GradingTaskMapper, Gradi
         Page<GradingTask> pageResult = baseMapper.selectPage(new Page<>(page, size), wrapper);
         List<String> fileIds = pageResult.getRecords().stream()
                 .map(GradingTask::getFileId).filter(Objects::nonNull).distinct().collect(Collectors.toList());
-        Map<String, String> fileNameMap = fileIds.stream().collect(Collectors.toMap(
-                id -> id, id -> {
-                    UploadFileDTO f = uploadService.selectById(id);
-                    return f != null ? f.getFileName() : null;
-                }, (a, b) -> a));
+        Map<String, String> fileNameMap = new HashMap<>();
+        for (String id : fileIds) {
+            UploadFileDTO f = uploadService.selectById(id);
+            fileNameMap.put(id, f != null ? f.getFileName() : null);
+        }
         List<GradingTaskResponse> records = pageResult.getRecords().stream()
                 .map(t -> toResponse(t, fileNameMap.get(t.getFileId()))).collect(Collectors.toList());
 
