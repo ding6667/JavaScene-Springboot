@@ -10,6 +10,6 @@ import java.util.List;
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
-public class RubricDTO {
+public class RubricRequest {
     private List<RubricItem> rubric;
 }

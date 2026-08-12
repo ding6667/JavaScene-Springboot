@@ -1,11 +1,13 @@
 package com.amlve.grading.service;
 
+import com.amlve.grading.enumeration.TaskCategory;
+
 import java.util.List;
 
 public interface GradingService {
 
-   void runWorkflowWithCommonFiles(List<String> uploadIds, Long standardConfigId);
-   String startBatchReviewFromZip(String uploadId, Long standardConfigId);
+   void runWorkflowWithCommonFiles(List<String> uploadIds, Long standardConfigId, String classId, TaskCategory taskCategory, Integer taskSequence);
+   String startBatchReviewFromZip(String uploadId, Long standardConfigId, String classId, TaskCategory taskCategory, Integer taskSequence);
 
    /** 暂停指定批阅任务 */
    void pauseReview(String taskId);
@@ -17,4 +19,6 @@ public interface GradingService {
    boolean isRunning(String taskId);
    /** 指定任务是否已暂停 */
    boolean isPaused(String taskId);
+   /** 重新批阅指定任务 */
+   void retryReview(String taskId);
 }

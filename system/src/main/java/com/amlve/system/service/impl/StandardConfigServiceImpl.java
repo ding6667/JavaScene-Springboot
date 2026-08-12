@@ -3,9 +3,11 @@ package com.amlve.system.service.impl;
 
 import com.amlve.system.converter.StandardConfigConverter;
 import com.amlve.system.dto.StandardConfigRequest;
+import com.amlve.system.dto.StandardConfigUpdateRequest;
 import com.amlve.systemapi.dto.StandardConfigDTO;
 import com.amlve.common.exception.BusinessException;
 import com.amlve.system.service.StandardConfigService;
+import com.amlve.system.constant.ErrorCodeConstant;
 import com.amlve.system.constant.ErrorMessageConstant;
 import com.amlve.system.enumeration.UserConfigKeyEnum;
 import com.amlve.system.mapper.SettingsMapper;
@@ -23,6 +25,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
 @Slf4j
@@ -91,5 +95,63 @@ public class StandardConfigServiceImpl extends ServiceImpl<StandardConfigMapper,
                 .createTime(LocalDateTime.now())
                 .updateTime(LocalDateTime.now())
                 .build();
+    }
+
+    @Override
+    public List<StandardConfigResponse> getByUserId(Long userId) {
+        LambdaQueryWrapper<StandardConfig> queryWrapper = Wrappers.<StandardConfig>lambdaQuery()
+                .eq(StandardConfig::getUserId, userId)
+                .eq(StandardConfig::getDeleted, 0);
+        List<StandardConfig> configs = standardConfigMapper.selectList(queryWrapper);
+        return configs.stream().map(config -> StandardConfigResponse.builder()
+                .id(config.getId())
+                .standardName(config.getStandardName())
+                .standardContent(config.getStandardContent())
+                .isCurrent(config.getIsCurrent())
+                .userId(config.getUserId())
+                .createTime(config.getCreateTime())
+                .updateTime(config.getUpdateTime())
+                .build()).collect(Collectors.toList());
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public StandardConfigResponse updateStandard(Long id, StandardConfigUpdateRequest request) {
+        StandardConfig existing = standardConfigMapper.selectById(id);
+        if (existing == null || existing.getDeleted() == 1) {
+            throw new BusinessException(ErrorCodeConstant.BUSINESS_ERROR, ErrorMessageConstant.STANDARD_NOT_FOUND);
+        }
+        existing.setStandardName(request.getStandardName());
+        existing.setStandardContent(request.getStandardContent());
+        existing.setIsCurrent(request.getIsCurrent());
+        existing.setUpdateTime(LocalDateTime.now());
+        int rows = standardConfigMapper.updateById(existing);
+        if (rows != 1) {
+            throw new BusinessException(ErrorCodeConstant.BUSINESS_ERROR, ErrorMessageConstant.UPDATE_FAILED);
+        }
+        return StandardConfigResponse.builder()
+                .id(existing.getId())
+                .standardName(existing.getStandardName())
+                .standardContent(existing.getStandardContent())
+                .isCurrent(existing.getIsCurrent())
+                .userId(existing.getUserId())
+                .createTime(existing.getCreateTime())
+                .updateTime(existing.getUpdateTime())
+                .build();
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void deleteStandard(Long id) {
+        StandardConfig existing = standardConfigMapper.selectById(id);
+        if (existing == null || existing.getDeleted() == 1) {
+            throw new BusinessException(ErrorCodeConstant.BUSINESS_ERROR, ErrorMessageConstant.STANDARD_NOT_FOUND);
+        }
+        existing.setDeleted(1);
+        existing.setUpdateTime(LocalDateTime.now());
+        int rows = standardConfigMapper.updateById(existing);
+        if (rows != 1) {
+            throw new BusinessException(ErrorCodeConstant.BUSINESS_ERROR, ErrorMessageConstant.DELETE_FAILED);
+        }
     }
 }

@@ -78,9 +78,9 @@ public class JWTUtil {
                     .parseClaimsJws(token);
             return true;
         } catch (ExpiredJwtException e) {
-            throw new BusinessException(ErrorCodeConstant.TOKEN_EXPIRED, ErrorMessageConstant.TOKEN_EXPIRED);
+            throw new BusinessException(ErrorCodeConstant.UNAUTHORIZED, ErrorMessageConstant.TOKEN_EXPIRED);
         } catch (Exception e) {
-            throw new BusinessException(ErrorCodeConstant.TOKEN_EXPIRED, ErrorMessageConstant.TOKEN_INVALID);
+            throw new BusinessException(ErrorCodeConstant.UNAUTHORIZED, ErrorMessageConstant.TOKEN_INVALID);
         }
     }
 }

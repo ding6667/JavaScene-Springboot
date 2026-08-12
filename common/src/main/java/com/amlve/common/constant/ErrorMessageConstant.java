@@ -4,7 +4,7 @@ public class ErrorMessageConstant {
     /**
      * token 过期
      */
-    public static final String TOKEN_EXPIRED = "token 过期";
+    public static final String TOKEN_EXPIRED = "token 过期，请重新登录";
     /**
      * token 篡改、非法
      */

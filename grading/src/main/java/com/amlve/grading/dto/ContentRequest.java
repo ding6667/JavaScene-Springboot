@@ -10,6 +10,6 @@ import java.util.List;
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
-public class ContentDTO {
+public class ContentRequest {
     private List<StudentHomework> files;
 }

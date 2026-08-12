@@ -1,6 +1,8 @@
 package com.amlve.grading.tableEnt;
 
 import com.amlve.grading.enumeration.GradingTaskStatus;
+import com.amlve.grading.enumeration.TaskCategory;
+import com.amlve.grading.enumeration.FileType;
 import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
@@ -43,4 +45,16 @@ public class GradingTask {
     private LocalDateTime finishTime;
     //是否删除：0-未删除 1-已删除
     private Integer deleted;
+    //任务类别: HOMEWORK(平时), MIDTERM(期中), FINAL(期末), PROJECT(项目)
+    private TaskCategory taskCategory;
+    //该类任务下的序号，如第1次平时作业就填1
+    private Integer taskSequence;
+    //所属班级ID
+    private String classId;
+    //学期，如 2026-01
+    private String semester;
+    //学生ID（word文件对应单个学生）
+    private String studentId;
+    //文件类型: WORD/ZIP
+    private FileType fileType;
 }

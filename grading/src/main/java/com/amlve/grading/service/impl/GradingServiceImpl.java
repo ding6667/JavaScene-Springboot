@@ -1,8 +1,8 @@
 package com.amlve.grading.service.impl;
 
 import com.amlve.grading.bean.DifyClient;
-import com.amlve.grading.dto.ContentDTO;
-import com.amlve.grading.dto.RubricDTO;
+import com.amlve.grading.dto.ContentRequest;
+import com.amlve.grading.dto.RubricRequest;
 import com.amlve.dialogueapi.dto.StudentRagInsertDTO;
 import com.amlve.grading.service.GradingService;
 import com.amlve.grading.constant.BusinessConstant;
@@ -13,6 +13,8 @@ import com.amlve.dialogueapi.entity.CommentJson;
 import com.amlve.dialogueapi.service.RagService;
 import com.amlve.grading.tableEnt.GradingTask;
 import com.amlve.grading.enumeration.GradingTaskStatus;
+import com.amlve.grading.enumeration.FileType;
+import com.amlve.grading.enumeration.TaskCategory;
 import com.amlve.systemapi.dto.StandardConfigDTO;
 import com.amlve.fileapi.dto.UploadFileDTO;
 import com.amlve.common.entity.RubricItem;
@@ -112,14 +114,17 @@ public class GradingServiceImpl implements GradingService {
      * 异步
      * @param uploadIds 上传的文件ID列表
      * @param standardConfigId 评分标准ID
+     * @param classId 班级ID
+     * @param taskCategory 任务类别
+     * @param taskSequence 任务频率序号
      */
     @Override
     @Async("coordinatorExecutor")
-    public void runWorkflowWithCommonFiles(List<String> uploadIds, Long standardConfigId) {
+    public void runWorkflowWithCommonFiles(List<String> uploadIds, Long standardConfigId, String classId, TaskCategory taskCategory, Integer taskSequence) {
         if (uploadIds.isEmpty()) {
             throw new BusinessException(ErrorMessageConstant.FILES_NOT_FOUND);
         }
-        Map<String,StudentHomework> studentHomeworks = initRecordsAndReturnMdFiles(uploadIds,standardConfigId);
+        Map<String,StudentHomework> studentHomeworks = initRecordsAndReturnMdFiles(uploadIds,standardConfigId,classId,taskCategory,taskSequence);
         List<RubricItem> rubric = standardConfigService.selectById(standardConfigId).getStandardContent();
 
         List<CompletableFuture<Void>>  futures = studentHomeworks.entrySet().stream()
@@ -151,8 +156,8 @@ public class GradingServiceImpl implements GradingService {
                 throw new InterruptedException(ErrorMessageConstant.TASK_CANCELLED);
             }
             Map<String, Object> requestBody = new HashMap<>();
-            requestBody.put(BusinessConstant.RUBRIC, new RubricDTO(rubric));
-            requestBody.put(BusinessConstant.CONTENT, new ContentDTO(List.of(studentHomework)));
+            requestBody.put(BusinessConstant.RUBRIC, new RubricRequest(rubric));
+            requestBody.put(BusinessConstant.CONTENT, new ContentRequest(List.of(studentHomework)));
             requestBody.put(BusinessConstant.HANDLE_TYPE, BusinessConstant.COMMON);
 
 
@@ -222,9 +227,12 @@ public class GradingServiceImpl implements GradingService {
      * 初始化任务记录并返回学生作业对象
      * @param uploadIds 上传的文件ID列表
      * @param standardConfigId 评分标准ID
+     * @param classId 班级ID
+     * @param taskCategory 任务类别
+     * @param taskSequence 任务频率序号
      * @return 任务ID到学生作业对象的映射
      */
-    private Map<String,StudentHomework> initRecordsAndReturnMdFiles(List<String> uploadIds,Long standardConfigId){
+    private Map<String,StudentHomework> initRecordsAndReturnMdFiles(List<String> uploadIds,Long standardConfigId,String classId,TaskCategory taskCategory,Integer taskSequence){
         Map<String,StudentHomework> mdFiles = new HashMap<>();
         uploadIds.forEach(uploadId -> {
             String taskId = UUID.randomUUID().toString();
@@ -235,9 +243,14 @@ public class GradingServiceImpl implements GradingService {
             task.setRubricId(standardConfigId);
             task.setStatus(GradingTaskStatus.PENDING);
             task.setCreateTime(LocalDateTime.now());
+            task.setStudentCount(1);
             task.setProcessedStudentCount(0);
-            gradingTaskMapper.insert(task);
+            task.setClassId(classId);
+            task.setTaskCategory(taskCategory);
+            task.setTaskSequence(taskSequence);
+            task.setFileType(FileType.WORD);
             UploadFileDTO uploadFile = uploadService.selectById(uploadId);
+            task.setStudentId(uploadFile.getTypeId() != null ? uploadFile.getTypeId().toString() : null);
             String rawStoragePath = uploadFile.getRawStoragePath();
             Map<String, List<String>> mdMap = fileFormatUtil.word2Md(List.of(rawStoragePath));
             String content = mdMap.get(BusinessConstant.FILES).get(0);
@@ -245,7 +258,10 @@ public class GradingServiceImpl implements GradingService {
             if (studentInfoParts == null || studentInfoParts.length != 2 ) {
                 throw new BusinessException(ErrorMessageConstant.FILE_NAME_INVALID);
             }
-            mdFiles.put(taskId,new StudentHomework(studentInfoParts[0],studentInfoParts[1],content,rawStoragePath));
+            String studentId = studentInfoParts[0];
+            task.setSemester(extractSemester(studentId));
+            gradingTaskMapper.insert(task);
+            mdFiles.put(taskId,new StudentHomework(studentId,studentInfoParts[1],content,rawStoragePath));
         });
         return mdFiles;
     }
@@ -255,7 +271,7 @@ public class GradingServiceImpl implements GradingService {
      * 解压、创建学生记录、批阅全部在线程池中异步执行。
      */
     @Override
-    public String startBatchReviewFromZip(String uploadId, Long standardConfigId) {
+    public String startBatchReviewFromZip(String uploadId, Long standardConfigId, String classId, TaskCategory taskCategory, Integer taskSequence) {
         String taskId = UUID.randomUUID().toString();
 
         GradingTask task = new GradingTask();
@@ -266,6 +282,12 @@ public class GradingServiceImpl implements GradingService {
         task.setStatus(GradingTaskStatus.PENDING);
         task.setCreateTime(LocalDateTime.now());
         task.setProcessedStudentCount(0);
+        task.setClassId(classId);
+        task.setTaskCategory(taskCategory);
+        task.setTaskSequence(taskSequence);
+        task.setFileType(FileType.ZIP);
+        UploadFileDTO uploadFile = uploadService.selectById(uploadId);
+        task.setClassId(uploadFile.getTypeId() != null ? uploadFile.getTypeId().toString() : classId);
         gradingTaskMapper.insert(task);
 
         TaskContext ctx = new TaskContext(taskId);
@@ -288,6 +310,11 @@ public class GradingServiceImpl implements GradingService {
                 if (homeworks.isEmpty()) {
                     throw new BusinessException(ErrorCodeConstant.FILE_NOT_FOUND, ErrorMessageConstant.FILES_NOT_FOUND);
                 }
+
+                // 从第一个学生学号中提取学期信息并更新任务
+                String firstStudentId = homeworks.get(0).getStudentId();
+                task.setSemester(extractSemester(firstStudentId));
+                gradingTaskMapper.updateById(task);
 
                 // 创建 StudentResult 记录
                 List<StudentResult> students = new ArrayList<>();
@@ -386,6 +413,21 @@ public class GradingServiceImpl implements GradingService {
     public boolean isPaused(String taskId) {
         TaskContext ctx = activeTasks.get(taskId);
         return ctx != null && ctx.paused;
+    }
+
+    @Override
+    public void retryReview(String taskId) {
+        GradingTask task = gradingTaskMapper.selectById(taskId);
+        if (task == null || task.getDeleted() == 1) {
+            throw new BusinessException(ErrorCodeConstant.NOT_FOUND, ErrorMessageConstant.TASK_NOT_FOUND);
+        }
+        if (task.getFileType() == FileType.WORD) {
+            runWorkflowWithCommonFiles(List.of(task.getFileId()), task.getRubricId(),
+                    task.getClassId(), task.getTaskCategory(), task.getTaskSequence());
+        } else if (task.getFileType() == FileType.ZIP) {
+            startBatchReviewFromZip(task.getFileId(), task.getRubricId(),
+                    task.getClassId(), task.getTaskCategory(), task.getTaskSequence());
+        }
     }
 
     @PreDestroy
@@ -526,8 +568,8 @@ public class GradingServiceImpl implements GradingService {
 
         try {
             Map<String, Object> requestBody = new HashMap<>();
-            requestBody.put(BusinessConstant.RUBRIC, new RubricDTO(rubric));
-            requestBody.put(BusinessConstant.CONTENT, new ContentDTO(homeworks));
+            requestBody.put(BusinessConstant.RUBRIC, new RubricRequest(rubric));
+            requestBody.put(BusinessConstant.CONTENT, new ContentRequest(homeworks));
             requestBody.put(BusinessConstant.HANDLE_TYPE, BusinessConstant.COMMON);
 
             String response = difyClient.runWorkflowBlocking(difyProperty.getApiKey(), requestBody);
@@ -796,6 +838,18 @@ public class GradingServiceImpl implements GradingService {
             return new String[]{m.group(1), m.group(3).trim()};
         }
         return null;
+    }
+
+    /**
+     * 从学号中提取学期信息（前4位为年份）
+     * @param studentId 学号
+     * @return 学期，如 2024
+     */
+    private String extractSemester(String studentId) {
+        if (studentId == null || studentId.length() < 4) {
+            return "";
+        }
+        return studentId.substring(0, 4);
     }
 
     // ==================== 文件转换辅助 ====================

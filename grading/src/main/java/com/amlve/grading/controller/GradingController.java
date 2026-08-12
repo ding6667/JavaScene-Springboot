@@ -1,10 +1,11 @@
 package com.amlve.grading.controller;
 
 
-import com.amlve.grading.dto.GradingStartCommonDTO;
-import com.amlve.grading.dto.GradingStartProjectDTO;
+import com.amlve.grading.dto.GradingStartCommonRequest;
+import com.amlve.grading.dto.GradingStartProjectRequest;
 import com.amlve.common.request.Result;
 import com.amlve.grading.service.GradingService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.*;
@@ -24,12 +25,10 @@ public class GradingController {
      * @return
      */
     @PostMapping("/startCommon")
-    public Result<Void> startCommon(@RequestBody GradingStartCommonDTO dto) {
-        gradingService.runWorkflowWithCommonFiles(dto.getUploadIds(), dto.getStandardConfigId());
+    public Result<Void> startCommon(@Valid @RequestBody GradingStartCommonRequest dto) {
+        gradingService.runWorkflowWithCommonFiles(dto.getUploadIds(), dto.getStandardConfigId(), dto.getClassId(), dto.getTaskCategory(), dto.getTaskSequence());
         return Result.success(null);
     }
-
-
     /**
      * 调用Dify批阅项目文件
      * zip文件
@@ -37,10 +36,11 @@ public class GradingController {
      * @return
      */
     @PostMapping("/startProject")
-    public Result<String> startProject(@RequestBody GradingStartProjectDTO dto) {
-        String result = gradingService.startBatchReviewFromZip(dto.getUploadId(), dto.getStandardConfigId());
+    public Result<String> startProject(@Valid @RequestBody GradingStartProjectRequest dto) {
+        String result = gradingService.startBatchReviewFromZip(dto.getUploadId(), dto.getStandardConfigId(), dto.getClassId(), dto.getTaskCategory(), dto.getTaskSequence());
         return Result.success(result);
     }
+
 
 
     @PostMapping("/pause")
@@ -56,6 +56,12 @@ public class GradingController {
     @PostMapping("/cancel")
     public Result<Void> cancel(@RequestBody String taskId) {
         gradingService.cancelReview(taskId);
+        return Result.success(null);
+    }
+
+    @PostMapping("/retry")
+    public Result<Void> retry(@RequestBody String taskId) {
+        gradingService.retryReview(taskId);
         return Result.success(null);
     }
 }

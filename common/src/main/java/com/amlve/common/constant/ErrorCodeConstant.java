@@ -1,6 +1,8 @@
 package com.amlve.common.constant;
 
 public class ErrorCodeConstant {
+
+    public static final int UNAUTHORIZED = 401;
     // ===== 通用错误码（1000-1999） =====
 
     /**

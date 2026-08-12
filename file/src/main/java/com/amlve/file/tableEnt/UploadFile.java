@@ -54,6 +54,15 @@ public class UploadFile {
      * 解压后的文件路径
      */
     private String unzipStoragePath;
+    /**
+     * word:studentId
+     * zip:classId
+     */
+    private Long typeId;
+    /**
+     * 文件类型
+     */
+    private String fileType;
 
     //是否删除：0-未删除 1-已删除
     private Integer deleted;

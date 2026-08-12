@@ -17,7 +17,7 @@ public class RegisterController {
 
     /**
      * 注册
-     * @param dto
+     * @param registerRequest
      * @return
      */
     @PostMapping("/register")
