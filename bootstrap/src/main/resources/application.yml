@@ -58,6 +58,7 @@ mybatis-plus:
   type-aliases-package: com.amlve.common.Entities.TableEnt
   mapper-locations: classpath*:mapper/**/*.xml
 dify:
-  connect-timeout: 10                     # 连接超时（秒）
   read-timeout: 120                       # 读取超时（秒）
+  connect-timeout: 10                     # 连接超时（秒）
+
 
