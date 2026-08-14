@@ -60,5 +60,4 @@ mybatis-plus:
 dify:
   connect-timeout: 10                     # 连接超时（秒）
   read-timeout: 120                       # 读取超时（秒）
-jwt:
-  secret: "abcdefghabcdefghabcdefgh12345678"
+

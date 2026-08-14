@@ -1,8 +1,11 @@
 package com.amlve.file.service.serviceImpl;
 
+import com.amlve.common.constant.ErrorMessageConstant;
+import com.amlve.common.exception.BusinessException;
+import com.amlve.file.enumeration.FileType;
 import com.amlve.fileapi.dto.UploadFileDTO;
 import com.amlve.common.request.PageResult;
-import com.amlve.common.utils.UserContext;
+import com.amlve.common.utils.SecurityUtils;
 import com.amlve.file.converter.UploadFileMapMapper;
 import com.amlve.file.vo.UploadFileVO;
 import com.amlve.file.tableEnt.UploadFile;
@@ -39,19 +42,20 @@ public class UploadServiceImpl extends ServiceImpl<UploadMapper,UploadFile> impl
 
 
     @Override
-    public String uploadFile(MultipartFile file) throws IOException {
+    public String uploadFile(MultipartFile file, String fileType) throws IOException {
         // 生成随机uploadId 组装实体
         String uploadId = UUID.randomUUID().toString().replace("-", "");
 
         String filePath = storageService.store(file,uploadId);
         UploadFile uploadFile = new UploadFile();
         uploadFile.setId(uploadId);
-        uploadFile.setUserId(UserContext.getUserId());
+        uploadFile.setUserId(SecurityUtils.getUserId());
         uploadFile.setFileName(file.getOriginalFilename());
         uploadFile.setFileSize(file.getSize());
         uploadFile.setRawStoragePath(filePath);
         uploadFile.setUploadTime(LocalDateTime.now());
         uploadFile.setExpireTime(LocalDateTime.now().plusDays(7));
+        uploadFile.setFileType(FileType.fromCode(fileType));
 
         uploadMapper.insert(uploadFile);
         return uploadId;
@@ -66,7 +70,7 @@ public class UploadServiceImpl extends ServiceImpl<UploadMapper,UploadFile> impl
      * @return
      */
     @Override
-    public PageResult<UploadFileVO> records(Long pageNum, Long pageSize, String fileName, Boolean isAsc) {
+    public PageResult<UploadFileVO> records(Long pageNum, Long pageSize, String fileName, Boolean isAsc ,String fileType) {
         //分页对象
         Page<UploadFile> page = new Page<>(pageNum,pageSize);
         //条件构造器
@@ -77,9 +81,13 @@ public class UploadServiceImpl extends ServiceImpl<UploadMapper,UploadFile> impl
                 ,UploadFile::getFileSize
                 ,UploadFile::getUploadTime
                 ,UploadFile::getRawStoragePath
-                ,UploadFile::getExpireTime);
+                ,UploadFile::getExpireTime
+                ,UploadFile::getFileType);
         //查询用户自己的文件
-        wrapper.eq(UploadFile::getUserId,UserContext.getUserId());
+        wrapper.eq(UploadFile::getUserId,SecurityUtils.getUserId());
+        if(fileType != null && !fileType.isBlank()){
+            wrapper.eq(UploadFile::getFileType,FileType.fromCode(fileType));
+        }
         //模糊查询
         wrapper.like(fileName != null && !fileName.isBlank() , UploadFile::getFileName,fileName);
         //升降序
@@ -126,6 +134,12 @@ public class UploadServiceImpl extends ServiceImpl<UploadMapper,UploadFile> impl
 
     @Override
     public Integer updateById(UploadFileDTO uploadFileDTO) {
-        return uploadMapper.updateById(uploadFileMapMapper.toEntity(uploadFileDTO));
+        UploadFile existing = uploadMapper.selectById(uploadFileDTO.getId());
+        if (existing == null) {
+            throw new BusinessException(ErrorMessageConstant.UPDATE_FAILED_INVALID);
+        }
+        UploadFile entity = uploadFileMapMapper.toEntity(uploadFileDTO);
+        entity.setFileType(FileType.fromCode(uploadFileDTO.getFileType()));
+        return uploadMapper.updateById(entity);
     }
 }

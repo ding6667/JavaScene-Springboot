@@ -28,7 +28,7 @@ public class UploadController {
      * @throws IOException
      */
     @PostMapping("/file")
-    public Result<String> UploadFile(@RequestParam(value = "file", required = false) MultipartFile file) throws IOException {
+    public Result<String> UploadFile(@RequestParam(value = "file", required = false) MultipartFile file, @RequestParam(required = false) String fileType) throws IOException {
         if (file == null || file.isEmpty()) {
             return Result.error(ErrorMessageConstant.FILE_IS_EMPTY);
         }else if(file.getSize() <= 0){
@@ -36,7 +36,7 @@ public class UploadController {
         }else if(Objects.requireNonNull(file.getOriginalFilename()).isEmpty()){
             return Result.error(ErrorMessageConstant.FILE_NAME_INVALID);
         }
-        return Result.success(uploadService.uploadFile(file));
+        return Result.success(uploadService.uploadFile(file, fileType));
     }
 
     /**
@@ -52,8 +52,9 @@ public class UploadController {
     public Result<PageResult<UploadFileVO>> records (@RequestParam(defaultValue = "1") Long pageNum
             , @RequestParam(defaultValue = "10") Long pageSize
             , @RequestParam(required = false) String fileName
-            , @RequestParam(defaultValue = "false") Boolean isAsc ) throws IOException {
-        return Result.success(uploadService.records(pageNum,pageSize,fileName,isAsc));
+            , @RequestParam(defaultValue = "false") Boolean isAsc
+            , @RequestParam(required = false) String fileType) throws IOException {
+        return Result.success(uploadService.records(pageNum,pageSize,fileName,isAsc,fileType));
     }
 
     /**

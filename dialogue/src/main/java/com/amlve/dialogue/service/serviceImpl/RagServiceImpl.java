@@ -1,11 +1,12 @@
 package com.amlve.dialogue.service.serviceImpl;
 
 
+import com.amlve.common.utils.SecurityUtils;
 import com.amlve.dialogueapi.dto.StudentRagInsertDTO;
 import com.amlve.dialogue.enumeration.AspectType;
 import com.amlve.dialogue.service.RagService;
 
-import com.amlve.common.utils.UserContext;
+
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
@@ -33,7 +34,7 @@ public class RagServiceImpl implements RagService ,com.amlve.dialogueapi.service
     public List<String> queryContent(String query, List<String> taskIds, String userId, Double maxScore, Double minScore) {
         userId = userId != null ?
                 userId :
-                UserContext.getUserId().toString();
+                SecurityUtils.getUserId().toString();
 
         FilterExpressionBuilder b = new FilterExpressionBuilder();
         FilterExpressionBuilder.Op filterOp = b.eq("user_id", userId);
@@ -69,7 +70,7 @@ public class RagServiceImpl implements RagService ,com.amlve.dialogueapi.service
 
             Map<String, Object> metadata1 = new HashMap<>();
             metadata1.put("id", id);
-            metadata1.put("user_id", UserContext.getUserId().toString());
+            metadata1.put("user_id", SecurityUtils.getUserId().toString());
             metadata1.put("task_id", ragInsertDTO.getTaskId());
             metadata1.put("student_id", ragInsertDTO.getStudentId());
             metadata1.put("aspect_type", "总内容");
@@ -83,7 +84,7 @@ public class RagServiceImpl implements RagService ,com.amlve.dialogueapi.service
             for (AspectType aspectType : AspectType.values()) {
                 Map<String, Object> metadata = new HashMap<>();
                 metadata.put("id", UUID.randomUUID().toString());
-                metadata.put("user_id", UserContext.getUserId().toString());
+                metadata.put("user_id", SecurityUtils.getUserId().toString());
                 metadata.put("task_id", ragInsertDTO.getTaskId());
                 metadata.put("student_id", ragInsertDTO.getStudentId());
                 metadata.put("aspect_type", aspectType.getDesc());

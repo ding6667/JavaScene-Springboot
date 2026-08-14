@@ -8,9 +8,9 @@ import java.io.IOException;
 
 public interface UploadService {
 
-    String uploadFile(MultipartFile file) throws IOException;
+    String uploadFile(MultipartFile file, String fileType) throws IOException;
 
-    PageResult<UploadFileVO> records(Long pageNum, Long pageSize, String fileName, Boolean isAsc);
+    PageResult<UploadFileVO> records(Long pageNum, Long pageSize, String fileName, Boolean isAsc,String fileType);
 
     Integer delete(String id);
 }

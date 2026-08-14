@@ -18,4 +18,7 @@ public class ErrorMessageConstant {
     public static final String STANDARD_NOT_FOUND = "评分标准不存在";
     public static final String UPDATE_FAILED = "更新失败";
     public static final String DELETE_FAILED = "删除失败";
+    public static final String CONFIG_KEY_EMPTY = "配置项不能为空";
+    public static final String CONFIG_VALUE_EMPTY = "配置项值不能为空";
+    public static final String CONFIG_NOT_FOUND = "配置项不存在";
 }

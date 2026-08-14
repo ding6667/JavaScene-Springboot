@@ -1,7 +1,8 @@
 package com.amlve.system.controller;
 
 import com.amlve.common.request.Result;
-import com.amlve.common.utils.UserContext;
+import com.amlve.common.utils.SecurityUtils;
+import com.amlve.system.dto.CommonSettingsRequest;
 import com.amlve.system.dto.StandardConfigRequest;
 import com.amlve.system.dto.StandardConfigUpdateRequest;
 import com.amlve.system.service.SettingsService;
@@ -22,19 +23,36 @@ public class SettingsController {
     private final SettingsService settingsService;
     private final StandardConfigService standardConfigService;
 
-    @GetMapping("/get")
-    public Result<SettingsResponse> getSettings() {
-        return Result.success(settingsService.getSettings(UserContext.getUserId()));
+    //=====================================commonSettings=====================================
+    @GetMapping("/getCommonSettings")
+    public Result<SettingsResponse> getCommonSettings() {
+        return Result.success(settingsService.getCommonSettings(SecurityUtils.getUserId()));
     }
+
+    @PutMapping("/updateCommonSettings")
+    public Result<SettingsResponse> updateCommonSettings(@RequestBody CommonSettingsRequest settingsRequest) {
+        return Result.success(settingsService.updateCommonSettings(SecurityUtils.getUserId(),settingsRequest));
+    }
+
+    @PutMapping("/defaultSettings")
+    public Result<SettingsResponse> defaultSettings() {
+        return Result.success(settingsService.defaultSettings(SecurityUtils.getUserId()));
+    }
+
+    //=====================================userSettings=====================================
+
+
+
+    //=====================================StandardConfig=====================================
 
     @PostMapping("/createStandard")
     public Result<StandardConfigResponse> createStandardSettings(@RequestBody StandardConfigRequest standardConfigRequest) {
-        return Result.success(standardConfigService.createStandardSettings(UserContext.getUserId(),standardConfigRequest));
+        return Result.success(standardConfigService.createStandardSettings(SecurityUtils.getUserId(),standardConfigRequest));
     }
 
     @GetMapping("/getStandard")
     public Result<List<StandardConfigResponse>> getStandard() {
-        return Result.success(standardConfigService.getByUserId(UserContext.getUserId()));
+        return Result.success(standardConfigService.getByUserId(SecurityUtils.getUserId()));
     }
 
     @PutMapping("/updateStandard/{id}")

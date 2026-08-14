@@ -24,7 +24,7 @@ import com.amlve.systemapi.service.StandardService;
 import com.amlve.fileapi.service.UploadService;
 import com.amlve.grading.tableEnt.StudentResult;
 import com.amlve.common.utils.FileFormatUtil;
-import com.amlve.common.utils.UserContext;
+import com.amlve.common.utils.SecurityUtils;
 import com.amlve.common.utils.ZipUtil;
 import com.amlve.grading.mapper.GradingTaskMapper;
 import com.amlve.grading.mapper.StudentResultMapper;
@@ -235,11 +235,15 @@ public class GradingServiceImpl implements GradingService {
     private Map<String,StudentHomework> initRecordsAndReturnMdFiles(List<String> uploadIds,Long standardConfigId,String classId,TaskCategory taskCategory,Integer taskSequence){
         Map<String,StudentHomework> mdFiles = new HashMap<>();
         uploadIds.forEach(uploadId -> {
+            UploadFileDTO uploadFile = uploadService.selectById(uploadId);
+            if (!FileType.fromCode(uploadFile.getFileType()).equals(FileType.WORD)) {
+                throw new BusinessException(ErrorMessageConstant.FILE_TYPE_INVALID);
+            }
             String taskId = UUID.randomUUID().toString();
             GradingTask task = new GradingTask();
             task.setId(taskId);
             task.setFileId(uploadId);
-            task.setUserId(UserContext.getUserId());
+            task.setUserId(SecurityUtils.getUserId());
             task.setRubricId(standardConfigId);
             task.setStatus(GradingTaskStatus.PENDING);
             task.setCreateTime(LocalDateTime.now());
@@ -249,8 +253,9 @@ public class GradingServiceImpl implements GradingService {
             task.setTaskCategory(taskCategory);
             task.setTaskSequence(taskSequence);
             task.setFileType(FileType.WORD);
-            UploadFileDTO uploadFile = uploadService.selectById(uploadId);
-            task.setStudentId(uploadFile.getTypeId() != null ? uploadFile.getTypeId().toString() : null);
+
+            task.setStudentId(Objects.requireNonNull(parseStudentInfo(uploadFile.getFileName()))[0]);
+
             String rawStoragePath = uploadFile.getRawStoragePath();
             Map<String, List<String>> mdMap = fileFormatUtil.word2Md(List.of(rawStoragePath));
             String content = mdMap.get(BusinessConstant.FILES).get(0);
@@ -272,12 +277,19 @@ public class GradingServiceImpl implements GradingService {
      */
     @Override
     public String startBatchReviewFromZip(String uploadId, Long standardConfigId, String classId, TaskCategory taskCategory, Integer taskSequence) {
+        UploadFileDTO uploadFile = uploadService.selectById(uploadId);
+        if (!FileType.fromCode(uploadFile.getFileType()).equals(FileType.ZIP)) {
+            throw new BusinessException(ErrorMessageConstant.FILE_TYPE_INVALID);
+        }
+        if (!uploadFile.getFileName().endsWith(".zip")) {
+            throw new BusinessException(ErrorMessageConstant.FILE_NAME_INVALID);
+        }
         String taskId = UUID.randomUUID().toString();
 
         GradingTask task = new GradingTask();
         task.setId(taskId);
         task.setFileId(uploadId);
-        task.setUserId(UserContext.getUserId());
+        task.setUserId(SecurityUtils.getUserId());
         task.setRubricId(standardConfigId);
         task.setStatus(GradingTaskStatus.PENDING);
         task.setCreateTime(LocalDateTime.now());
@@ -286,8 +298,7 @@ public class GradingServiceImpl implements GradingService {
         task.setTaskCategory(taskCategory);
         task.setTaskSequence(taskSequence);
         task.setFileType(FileType.ZIP);
-        UploadFileDTO uploadFile = uploadService.selectById(uploadId);
-        task.setClassId(uploadFile.getTypeId() != null ? uploadFile.getTypeId().toString() : classId);
+
         gradingTaskMapper.insert(task);
 
         TaskContext ctx = new TaskContext(taskId);

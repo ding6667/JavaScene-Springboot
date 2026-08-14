@@ -1,5 +1,6 @@
 package com.amlve.fileapi.dto;
 
+
 import lombok.Data;
 
 import java.time.LocalDateTime;
@@ -13,6 +14,6 @@ public class UploadFileDTO {
     private LocalDateTime uploadTime;
     private LocalDateTime expireTime;
     private String unzipStoragePath;
-    private Long typeId;
     private String fileType;
+    private Long classId;
 }

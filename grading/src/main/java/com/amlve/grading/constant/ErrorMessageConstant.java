@@ -13,5 +13,8 @@ public class ErrorMessageConstant {
     public static final String UPLOAD_IDS_EMPTY = "上传文件ID列表不能为空";
     public static final String STANDARD_CONFIG_ID_EMPTY = "评分标准ID不能为空";
     public static final String TASK_NOT_FOUND = "批阅任务不存在";
+    public static final String STUDENT_ID_EMPTY = "学生ID不能为空";
+
+    public static final String FILE_TYPE_INVALID = "文件类型无效";
 
 }

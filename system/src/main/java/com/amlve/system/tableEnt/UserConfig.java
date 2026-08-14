@@ -9,6 +9,8 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.time.LocalDateTime;
+
 @Data
 @Builder
 @AllArgsConstructor
@@ -16,11 +18,10 @@ import lombok.NoArgsConstructor;
 public class UserConfig {
     @TableId(type = IdType.AUTO)
     Long id;
-    String userId;
-    String configKey;
+    Long userId;
+    Integer configKey;
 
-    @TableField(typeHandler = JacksonTypeHandler.class)
-    Object configValue;
-    String updateTime;
+    String configValue;
+    LocalDateTime updateTime;
     Integer deleted;
 }

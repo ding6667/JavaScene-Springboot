@@ -1,10 +1,12 @@
 package com.amlve.system.vo;
 
+import com.amlve.system.tableEnt.UserConfig;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.util.List;
 import java.util.Map;
 
 @Data
@@ -14,5 +16,7 @@ import java.util.Map;
 public class SettingsResponse {
 
     private Long userId;
-    private Map<String, Object> settings;
+    private List<Setting> settings;
+    public static record Setting(Integer configKey, String configValue ,String configKeyName) {}
+
 }

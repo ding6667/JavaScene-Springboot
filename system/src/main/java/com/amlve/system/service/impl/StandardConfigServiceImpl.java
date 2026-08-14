@@ -79,13 +79,7 @@ public class StandardConfigServiceImpl extends ServiceImpl<StandardConfigMapper,
         if (rows != 1) {
             throw new BusinessException(ErrorMessageConstant.CREATE_FAILED);
         }
-        UserConfig userConfig = UserConfig.builder()
-                .userId(userId.toString())
-                .configKey(UserConfigKeyEnum.STANDARD_CONFIG.getConfigKey())
-                .configValue(sc.getId())
-                .updateTime(LocalDateTime.now().toString())
-                .build();
-        userConfigMapper.insert(userConfig);
+
         return StandardConfigResponse.builder()
                 .id(sc.getId())
                 .standardName(standardConfigDTO.getStandardName())

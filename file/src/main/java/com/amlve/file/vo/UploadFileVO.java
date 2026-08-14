@@ -42,4 +42,8 @@ public class UploadFileVO {
      * 过期时间（用于定时清理）
      */
     private LocalDateTime expireTime;
+    /**
+     * 班级id
+     */
+    private Long classId;
 }

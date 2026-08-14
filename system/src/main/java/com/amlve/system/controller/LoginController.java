@@ -12,14 +12,14 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RequiredArgsConstructor
 @RestController
-@RequestMapping("/api/login")
+@RequestMapping("/api/auth")
 public class LoginController {
 
     private final UserService userService;
 
     /**
      * 登录
-     * @param dto
+     * @param loginRequest
      * @return
      */
     @PostMapping("/login")

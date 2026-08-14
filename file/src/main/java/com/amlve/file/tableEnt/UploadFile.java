@@ -1,8 +1,11 @@
 package com.amlve.file.tableEnt;
 
+import com.amlve.file.enumeration.FileType;
 import com.baomidou.mybatisplus.annotation.IdType;
+import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
+import com.baomidou.mybatisplus.extension.handlers.JacksonTypeHandler;
 import lombok.*;
 import lombok.experimental.Accessors;
 
@@ -55,14 +58,10 @@ public class UploadFile {
      */
     private String unzipStoragePath;
     /**
-     * word:studentId
-     * zip:classId
-     */
-    private Long typeId;
-    /**
      * 文件类型
      */
-    private String fileType;
+    @TableField(typeHandler = JacksonTypeHandler.class)
+    private FileType fileType;
 
     //是否删除：0-未删除 1-已删除
     private Integer deleted;

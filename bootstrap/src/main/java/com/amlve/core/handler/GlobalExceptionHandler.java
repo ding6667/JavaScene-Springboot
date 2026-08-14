@@ -2,11 +2,14 @@ package com.amlve.core.handler;
 
 
 import com.amlve.common.constant.ErrorCodeConstant;
+import com.amlve.common.constant.ErrorMessageConstant;
 import com.amlve.common.exception.BusinessException;
 import com.amlve.common.request.Result;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.core.AuthenticationException;
 import org.springframework.validation.BindException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.HttpMediaTypeNotSupportedException;
@@ -163,5 +166,18 @@ public class GlobalExceptionHandler {
     public Result<Void> handleException(Exception e) {
         log.error("系统异常: ", e);
         return Result.error(ErrorCodeConstant.SYSTEM_ERROR, "系统异常，请稍后重试");
+    }
+
+    // ==================== 登录异常 ====================
+    @ExceptionHandler(BadCredentialsException.class)
+    public Result<Void> handleBadCredentials(BadCredentialsException e) {
+        log.warn("登录失败: {}", e.getMessage());
+        return Result.error(ErrorMessageConstant.LOGIN_FAILED);
+    }
+
+    @ExceptionHandler(AuthenticationException.class)
+    public Result<Void> handleAuthentication(AuthenticationException e) {
+        log.warn("认证失败: {}", e.getMessage());
+        return Result.error(ErrorMessageConstant.TOKEN_EXPIRED);
     }
 }
