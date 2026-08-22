@@ -5,9 +5,12 @@ import com.amlve.common.constant.ErrorCodeConstant;
 import com.amlve.common.constant.ErrorMessageConstant;
 import com.amlve.common.exception.BusinessException;
 import com.amlve.common.request.Result;
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.validation.BindException;
@@ -179,5 +182,16 @@ public class GlobalExceptionHandler {
     public Result<Void> handleAuthentication(AuthenticationException e) {
         log.warn("认证失败: {}", e.getMessage());
         return Result.error(ErrorMessageConstant.TOKEN_EXPIRED);
+    }
+
+    // ==================== 鉴权异常 ====================
+    // 处理 @PreAuthorize 权限不足
+    @ExceptionHandler(AccessDeniedException.class)
+    public ResponseEntity<Result<Void>> handleAccessDenied(HttpServletRequest request, AccessDeniedException e) {
+        if (request.getRequestURI().contains("/download")) {
+            // 下载场景：返回 403 状态码，且响应体为空
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        }
+        return ResponseEntity.ok(Result.error(403, "权限不足"));
     }
 }

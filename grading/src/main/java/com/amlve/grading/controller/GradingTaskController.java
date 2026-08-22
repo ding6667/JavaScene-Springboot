@@ -2,7 +2,7 @@ package com.amlve.grading.controller;
 
 import com.amlve.common.request.PageResult;
 import com.amlve.common.request.Result;
-import com.amlve.common.utils.UserContext;
+import com.amlve.common.utils.SecurityUtils;
 import com.amlve.grading.service.GradingTaskService;
 import com.amlve.grading.vo.GradingTaskResponse;
 import lombok.RequiredArgsConstructor;
@@ -26,7 +26,7 @@ public class GradingTaskController {
                                                             @RequestParam(defaultValue = "1") Integer page,
                                                             @RequestParam(defaultValue = "10") Integer size,
                                                             @RequestParam(defaultValue = "desc") String sortOrder) {
-        return Result.success(gradingTaskService.pageZipTasks(UserContext.getUserId(), semester, taskCategory,
+        return Result.success(gradingTaskService.pageZipTasks(SecurityUtils.getUserId(), semester, taskCategory,
                 taskSequence, classId, status, page, size, sortOrder));
     }
 
@@ -39,7 +39,7 @@ public class GradingTaskController {
                                                              @RequestParam(defaultValue = "1") Integer page,
                                                              @RequestParam(defaultValue = "10") Integer size,
                                                              @RequestParam(defaultValue = "desc") String sortOrder) {
-        return Result.success(gradingTaskService.pageFileTasks(UserContext.getUserId(), semester, taskCategory,
+        return Result.success(gradingTaskService.pageFileTasks(SecurityUtils.getUserId(), semester, taskCategory,
                 taskSequence, studentId, status, page, size, sortOrder));
     }
 

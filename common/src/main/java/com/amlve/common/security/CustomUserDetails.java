@@ -1,11 +1,9 @@
-package com.amlve.system;
+package com.amlve.common.security;
 import lombok.Getter;
 import org.springframework.security.core.GrantedAuthority;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.User;
 
 import java.util.Collection;
-import java.util.List;
 
 /**
  * 自定义 UserDetails，携带 userId 等扩展信息

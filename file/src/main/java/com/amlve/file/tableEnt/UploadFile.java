@@ -62,7 +62,12 @@ public class UploadFile {
      */
     @TableField(typeHandler = JacksonTypeHandler.class)
     private FileType fileType;
-
-    //是否删除：0-未删除 1-已删除
+    /**
+     * 是否过期（0-未过期 1-已过期）
+     */
+    private Integer expired;
+    /**
+     * 是否删除（0-未删除 1-已删除）
+     */
     private Integer deleted;
 }

@@ -13,4 +13,5 @@ public class ErrorMessageConstant {
     public static final String SYSTEM_ERROR = "系统错误，用于故意抛出异常";
     public static final String GRADING_RESULT_SAVE_FAILED = "保存批阅结果失败";
     public static final String FILE_SIZE_INVALID = "文件大小无效";
+    public static final String FILE_NOT_FOUND = "文件不存在";
 }

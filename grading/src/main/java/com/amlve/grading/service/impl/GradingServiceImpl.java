@@ -37,7 +37,6 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
 import jakarta.annotation.PreDestroy;
@@ -46,15 +45,13 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.LocalDateTime;
 import java.util.*;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.Future;
+import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 
 @Slf4j
 @Service
@@ -76,17 +73,27 @@ public class GradingServiceImpl implements GradingService {
     private final UploadService uploadService;
     private final FileFormatUtil fileFormatUtil;
 
-    @Qualifier("gradingExecutor")
-    private final ThreadPoolTaskExecutor gradingExecutor;
-    @Qualifier("coordinatorExecutor")
-    private final ThreadPoolTaskExecutor coordinatorExecutor;
+
+    private final ExecutorService virtualExecutor = Executors.newVirtualThreadPerTaskExecutor();
+    private static final Semaphore CONVERT_SEM = new Semaphore(Math.max(1, Runtime.getRuntime().availableProcessors()));
 
     private final ObjectMapper mapper = new ObjectMapper();
 
     // 匹配学号和姓名
     private static final Pattern STUDENT_INFO_PATTERN = Pattern.compile("^(\\d{10})(\\s*)([\\u4e00-\\u9fa5·]{2,16})");
 
-    private final Map<String, TaskContext> activeTasks = new ConcurrentHashMap<>();
+    private final ConcurrentMap<String, TaskContext> activeTasks = new ConcurrentHashMap<>();
+
+
+    /**
+     * 容器关闭时关闭虚拟线程执行器
+     */
+    @PreDestroy
+    public void destroy() {
+        log.info("正在关闭虚拟线程执行器...");
+        virtualExecutor.close();
+        log.info("虚拟线程执行器已关闭");
+    }
 
     /**
      * 单个批阅任务的运行时上下文，每个任务独立持有自己的锁、状态、学生列表
@@ -100,15 +107,15 @@ public class GradingServiceImpl implements GradingService {
 
         volatile boolean paused = false;
         volatile boolean cancelled = false;
-        int completedCount;
-        int failedCount;
+        AtomicInteger completedCount = new AtomicInteger(0);
+        AtomicInteger failedCount = new AtomicInteger(0);
         Future<?> future;
         TaskContext(String taskId) {
             this.taskId = taskId;
         }
     }
 
-
+    //========================================================批量批阅word文件==========================================================================
 
     /**
      * 异步
@@ -119,80 +126,193 @@ public class GradingServiceImpl implements GradingService {
      * @param taskSequence 任务频率序号
      */
     @Override
-    @Async("coordinatorExecutor")
     public void runWorkflowWithCommonFiles(List<String> uploadIds, Long standardConfigId, String classId, TaskCategory taskCategory, Integer taskSequence) {
         if (uploadIds.isEmpty()) {
             throw new BusinessException(ErrorMessageConstant.FILES_NOT_FOUND);
         }
-        Map<String,StudentHomework> studentHomeworks = initRecordsAndReturnMdFiles(uploadIds,standardConfigId,classId,taskCategory,taskSequence);
+
         List<RubricItem> rubric = standardConfigService.selectById(standardConfigId).getStandardContent();
 
-        List<CompletableFuture<Void>>  futures = studentHomeworks.entrySet().stream()
-                        .map(entry ->{
-                            String taskId = entry.getKey();
-                            StudentHomework studentHomework = entry.getValue();
-                            TaskContext taskContext = new TaskContext(taskId);
-                            activeTasks.put(taskId,taskContext);
-                            taskContext.rubric = rubric;
-                            CompletableFuture<Void> future = CompletableFuture.runAsync(() -> processSingleFile(taskId,studentHomework,rubric,taskContext),gradingExecutor);
-                            taskContext.future = future;
-                            return future;
-                        }).toList();
-
-
-        CompletableFuture.allOf(futures.toArray(new CompletableFuture[0])).join();
-        studentHomeworks.keySet().forEach(taskId -> {
-            TaskContext ctx = activeTasks.get(taskId);
-            if (ctx != null && ctx.future != null && ctx.future.isDone()) {
-                activeTasks.remove(taskId);
-            }
-        });
-    }
-
-    private void processSingleFile(String taskId,StudentHomework studentHomework, List<RubricItem> rubric,TaskContext ctx) {
-        GradingTask gradingTask = gradingTaskMapper.selectById(taskId);
+        List<Callable<Void>> tasks = uploadIds.stream()
+                .map(uploadId -> (Callable<Void>) () -> {
+                    // 这个方法体将在虚拟线程中执行
+                    processSingleUpload(
+                            uploadId,
+                            standardConfigId,
+                            classId,
+                            taskCategory,
+                            taskSequence,
+                            rubric
+                    );
+                    return null;
+                })
+                .toList();
         try {
-            if(ctx.cancelled){
+            List<Future<Void>> futures = virtualExecutor.invokeAll(tasks);
+            for (Future<Void> future : futures) {
+                future.get();
+            }
+
+        } catch (InterruptedException e) {
+            // 主线程被中断（例如服务关闭时）
+            Thread.currentThread().interrupt();
+            log.warn("批量评分任务被中断");
+            throw new BusinessException(ErrorMessageConstant.TASK_CANCELLED);
+
+        } catch (ExecutionException e) {
+            // 子任务中的业务异常被包装后抛出，解包并抛出原始异常
+            Throwable cause = e.getCause();
+            log.error("批量评分任务执行失败", cause);
+            if (cause instanceof BusinessException) {
+                throw (BusinessException) cause;
+            }
+            if (cause instanceof RuntimeException) {
+                throw (RuntimeException) cause;
+            }
+            throw new BusinessException(ErrorCodeConstant.SYSTEM_ERROR, cause.getMessage());
+        }
+        log.info("所有文件处理完成，总文件数: {}", uploadIds.size());
+    }
+    /**
+     * 处理单个上传文件（全程在虚拟线程中同步执行）
+     * 流程：转换 -> 入库 -> 调用 Dify -> 保存结果
+     */
+    private void processSingleUpload(String uploadId, Long standardConfigId,
+                                     String classId, TaskCategory taskCategory,
+                                     Integer taskSequence, List<RubricItem> rubric) {
+
+        String taskId = null;
+        StudentHomework studentHomework = null;
+
+
+        try {
+            // 获取许可，如果当前并发转换数已达到 CPU 核心数，则阻塞等待
+            CONVERT_SEM.acquire();
+
+            // 真正执行转换（同步阻塞）
+            try {
+                // 查询上传文件信息
+                UploadFileDTO uploadFile = uploadService.selectById(uploadId);
+                if (!FileType.fromCode(uploadFile.getFileType()).equals(FileType.WORD)) {
+                    throw new BusinessException(ErrorMessageConstant.FILE_TYPE_INVALID);
+                }
+
+                // 调用工具类将 Word 转为 MD
+                Map<String, List<String>> mdMap = fileFormatUtil.word2Md(
+                        List.of(uploadFile.getRawStoragePath())
+                );
+                String content = mdMap.get(BusinessConstant.FILES).get(0);
+
+                // 解析文件名获取学生信息
+                String[] studentInfoParts = parseStudentInfo(uploadFile.getFileName());
+                if (studentInfoParts == null || studentInfoParts.length != 2) {
+                    throw new BusinessException(ErrorMessageConstant.FILE_NAME_INVALID);
+                }
+                String studentId = studentInfoParts[0];
+                String studentName = studentInfoParts[1];
+
+                // 生成任务 ID 并插入 GradingTask 初始记录
+                taskId = UUID.randomUUID().toString();
+                GradingTask task = new GradingTask();
+                task.setId(taskId);
+                task.setFileId(uploadId);
+                task.setUserId(SecurityUtils.getUserId());
+                task.setRubricId(standardConfigId);
+                task.setStatus(GradingTaskStatus.PENDING);
+                task.setCreateTime(LocalDateTime.now());
+                task.setStudentCount(1);
+                task.setProcessedStudentCount(0);
+                task.setClassId(classId);
+                task.setTaskCategory(taskCategory);
+                task.setTaskSequence(taskSequence);
+                task.setFileType(FileType.WORD);
+                task.setStudentId(studentId);
+                task.setSemester(extractSemester(studentId));
+                gradingTaskMapper.insert(task);
+
+                // 5. 构造内存中的学生作业对象
+                studentHomework = new StudentHomework(
+                        studentId,
+                        studentName,
+                        content,
+                        uploadFile.getRawStoragePath()
+                );
+
+                log.debug("文件 {} 转换完成，taskId: {}", uploadId, taskId);
+
+            } finally {
+                // 无论转换成功还是失败，都必须释放信号量许可，让其他等待的虚拟线程有机会执行
+                CONVERT_SEM.release();
+            }
+
+        } catch (InterruptedException e) {
+            // 获取信号量时被中断（取消操作）
+            Thread.currentThread().interrupt();
+            log.warn("文件 {} 转换被中断", uploadId);
+            throw new RuntimeException(ErrorMessageConstant.TASK_CANCELLED, e);
+        }
+
+        // 如果转换阶段失败（抛异常），taskId 为 null，直接返回外层捕获
+        if (taskId == null || studentHomework == null) {
+            // 正常情况下不会走到这里，因为转换失败会抛出异常
+            return;
+        }
+
+
+        // 创建并维护任务上下文（用于外部的暂停/取消控制）
+        TaskContext taskContext = new TaskContext(taskId);
+        taskContext.rubric = rubric; // 共享评分标准
+        activeTasks.put(taskId, taskContext);
+
+        try {
+            // 检查是否在启动前已被取消
+            if (taskContext.cancelled) {
                 throw new InterruptedException(ErrorMessageConstant.TASK_CANCELLED);
             }
+
+            // 更新任务状态为处理中
+            GradingTask gradingTask = gradingTaskMapper.selectById(taskId);
+            gradingTask.setStatus(GradingTaskStatus.PROCESSING);
+            gradingTask.setProcessedStudentCount(1);
+            gradingTaskMapper.updateById(gradingTask);
+
+            // 处理暂停逻辑
+            if (taskContext.paused) {
+                taskContext.pauseLock.lock();
+                try {
+                    taskContext.pausedCondition.await();
+                } finally {
+                    taskContext.pauseLock.unlock();
+                }
+            }
+
             Map<String, Object> requestBody = new HashMap<>();
             requestBody.put(BusinessConstant.RUBRIC, new RubricRequest(rubric));
             requestBody.put(BusinessConstant.CONTENT, new ContentRequest(List.of(studentHomework)));
             requestBody.put(BusinessConstant.HANDLE_TYPE, BusinessConstant.COMMON);
 
-
-            if (ctx.paused) {
-                ctx.pauseLock.lock();
-                try {
-                    ctx.pausedCondition.await();
-                } finally {
-                    ctx.pauseLock.unlock();
-                }
-            }
-
-            gradingTask.setStatus(GradingTaskStatus.PROCESSING);
-            gradingTask.setProcessedStudentCount(1);
-            gradingTaskMapper.updateById(gradingTask);
-
             String result = difyClient.runWorkflowBlocking(difyProperty.getApiKey(), requestBody);
-            String outputJson = extractOutputAsJson(result);
 
+            // 解析 Dify 返回的 JSON
+            String outputJson = extractOutputAsJson(result);
             if (outputJson == null) {
-                throw new BusinessException(ErrorCodeConstant.SYSTEM_ERROR,ErrorMessageConstant.SYSTEM_ERROR);
+                throw new BusinessException(ErrorCodeConstant.SYSTEM_ERROR, ErrorMessageConstant.GRADING_TASK_EXCEPTION_TERMINATED);
             }
+
             JsonNode root = mapper.readTree(outputJson);
             JsonNode outputArray = root.get("output");
             if (outputArray == null || !outputArray.isArray()) {
-                throw new BusinessException(ErrorCodeConstant.SYSTEM_ERROR,ErrorMessageConstant.SYSTEM_ERROR);
+                throw new BusinessException(ErrorCodeConstant.SYSTEM_ERROR, ErrorMessageConstant.GRADING_TASK_EXCEPTION_TERMINATED);
             }
-
             String totalScore = "";
             String review = "";
-
             for (JsonNode studentNode : outputArray) {
                 totalScore = studentNode.path("total_score").asText("");
                 review = studentNode.path("content").asText("");
+                // 如果数组只有一个元素，循环一次后退出即可
             }
+
+            // 构建并保存 StudentResult
             StudentResult studentResult = StudentResult.builder()
                     .taskId(taskId)
                     .studentId(studentHomework.getStudentId())
@@ -205,74 +325,48 @@ public class GradingServiceImpl implements GradingService {
                     .deleted(0)
                     .build();
             saveProgress(List.of(studentResult), taskId);
-            updateGradingTaskStatus(taskId,GradingTaskStatus.SUCCESS);
-        }catch (InterruptedException e) {
+
+            updateGradingTaskStatus(taskId, GradingTaskStatus.SUCCESS);
+
+            log.info("任务 {} 处理成功", taskId);
+
+        } catch (InterruptedException e) {
             // 处理中断（来自取消或暂停时的 await 被中断）
             Thread.currentThread().interrupt(); // 恢复中断状态
             log.warn("任务 {} 被中断", taskId);
-            gradingTask.setStatus(GradingTaskStatus.CANCELLED);
-            gradingTask.setErrorMessage(ErrorMessageConstant.TASK_CANCELLED);
-            gradingTaskMapper.updateById(gradingTask);
+            GradingTask gradingTask = gradingTaskMapper.selectById(taskId);
+            if (gradingTask != null) {
+                gradingTask.setStatus(GradingTaskStatus.CANCELLED);
+                gradingTask.setErrorMessage(ErrorMessageConstant.TASK_CANCELLED);
+                gradingTaskMapper.updateById(gradingTask);
+            }
+            // 向上抛出，让 invokeAll 捕获到异常
+            throw new RuntimeException(ErrorMessageConstant.TASK_CANCELLED, e);
+
         } catch (Exception e) {
-            gradingTask.setStatus(GradingTaskStatus.FAILED);
-            gradingTask.setErrorMessage(ErrorMessageConstant.GRADING_TASK_EXCEPTION_TERMINATED);
-            gradingTaskMapper.updateById(gradingTask);
-            throw new BusinessException(ErrorCodeConstant.UNKNOWN_ERROR,ErrorMessageConstant.GRADING_TASK_EXCEPTION_TERMINATED);
-        }finally {
+            // 其他业务异常（Dify 调用失败、JSON 解析失败等）
+            log.error("任务 {} 处理失败", taskId, e);
+            GradingTask gradingTask = gradingTaskMapper.selectById(taskId);
+            if (gradingTask != null) {
+                gradingTask.setStatus(GradingTaskStatus.FAILED);
+                gradingTask.setErrorMessage(ErrorMessageConstant.GRADING_TASK_EXCEPTION_TERMINATED);
+                gradingTaskMapper.updateById(gradingTask);
+            }
+            // 向上抛出业务异常
+            throw new BusinessException(ErrorCodeConstant.UNKNOWN_ERROR,
+                    ErrorMessageConstant.GRADING_TASK_EXCEPTION_TERMINATED, e);
+
+        } finally {
+            // 无论成功、失败、取消，最终都要从活跃任务 Map 中移除
             activeTasks.remove(taskId);
         }
     }
 
-    /**
-     * 初始化任务记录并返回学生作业对象
-     * @param uploadIds 上传的文件ID列表
-     * @param standardConfigId 评分标准ID
-     * @param classId 班级ID
-     * @param taskCategory 任务类别
-     * @param taskSequence 任务频率序号
-     * @return 任务ID到学生作业对象的映射
-     */
-    private Map<String,StudentHomework> initRecordsAndReturnMdFiles(List<String> uploadIds,Long standardConfigId,String classId,TaskCategory taskCategory,Integer taskSequence){
-        Map<String,StudentHomework> mdFiles = new HashMap<>();
-        uploadIds.forEach(uploadId -> {
-            UploadFileDTO uploadFile = uploadService.selectById(uploadId);
-            if (!FileType.fromCode(uploadFile.getFileType()).equals(FileType.WORD)) {
-                throw new BusinessException(ErrorMessageConstant.FILE_TYPE_INVALID);
-            }
-            String taskId = UUID.randomUUID().toString();
-            GradingTask task = new GradingTask();
-            task.setId(taskId);
-            task.setFileId(uploadId);
-            task.setUserId(SecurityUtils.getUserId());
-            task.setRubricId(standardConfigId);
-            task.setStatus(GradingTaskStatus.PENDING);
-            task.setCreateTime(LocalDateTime.now());
-            task.setStudentCount(1);
-            task.setProcessedStudentCount(0);
-            task.setClassId(classId);
-            task.setTaskCategory(taskCategory);
-            task.setTaskSequence(taskSequence);
-            task.setFileType(FileType.WORD);
+    //========================================================单次批阅zip文件==========================================================================
 
-            task.setStudentId(Objects.requireNonNull(parseStudentInfo(uploadFile.getFileName()))[0]);
-
-            String rawStoragePath = uploadFile.getRawStoragePath();
-            Map<String, List<String>> mdMap = fileFormatUtil.word2Md(List.of(rawStoragePath));
-            String content = mdMap.get(BusinessConstant.FILES).get(0);
-            String[] studentInfoParts = parseStudentInfo(uploadFile.getFileName());
-            if (studentInfoParts == null || studentInfoParts.length != 2 ) {
-                throw new BusinessException(ErrorMessageConstant.FILE_NAME_INVALID);
-            }
-            String studentId = studentInfoParts[0];
-            task.setSemester(extractSemester(studentId));
-            gradingTaskMapper.insert(task);
-            mdFiles.put(taskId,new StudentHomework(studentId,studentInfoParts[1],content,rawStoragePath));
-        });
-        return mdFiles;
-    }
     /**
      * 启动批阅
-     * HTTP 线程只做三件事：生成 taskId、插入任务记录（PENDING）、提交到线程池，然后立刻返回。
+     * HTTP 线程生成 taskId、插入任务记录（PENDING）、提交到线程池，然后立刻返回。
      * 解压、创建学生记录、批阅全部在线程池中异步执行。
      */
     @Override
@@ -303,7 +397,7 @@ public class GradingServiceImpl implements GradingService {
 
         TaskContext ctx = new TaskContext(taskId);
 
-        ctx.future = gradingExecutor.submit(() -> {
+        ctx.future = virtualExecutor.submit(() -> {
             try {
                 // 获取评分标准
                 List<RubricItem> rubric = null;
@@ -363,187 +457,77 @@ public class GradingServiceImpl implements GradingService {
 
         return taskId;
     }
-
-    @Override
-    public void pauseReview(String taskId) {
-        TaskContext ctx = activeTasks.get(taskId);
-        if (ctx == null) {
-            log.warn("任务不存在，无法暂停: taskId={}", taskId);
-            return;
-        }
-        ctx.pauseLock.lock();
-        try {
-            ctx.paused = true;
-            log.info("批阅已暂停: taskId={}", taskId);
-        } finally {
-            ctx.pauseLock.unlock();
-        }
-    }
-
-    @Override
-    public void resumeReview(String taskId) {
-        TaskContext ctx = activeTasks.get(taskId);
-        if (ctx == null) {
-            log.warn("任务不存在，无法继续: taskId={}", taskId);
-            return;
-        }
-        ctx.pauseLock.lock();
-        try {
-            ctx.paused = false;
-            ctx.pausedCondition.signalAll();
-            log.info("批阅已继续: taskId={}", taskId);
-        } finally {
-            ctx.pauseLock.unlock();
-        }
-    }
-
-    @Override
-    public void cancelReview(String taskId) {
-        TaskContext ctx = activeTasks.get(taskId);
-        if (ctx == null) {
-            log.warn("任务不存在，无法取消: taskId={}", taskId);
-            return;
-        }
-        ctx.cancelled = true;
-        // 唤醒暂停等待的线程
-        ctx.pauseLock.lock();
-        try {
-            ctx.pausedCondition.signalAll();
-        } finally {
-            ctx.pauseLock.unlock();
-        }
-        log.info("批阅已取消: taskId={}", taskId);
-    }
-
-    @Override
-    public boolean isRunning(String taskId) {
-        return activeTasks.containsKey(taskId);
-    }
-
-    @Override
-    public boolean isPaused(String taskId) {
-        TaskContext ctx = activeTasks.get(taskId);
-        return ctx != null && ctx.paused;
-    }
-
-    @Override
-    public void retryReview(String taskId) {
-        GradingTask task = gradingTaskMapper.selectById(taskId);
-        if (task == null || task.getDeleted() == 1) {
-            throw new BusinessException(ErrorCodeConstant.NOT_FOUND, ErrorMessageConstant.TASK_NOT_FOUND);
-        }
-        if (task.getFileType() == FileType.WORD) {
-            runWorkflowWithCommonFiles(List.of(task.getFileId()), task.getRubricId(),
-                    task.getClassId(), task.getTaskCategory(), task.getTaskSequence());
-        } else if (task.getFileType() == FileType.ZIP) {
-            startBatchReviewFromZip(task.getFileId(), task.getRubricId(),
-                    task.getClassId(), task.getTaskCategory(), task.getTaskSequence());
-        }
-    }
-
-    @PreDestroy
-    public void shutdown() {
-        if (!activeTasks.isEmpty()) {
-            log.info("应用关闭，取消所有运行中的批阅任务，共 {} 个", activeTasks.size());
-            for (TaskContext ctx : activeTasks.values()) {
-                ctx.cancelled = true;
-                ctx.pauseLock.lock();
-                try {
-                    ctx.pausedCondition.signalAll();
-                } finally {
-                    ctx.pauseLock.unlock();
-                }
-                if (ctx.future != null) {
-                    ctx.future.cancel(true);
-                }
-            }
-            activeTasks.clear();
-        }
-    }
-
-    /**
-     * 批阅调度线程主逻辑：循环处理批次，每批 5 个学生一次性调用 Dify
-     */
     private void runBatchReviewScheduler(TaskContext ctx) {
-        int totalStudents = ctx.students.size();
+        List<StudentResult> students = ctx.students;
+        int totalStudents = students.size();
         int totalBatches = (totalStudents + 4) / 5;
         log.info("开始批阅: taskId={}, 总学生数={}, 总批次数={}", ctx.taskId, totalStudents, totalBatches);
 
-        try {
-            for (int batchIdx = 0; batchIdx < totalBatches; batchIdx++) {
-                // 暂停检查点
+        List<Callable<Void>> batchTasks = new ArrayList<>();
+        for (int batchIdx = 0; batchIdx < totalBatches; batchIdx++) {
+            final int index = batchIdx;
+            batchTasks.add(() -> {
+                // 检查取消和暂停
+                if (ctx.cancelled) {
+                    log.info("批阅已取消，批次 {} 跳过", index + 1);
+                    return null;
+                }
                 ctx.pauseLock.lock();
                 try {
                     while (ctx.paused && !ctx.cancelled) {
-                        log.info("批阅已暂停，等待继续... (taskId={}, 当前批次 {}/{})", ctx.taskId, batchIdx, totalBatches);
                         ctx.pausedCondition.await();
                     }
                 } finally {
                     ctx.pauseLock.unlock();
                 }
-
                 if (ctx.cancelled) {
-                    log.info("批阅已被取消，停止调度 (taskId={}, 已完成 {} 批)", ctx.taskId, batchIdx);
-                    break;
+                    return null;
                 }
-                // 检查任务状态是否为处理中
-                GradingTask gradingTask = gradingTaskMapper.selectById(ctx.taskId);
-                if (gradingTask.getStatus() != GradingTaskStatus.PROCESSING){
-                    log.info("批阅异常终端，停止调度 (taskId={}, 已完成 {} 批)", ctx.taskId, batchIdx);
-                    throw new BusinessException(ErrorCodeConstant.UNKNOWN_ERROR,ErrorMessageConstant.GRADING_TASK_EXCEPTION_TERMINATED);
-                }
-                int from = batchIdx * 5;
-                int to = Math.min(from + 5, totalStudents);
-                List<StudentResult> batch = new ArrayList<>(ctx.students.subList(from, to));
 
+                int from = index * 5;
+                int to = Math.min(from + 5, totalStudents);
+                List<StudentResult> batch = new ArrayList<>(students.subList(from, to));
                 for (StudentResult s : batch) {
-                    if (GradingTaskStatus.SUCCESS != s.getStatus()) {
+                    if (s.getStatus() != GradingTaskStatus.SUCCESS) {
                         s.setStatus(GradingTaskStatus.PROCESSING);
                     }
                 }
-
-                log.info("开始处理第 {}/{} 批 ({} 个学生, taskId={})", batchIdx + 1, totalBatches, batch.size(), ctx.taskId);
-
+                log.info("开始处理第 {}/{} 批 ({} 个学生)", index + 1, totalBatches, batch.size());
                 callDifyForBatch(batch, ctx.rubric, ctx.taskId);
-
+                // 更新计数（需保证 completedCount 是原子变量，若原为 int 请改为 AtomicInteger）
                 for (StudentResult s : batch) {
-                    if (GradingTaskStatus.SUCCESS == s.getStatus()) {
-                        ctx.completedCount++;
-                    } else if (GradingTaskStatus.PENDING != s.getStatus()) {
-                        ctx.failedCount++;
+                    if (s.getStatus() == GradingTaskStatus.SUCCESS) {
+                        ctx.completedCount.incrementAndGet();
+                    } else if (s.getStatus() != GradingTaskStatus.PENDING) {
+                        ctx.failedCount.incrementAndGet();
                     }
                 }
-
-                log.info("第 {}/{} 批完成 (taskId={}, 累计已完成: {}, 失败: {})", batchIdx + 1, totalBatches, ctx.taskId, ctx.completedCount, ctx.failedCount);
                 saveProgress(batch, ctx.taskId);
-
-            }
-
-            // 全部完成
-            log.info("批阅全部完成: taskId={}, 已完成={}, 失败={}", ctx.taskId, ctx.completedCount, ctx.failedCount);
-            if (ctx.cancelled) {
-                updateGradingTaskStatus(ctx.taskId, GradingTaskStatus.CANCELLED);
-            } else {
-                updateGradingTaskStatus(ctx.taskId, GradingTaskStatus.SUCCESS);
-            }
-
-
-        } catch (InterruptedException e) {
-            log.warn("批阅调度线程被中断，保存已批阅结果 (taskId={})", ctx.taskId);
-            Thread.currentThread().interrupt();
-            saveProgress(ctx.students, ctx.taskId);
-            updateGradingTaskStatus(ctx.taskId, GradingTaskStatus.FAILED);
-
-        } catch (Exception e) {
-            log.error("批阅调度异常: taskId={}, {}", ctx.taskId, e.getMessage(), e);
-            saveProgress(ctx.students, ctx.taskId);
-            updateGradingTaskStatus(ctx.taskId, GradingTaskStatus.FAILED);
-
-        } finally {
-            activeTasks.remove(ctx.taskId);
+                return null;
+            });
         }
-    }
 
+        try {
+            List<Future<Void>> futures = virtualExecutor.invokeAll(batchTasks);
+            for (Future<Void> f : futures) {
+                f.get(); // 若有异常则抛出
+            }
+        } catch (InterruptedException | ExecutionException e) {
+            log.error("批阅调度异常", e);
+            updateGradingTaskStatus(ctx.taskId, GradingTaskStatus.FAILED);
+            activeTasks.remove(ctx.taskId);
+            return;
+        }
+
+        // 全部完成
+        log.info("批阅全部完成: taskId={}, 已完成={}, 失败={}", ctx.taskId, ctx.completedCount, ctx.failedCount);
+        if (ctx.cancelled) {
+            updateGradingTaskStatus(ctx.taskId, GradingTaskStatus.CANCELLED);
+        } else {
+            updateGradingTaskStatus(ctx.taskId, GradingTaskStatus.SUCCESS);
+        }
+        activeTasks.remove(ctx.taskId);
+    }
 
     /**
      * 一次性调用 Dify 批阅整批学生作业
@@ -558,7 +542,20 @@ public class GradingServiceImpl implements GradingService {
                 continue;
             }
             // 从 path 读取 docx 并转为 markdown
-            String mdContent = readWordContentAsMd(s.getWordContentPath());
+            String mdContent;
+            try {
+                CONVERT_SEM.acquire();   // 获取许可
+                try {
+                    mdContent = readWordContentAsMd(s.getWordContentPath());
+                } finally {
+                    CONVERT_SEM.release(); // 释放许可
+                }
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                s.setStatus(GradingTaskStatus.FAILED);
+                s.setErrorMessage("转换被中断");
+                continue;
+            }
             if (mdContent == null) {
                 s.setStatus(GradingTaskStatus.FAILED);
                 s.setErrorMessage("无法读取或转换作业文件: " + s.getWordContentPath());
@@ -664,6 +661,105 @@ public class GradingServiceImpl implements GradingService {
             }
         }
     }
+
+
+    @Override
+    public void pauseReview(String taskId) {
+        TaskContext ctx = activeTasks.get(taskId);
+        if (ctx == null) {
+            log.warn("任务不存在，无法暂停: taskId={}", taskId);
+            return;
+        }
+        ctx.pauseLock.lock();
+        try {
+            ctx.paused = true;
+            log.info("批阅已暂停: taskId={}", taskId);
+        } finally {
+            ctx.pauseLock.unlock();
+        }
+    }
+
+    @Override
+    public void resumeReview(String taskId) {
+        TaskContext ctx = activeTasks.get(taskId);
+        if (ctx == null) {
+            log.warn("任务不存在，无法继续: taskId={}", taskId);
+            return;
+        }
+        ctx.pauseLock.lock();
+        try {
+            ctx.paused = false;
+            ctx.pausedCondition.signalAll();
+            log.info("批阅已继续: taskId={}", taskId);
+        } finally {
+            ctx.pauseLock.unlock();
+        }
+    }
+
+    @Override
+    public void cancelReview(String taskId) {
+        TaskContext ctx = activeTasks.get(taskId);
+        if (ctx == null) {
+            log.warn("任务不存在，无法取消: taskId={}", taskId);
+            return;
+        }
+        ctx.cancelled = true;
+        // 唤醒暂停等待的线程
+        ctx.pauseLock.lock();
+        try {
+            ctx.pausedCondition.signalAll();
+        } finally {
+            ctx.pauseLock.unlock();
+        }
+        log.info("批阅已取消: taskId={}", taskId);
+    }
+
+    @Override
+    public boolean isRunning(String taskId) {
+        return activeTasks.containsKey(taskId);
+    }
+
+    @Override
+    public boolean isPaused(String taskId) {
+        TaskContext ctx = activeTasks.get(taskId);
+        return ctx != null && ctx.paused;
+    }
+
+    @Override
+    public void retryReview(String taskId) {
+        GradingTask task = gradingTaskMapper.selectById(taskId);
+        if (task == null || task.getDeleted() == 1) {
+            throw new BusinessException(ErrorCodeConstant.NOT_FOUND, ErrorMessageConstant.TASK_NOT_FOUND);
+        }
+        if (task.getFileType() == FileType.WORD) {
+            runWorkflowWithCommonFiles(List.of(task.getFileId()), task.getRubricId(),
+                    task.getClassId(), task.getTaskCategory(), task.getTaskSequence());
+        } else if (task.getFileType() == FileType.ZIP) {
+            startBatchReviewFromZip(task.getFileId(), task.getRubricId(),
+                    task.getClassId(), task.getTaskCategory(), task.getTaskSequence());
+        }
+    }
+
+    @PreDestroy
+    public void shutdown() {
+        if (!activeTasks.isEmpty()) {
+            log.info("应用关闭，取消所有运行中的批阅任务，共 {} 个", activeTasks.size());
+            for (TaskContext ctx : activeTasks.values()) {
+                ctx.cancelled = true;
+                ctx.pauseLock.lock();
+                try {
+                    ctx.pausedCondition.signalAll();
+                } finally {
+                    ctx.pauseLock.unlock();
+                }
+                if (ctx.future != null) {
+                    ctx.future.cancel(true);
+                }
+            }
+            activeTasks.clear();
+        }
+    }
+
 
     private String joinContent(String contentJson) throws JsonProcessingException {
         JsonNode node = objectMapper.readTree(contentJson);

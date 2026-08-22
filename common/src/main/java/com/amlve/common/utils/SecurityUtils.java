@@ -1,5 +1,5 @@
 package com.amlve.common.utils;
-import com.amlve.common.configuration.UserIdAuthenticationToken;
+import com.amlve.common.security.UserIdAuthenticationToken;
 import com.amlve.common.constant.ErrorCodeConstant;
 import com.amlve.common.constant.ErrorMessageConstant;
 import com.amlve.common.exception.BusinessException;

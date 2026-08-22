@@ -93,4 +93,5 @@ public class ErrorCodeConstant {
 
     //未知错误
     public static final int UNKNOWN_ERROR = 3001;
+    public static final int ACCESS_DENIED = 403;
 }

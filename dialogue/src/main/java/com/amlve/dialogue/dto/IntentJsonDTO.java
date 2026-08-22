@@ -14,6 +14,7 @@ import java.util.List;
 public class IntentJsonDTO {
     private Boolean isNewIntent;
     private String intentType;
+    private String targetScope;
     private String suggestedType;
     private List<String> suggestedTemplates;
     private String reason;

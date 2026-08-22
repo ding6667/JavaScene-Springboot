@@ -5,16 +5,26 @@ spring:
     name: "core"
   datasource:
     driver-class-name: com.mysql.cj.jdbc.Driver
+  threads:
+    virtual:
+      enabled: true
+  autoconfigure:
+    exclude:
+      - com.alibaba.cloud.ai.autoconfigure.dashscope.DashScopeImageAutoConfiguration
+      - com.alibaba.cloud.ai.autoconfigure.dashscope.DashScopeVideoAutoConfiguration
+      - com.alibaba.cloud.ai.autoconfigure.dashscope.DashScopeChatAutoConfiguration
   ai:
-    deepseek:
-      base-url: https://api.deepseek.com/
+    openai:
+      base-url: "https://api.hcnsec.cn"
       chat:
         options:
-          model: "deepseek-3.5"
+          model: "auto"
           frequency-penalty: 0.0
           presence-penalty: 0.0
           max-tokens: 1000
           temperature: 0.7
+      api-key: "sk-burTbOlnhm9L1KC12EPSQciQlFkQIfL50hAZNKS2Bh9SG3PY"
+
     vectorstore:
       milvus:
         client:
@@ -23,16 +33,31 @@ spring:
           username: "root"
           password: "milvus"
         databaseName: "default"
-        collectionName: "javascene"
         embeddingDimension: 1024
         indexType: IVF_FLAT
         metricType: COSINE
+        collectionNames:
+          studentResult: "student_result"
+          intention: "intention"
     dashscope:
       embedding:
         enabled: true
         options:
           dimensions: 1024
           model: "text-embedding-v3"
+  data:
+    redis:
+      host: localhost
+      port: 6379
+      password:  # 若无密码则留空
+      database: 0
+      timeout: 5000ms
+      lettuce:
+        pool:
+          max-active: 8
+          max-idle: 8
+          min-idle: 0
+          max-wait: -1ms
 logging:
   level:
     com.amlve: debug
@@ -60,5 +85,6 @@ mybatis-plus:
 dify:
   read-timeout: 120                       # 读取超时（秒）
   connect-timeout: 10                     # 连接超时（秒）
-
+jwt:
+  expiration: 86400000 # 24小时过期
 

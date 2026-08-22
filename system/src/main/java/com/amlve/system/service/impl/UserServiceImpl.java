@@ -2,7 +2,7 @@ package com.amlve.system.service.impl;
 
 import com.amlve.common.exception.BusinessException;
 import com.amlve.common.utils.JWTUtil;
-import com.amlve.system.CustomUserDetails;
+import com.amlve.common.security.CustomUserDetails;
 import com.amlve.system.constant.ErrorCodeConstant;
 import com.amlve.system.constant.ErrorMessageConstant;
 import com.amlve.system.mapper.UserMapper;
@@ -16,8 +16,6 @@ import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
-import org.springframework.security.core.userdetails.UserDetails;
-import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;

@@ -26,7 +26,7 @@ public class JWTUtil {
     @Value("${jwt.secret:abcdefghabcdefghabcdefgh12345678}")
     private String secretStr;
 
-    @Value("${jwt.expiration:86400000}") // 默认24小时
+    @Value("${jwt.expiration}") // 默认2小时
     private Long expiration;
 
     private SecretKey secretKey;

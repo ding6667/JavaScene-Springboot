@@ -1,12 +1,16 @@
 package com.amlve.core.filter;
 
-import com.amlve.common.configuration.UserIdAuthenticationToken;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.amlve.common.security.UserIdAuthenticationToken;
+import com.amlve.common.exception.BusinessException;
+import com.amlve.common.request.Result;
 import com.amlve.common.utils.JWTUtil;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
@@ -15,35 +19,59 @@ import java.io.IOException;
 import java.util.Arrays;
 import java.util.List;
 
+@Slf4j
 @Component
 @RequiredArgsConstructor
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
     private static final List<String> WHITE_LIST = Arrays.asList("/api/auth/login", "/api/auth/register");
     private final JWTUtil jwtUtil;
+    private final ObjectMapper objectMapper;
 
+    @Override
+    protected boolean shouldNotFilterAsyncDispatch() {
+        return false;
+    }
     @Override
     protected void doFilterInternal(HttpServletRequest request,
                                     HttpServletResponse response,
                                     FilterChain chain) throws ServletException, IOException {
         String uri = request.getRequestURI();
-        // 如果是白名单路径，直接放行（不解析 Token）
         if (WHITE_LIST.stream().anyMatch(uri::contains)) {
             chain.doFilter(request, response);
             return;
         }
+        
         String token = extractToken(request);
 
-        if (token != null && jwtUtil.verifyToken(token)) {
-            Long userId = jwtUtil.getUserIdByToken(token);
-            String username = jwtUtil.getUsernameByToken(token);
+        if (token != null) {
+            try {
+                if (jwtUtil.verifyToken(token)) {
+                    Long userId = jwtUtil.getUserIdByToken(token);
+                    String username = jwtUtil.getUsernameByToken(token);
 
-            // 构造自定义 Authentication（这里暂时不添加权限，或可以添加默认角色）
-            UserIdAuthenticationToken authentication =
-                    new UserIdAuthenticationToken(userId, username, null);
-            SecurityContextHolder.getContext().setAuthentication(authentication);
+                    UserIdAuthenticationToken authentication =
+                            new UserIdAuthenticationToken(userId, username, null);
+                    SecurityContextHolder.getContext().setAuthentication(authentication);
+                }
+            } catch (BusinessException e) {
+                log.warn("JWT 验证失败: {}", e.getMessage());
+                writeErrorResponse(response, e.getCode(), e.getMessage());
+                return;
+            } catch (Exception e) {
+                log.error("JWT 解析异常: ", e);
+                writeErrorResponse(response, 401, "Token 无效");
+                return;
+            }
         }
 
         chain.doFilter(request, response);
+    }
+
+    private void writeErrorResponse(HttpServletResponse response, int code, String message) throws IOException {
+        response.setStatus(HttpServletResponse.SC_OK);
+        response.setContentType("application/json;charset=UTF-8");
+        Result<Object> errorResult = Result.error(code, message);
+        response.getWriter().write(objectMapper.writeValueAsString(errorResult));
     }
 
     private String extractToken(HttpServletRequest request) {

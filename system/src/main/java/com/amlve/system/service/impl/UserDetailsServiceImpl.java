@@ -1,6 +1,6 @@
 package com.amlve.system.service.impl;
 
-import com.amlve.system.CustomUserDetails;
+import com.amlve.common.security.CustomUserDetails;
 import com.amlve.system.tableEnt.User;
 import com.amlve.system.mapper.UserMapper;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;

@@ -32,7 +32,7 @@ public class FileCleanTask {
         queryWrapper.le(UploadFile::getExpireTime, LocalDateTime.now());
         List<UploadFile> uploadFiles = uploadFileMapper.selectList(queryWrapper);
         uploadFiles.forEach(uploadFile -> {
-            uploadFile.setDeleted(1);
+            uploadFile.setExpired(1);
             uploadFileMapper.updateById(uploadFile);
             try {
                 Files.delete(Paths.get(uploadFile.getRawStoragePath()));

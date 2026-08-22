@@ -21,23 +21,28 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
 
+import org.springframework.context.annotation.Lazy;
+import org.springframework.context.annotation.Primary;
+import org.springframework.core.io.FileSystemResource;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.io.File;
 import java.io.IOException;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
-@Service
+@Service("uploadServiceImpl")
 @Slf4j
 @RequiredArgsConstructor
 public class UploadServiceImpl extends ServiceImpl<UploadMapper,UploadFile> implements UploadService , com.amlve.fileapi.service.UploadService {
 
     private final UploadMapper uploadMapper;
-    private final StorageService storageService;
+    private final @Lazy StorageService storageService;
     private final UploadFileMapMapper uploadFileMapMapper;
 
 
@@ -141,5 +146,25 @@ public class UploadServiceImpl extends ServiceImpl<UploadMapper,UploadFile> impl
         UploadFile entity = uploadFileMapMapper.toEntity(uploadFileDTO);
         entity.setFileType(FileType.fromCode(uploadFileDTO.getFileType()));
         return uploadMapper.updateById(entity);
+    }
+
+    @Override
+    public Long getFileOwnerId(String fileId) {
+        return uploadMapper.selectById(fileId).getUserId();
+    }
+
+
+    @Override
+    public Map<String, Object> loadAsResource(String fileId) {
+        UploadFile fileInfo = uploadMapper.selectById(fileId);
+        if (fileInfo == null) {
+            throw new BusinessException(com.amlve.file.constant.ErrorMessageConstant.FILE_IS_EMPTY);
+        }
+        File file = new File(fileInfo.getRawStoragePath());
+        if (!file.exists()) {
+            throw new BusinessException(com.amlve.file.constant.ErrorMessageConstant.FILE_NOT_FOUND);
+        }
+
+        return Map.of("resource", new FileSystemResource(file),"fileInfo", fileInfo);
     }
 }

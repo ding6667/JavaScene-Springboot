@@ -3,22 +3,33 @@ package com.amlve.file.contorller;
 import com.amlve.file.constant.ErrorMessageConstant;
 import com.amlve.common.request.PageResult;
 import com.amlve.common.request.Result;
+import com.amlve.file.service.StorageService;
+import com.amlve.file.tableEnt.UploadFile;
 import com.amlve.file.vo.UploadFileVO;
 
 import com.amlve.file.service.UploadService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.core.io.Resource;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
+import java.util.Map;
 import java.util.Objects;
 
 @Slf4j
 @RestController
 @RequestMapping("/api/upload")
 @RequiredArgsConstructor
-public class UploadController {
+public class FileController {
     private final UploadService uploadService;
 
     /**
@@ -70,5 +81,23 @@ public class UploadController {
             return Result.success(1);
         }
         return  Result.error(ErrorMessageConstant.DELETE_FAILED);
+    }
+
+    @GetMapping("/{id}/download")
+    @PreAuthorize("isAuthenticated() and @fileAuth.isOwner(#id, authentication)")
+    public ResponseEntity<Resource> downloadFile(@PathVariable String id) { // 从 Token 中解析的用户ID
+        Map<String, Object> resourceMap = uploadService.loadAsResource(id);
+        Resource resource = (Resource) resourceMap.get("resource");
+        UploadFile fileInfo = (UploadFile) resourceMap.get("fileInfo");
+
+        String encodedFileName = URLEncoder.encode(fileInfo.getFileName(), StandardCharsets.UTF_8)
+                .replaceAll("\\+", "%20");
+
+        return ResponseEntity.ok()
+                .contentType(MediaType.APPLICATION_OCTET_STREAM)
+                .header(HttpHeaders.CONTENT_DISPOSITION,
+                        "attachment; filename=\"" + encodedFileName +
+                                "\"; filename*=UTF-8''" + encodedFileName)
+                .body(resource);
     }
 }

@@ -4,15 +4,11 @@ import lombok.Getter;
 
 @Getter
 public enum Intent {
-    INDIVIDUAL("个体", "individual",false),
-    GROUP("群体", "group",false),
-    TREND("趋势", "trend",false),   // 需要时间解析能力
-    DIAGNOSE("诊断", "diagnosis",false), // 需要多轮推理
-    COMPARE("对比", "compare",false), // 需要多轮推理
-    SUGGEST("建议", "suggestion",false),    // 需要历史数据挖掘
-    ALERT("预警", "alert",false),       // 仅限管理员
-    COMMAND("命令", "command",true),
-    OTHER("其他", "other",false), //普通对话
+    QUERY("查询", "query",false),
+    ANALYZE("分析", "analyze",false),
+    EXECUTE("执行", "execute",true),
+    CHAT("聊天", "chat",false),
+
     NEW_INTENT("新意图", "new_intent",false),
     UNKNOWN("未知意图", "unknown",false);
 
@@ -30,7 +26,7 @@ public enum Intent {
 
     public static Intent fromCode(String code) {
         for (Intent intent : values()) {
-            if (intent.getCode().equals(code)) {
+            if (intent.getCode().equalsIgnoreCase(code)) {
                 return intent;
             }
         }

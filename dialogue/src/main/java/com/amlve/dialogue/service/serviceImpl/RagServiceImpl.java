@@ -16,6 +16,7 @@ import org.springframework.ai.vectorstore.SearchRequest;
 import org.springframework.ai.vectorstore.filter.FilterExpressionBuilder;
 import org.springframework.ai.vectorstore.milvus.MilvusVectorStore;
 
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 import org.springframework.ai.document.Document;
 
@@ -27,8 +28,12 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class RagServiceImpl implements RagService ,com.amlve.dialogueapi.service.RagService {
 
+    private static final int BATCH_SIZE = 10;
 
-    private final MilvusVectorStore vectorStore;
+
+
+    @Qualifier("studentResultVectorStore")
+    private final MilvusVectorStore studentResultVectorStore;
 
     @Override
     public List<String> queryContent(String query, List<String> taskIds, String userId, Double maxScore, Double minScore) {
@@ -51,7 +56,7 @@ public class RagServiceImpl implements RagService ,com.amlve.dialogueapi.service
             filterOp = b.and(filterOp, b.lte("score", maxScore));
         }
 
-        List<Document> docs = vectorStore.similaritySearch(
+        List<Document> docs = studentResultVectorStore.similaritySearch(
                 SearchRequest.builder()
                         .query(query)
                         .filterExpression(filterOp.build())
@@ -98,7 +103,14 @@ public class RagServiceImpl implements RagService ,com.amlve.dialogueapi.service
 
         }
 
-        vectorStore.add(documents);
+        // DashScope Embedding API 单次最多 10 条，分批导入
+        for (int i = 0; i < documents.size(); i += BATCH_SIZE) {
+            int end = Math.min(i + BATCH_SIZE, documents.size());
+            List<Document> batch = documents.subList(i, end);
+            log.info("导入第 {}/{} 批，共 {} 条", (i / BATCH_SIZE) + 1,
+                    (documents.size() + BATCH_SIZE - 1) / BATCH_SIZE, batch.size());
+            studentResultVectorStore.add(batch);
+        }
     }
 
 }
