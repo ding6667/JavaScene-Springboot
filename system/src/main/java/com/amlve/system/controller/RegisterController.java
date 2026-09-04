@@ -1,7 +1,7 @@
 package com.amlve.system.controller;
 
 import com.amlve.common.request.Result;
-import com.amlve.system.dto.RegisterRequest;
+import com.amlve.system.dto.request.RegisterRequest;
 import com.amlve.system.service.UserService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.PostMapping;

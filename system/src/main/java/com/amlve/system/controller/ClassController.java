@@ -2,9 +2,9 @@ package com.amlve.system.controller;
 
 import com.amlve.common.request.PageResult;
 import com.amlve.common.request.Result;
-import com.amlve.system.dto.ClassRequest;
+import com.amlve.system.dto.request.ClassRequest;
+import com.amlve.system.dto.response.ClassResponse;
 import com.amlve.system.service.ClassService;
-import com.amlve.system.vo.ClassResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 

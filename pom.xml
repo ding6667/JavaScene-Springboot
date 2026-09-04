@@ -25,13 +25,27 @@
         <module>common</module>
         <module>file</module>
         <module>system</module>
-        <module>grading</module>
+        <module>exam</module>
         <module>bootstrap</module>
-        <module>grading-api</module>
+        <module>exam-api</module>
         <module>dialogue</module>
         <module>dialogue-api</module>
         <module>file-api</module>
         <module>system-api</module>
+        <module>knowledge</module>
+        <module>knowledge-api</module>
+        <module>study</module>
+        <module>study-api</module>
+        <module>teach</module>
+        <module>teach-api</module>
+        <module>monitor</module>
+        <module>monitor-api</module>
+        <module>agent-analysis</module>
+        <module>agent-code</module>
+        <module>agent-prepare</module>
+        <module>agent-qa</module>
+        <module>agent-question</module>
+        <module>agent-score</module>
     </modules>
     <scm>
         <connection/>

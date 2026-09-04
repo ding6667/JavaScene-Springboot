@@ -54,19 +54,7 @@ public class ErrorCodeConstant {
     public static final int TOKEN_EXPIRED = 1006;
 
 
-    // ===== 文件相关错误码（2000-2099） =====
 
-    /**
-     * 上传的文件为空（用户选择了空文件或未选择文件）
-     * 用于 @RequestParam("file") MultipartFile file 的校验
-     */
-    public static final int FILE_IS_EMPTY = 2000;
-
-    /**
-     * 文件 IO 操作失败
-     * 例如：文件保存失败、读取失败、删除失败、磁盘空间不足
-     */
-    public static final int FILE_IO_ERROR = 2001;
 
     /**
      * 上传的文件大小超过限制
@@ -94,4 +82,5 @@ public class ErrorCodeConstant {
     //未知错误
     public static final int UNKNOWN_ERROR = 3001;
     public static final int ACCESS_DENIED = 403;
+    public static final int ERROR = 500;
 }

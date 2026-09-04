@@ -1,6 +1,6 @@
 package com.amlve.fileapi.service;
 
-import com.amlve.fileapi.dto.UploadFileDTO;
+import com.amlve.fileapi.dto.api.UploadFileDTO;
 
 import java.util.Map;
 

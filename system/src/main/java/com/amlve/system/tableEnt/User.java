@@ -65,4 +65,8 @@ public class User {
      */
     @TableField(fill = FieldFill.INSERT_UPDATE)
     private LocalDateTime updateTime;
+
+    private String roleId;
+
+    private String roleName;
 }

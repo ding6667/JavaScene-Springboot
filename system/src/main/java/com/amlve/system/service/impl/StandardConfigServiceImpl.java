@@ -2,9 +2,10 @@ package com.amlve.system.service.impl;
 
 
 import com.amlve.system.converter.StandardConfigConverter;
-import com.amlve.system.dto.StandardConfigRequest;
-import com.amlve.system.dto.StandardConfigUpdateRequest;
-import com.amlve.systemapi.dto.StandardConfigDTO;
+import com.amlve.system.dto.request.StandardConfigRequest;
+import com.amlve.system.dto.request.StandardConfigUpdateRequest;
+import com.amlve.system.dto.response.StandardConfigResponse;
+import com.amlve.systemapi.dto.api.StandardConfigDTO;
 import com.amlve.common.exception.BusinessException;
 import com.amlve.system.service.StandardConfigService;
 import com.amlve.system.constant.ErrorCodeConstant;
@@ -14,7 +15,6 @@ import com.amlve.system.mapper.SettingsMapper;
 import com.amlve.system.mapper.StandardConfigMapper;
 import com.amlve.system.tableEnt.StandardConfig;
 import com.amlve.system.tableEnt.UserConfig;
-import com.amlve.system.vo.StandardConfigResponse;
 import com.amlve.systemapi.service.StandardService;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;

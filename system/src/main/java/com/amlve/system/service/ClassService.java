@@ -1,8 +1,8 @@
 package com.amlve.system.service;
 
 import com.amlve.common.request.PageResult;
-import com.amlve.system.dto.ClassRequest;
-import com.amlve.system.vo.ClassResponse;
+import com.amlve.system.dto.request.ClassRequest;
+import com.amlve.system.dto.response.ClassResponse;
 
 public interface ClassService {
 

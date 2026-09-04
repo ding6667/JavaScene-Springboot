@@ -1,5 +1,7 @@
 package com.amlve.common.request;
 
+import com.amlve.common.constant.ErrorCodeConstant;
+import com.amlve.common.constant.ErrorMessageConstant;
 import lombok.Data;
 
 @Data
@@ -22,11 +24,11 @@ public class Result<T> {
     }
 
     public static <T> Result<T> success(T data) {
-        return new Result<>(200, "success", data);
+        return new Result<>(ErrorCodeConstant.SUCCESS, ErrorMessageConstant.SUCCESS_MSG, data);
     }
 
     public static <T> Result<T> success(String message, T data) {
-        return new Result<>(200, message, data);
+        return new Result<>(ErrorCodeConstant.SUCCESS, message, data);
     }
 
     public static <T> Result<T> error(int code, String message) {
@@ -34,7 +36,7 @@ public class Result<T> {
     }
 
     public static <T> Result<T> error(String message) {
-        return new Result<>(500, message);
+        return new Result<>(ErrorCodeConstant.ERROR, message);
     }
 
 

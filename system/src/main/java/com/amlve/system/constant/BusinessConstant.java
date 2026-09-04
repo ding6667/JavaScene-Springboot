@@ -9,5 +9,6 @@ public class BusinessConstant {
     public static final String REGISTER_PASSWORD_EMPTY = "密码不能为空";
     public static final String LOGIN_USERNAME_EMPTY = "用户名不能为空";
     public static final String LOGIN_PASSWORD_EMPTY = "密码不能为空";
+    public static final String LOGIN_USERNAME_NOT_EXIST = "用户名不存在";
 
 }

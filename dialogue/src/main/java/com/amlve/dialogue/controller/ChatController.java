@@ -9,7 +9,7 @@ import com.amlve.dialogue.enumeration.Intent;
 import com.amlve.dialogue.enumeration.TargetScope;
 import com.amlve.dialogue.service.AiService;
 import com.amlve.dialogue.service.RouterLlmService;
-import com.amlve.dialogue.vo.ChatStreamResponse;
+import com.amlve.dialogue.dto.response.ChatStreamResponse;
 import com.amlve.systemapi.service.SettingsService;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;

@@ -1,8 +1,8 @@
 package com.amlve.system.converter;
 
-import com.amlve.system.dto.ClassRequest;
+import com.amlve.system.dto.request.ClassRequest;
+import com.amlve.system.dto.response.ClassResponse;
 import com.amlve.system.tableEnt.ClassInfo;
-import com.amlve.system.vo.ClassResponse;
 import org.mapstruct.Mapper;
 
 @Mapper(componentModel = "spring")

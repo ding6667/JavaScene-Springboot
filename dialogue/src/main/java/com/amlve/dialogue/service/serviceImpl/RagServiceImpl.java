@@ -2,7 +2,7 @@ package com.amlve.dialogue.service.serviceImpl;
 
 
 import com.amlve.common.utils.SecurityUtils;
-import com.amlve.dialogueapi.dto.StudentRagInsertDTO;
+import com.amlve.dialogueapi.dto.api.StudentRagInsertDTO;
 import com.amlve.dialogue.enumeration.AspectType;
 import com.amlve.dialogue.service.RagService;
 

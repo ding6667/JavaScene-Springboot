@@ -1,12 +1,12 @@
 package com.amlve.system.service.impl;
 
-import com.amlve.system.dto.CommonSettingsRequest;
+import com.amlve.system.dto.request.CommonSettingsRequest;
+import com.amlve.system.dto.response.SettingsResponse;
 import com.amlve.system.enumeration.UserConfigKeyEnum;
 import com.amlve.system.mapper.SettingsMapper;
 import com.amlve.system.mapper.StandardConfigMapper;
 import com.amlve.system.service.SettingsService;
 import com.amlve.system.tableEnt.UserConfig;
-import com.amlve.system.vo.SettingsResponse;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.spring.service.impl.ServiceImpl;
 import lombok.RequiredArgsConstructor;

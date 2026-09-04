@@ -1,6 +1,6 @@
 package com.amlve.file.converter;
 
-import com.amlve.fileapi.dto.UploadFileDTO;
+import com.amlve.fileapi.dto.api.UploadFileDTO;
 import com.amlve.file.tableEnt.UploadFile;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;

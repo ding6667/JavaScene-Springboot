@@ -5,7 +5,7 @@ import com.amlve.common.request.PageResult;
 import com.amlve.common.request.Result;
 import com.amlve.file.service.StorageService;
 import com.amlve.file.tableEnt.UploadFile;
-import com.amlve.file.vo.UploadFileVO;
+import com.amlve.file.dto.response.UploadFileVO;
 
 import com.amlve.file.service.UploadService;
 import lombok.RequiredArgsConstructor;

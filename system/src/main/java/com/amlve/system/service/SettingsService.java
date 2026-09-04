@@ -1,7 +1,7 @@
 package com.amlve.system.service;
 
-import com.amlve.system.dto.CommonSettingsRequest;
-import com.amlve.system.vo.SettingsResponse;
+import com.amlve.system.dto.request.CommonSettingsRequest;
+import com.amlve.system.dto.response.SettingsResponse;
 
 public interface SettingsService {
     SettingsResponse getCommonSettings(Long userId);

@@ -1,6 +1,7 @@
 package com.amlve.system.service.impl;
 
 import com.amlve.common.security.CustomUserDetails;
+import com.amlve.system.constant.BusinessConstant;
 import com.amlve.system.tableEnt.User;
 import com.amlve.system.mapper.UserMapper;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
@@ -26,14 +27,14 @@ public class UserDetailsServiceImpl implements UserDetailsService {
         );
 
         if (user == null) {
-            throw new UsernameNotFoundException("用户不存在: " + username);
+            throw new UsernameNotFoundException(BusinessConstant.LOGIN_USERNAME_NOT_EXIST + username);
         }
 
         return new CustomUserDetails(
                 user.getId(),
                 user.getUsername(),
                 user.getPassword(),
-                Collections.singletonList(new SimpleGrantedAuthority("ROLE_USER"))
+                Collections.singletonList(new SimpleGrantedAuthority("ROLE_" + user.getRoleName()))
         );
     }
 }

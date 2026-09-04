@@ -22,4 +22,9 @@ public class ErrorMessageConstant {
      * 登录失败
      */
     public static final String LOGIN_FAILED = "用户名或密码错误";
+    /**
+     * 登录成功
+     */
+    public static final String SUCCESS_MSG = "登录成功";
 }
+

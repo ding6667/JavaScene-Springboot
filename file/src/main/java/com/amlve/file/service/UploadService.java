@@ -1,7 +1,7 @@
 package com.amlve.file.service;
 
 import com.amlve.common.request.PageResult;
-import com.amlve.file.vo.UploadFileVO;
+import com.amlve.file.dto.response.UploadFileVO;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;

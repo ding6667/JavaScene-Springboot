@@ -44,7 +44,7 @@
         </dependency>
         <dependency>
             <groupId>com.amlve</groupId>
-            <artifactId>grading</artifactId>
+            <artifactId>exam</artifactId>
             <version>${project.version}</version>
         </dependency>
         <dependency>
@@ -52,7 +52,56 @@
             <artifactId>dialogue</artifactId>
             <version>${project.version}</version>
         </dependency>
-
+        <dependency>
+            <groupId>com.amlve</groupId>
+            <artifactId>knowledge</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.amlve</groupId>
+            <artifactId>study</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.amlve</groupId>
+            <artifactId>teach</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.amlve</groupId>
+            <artifactId>monitor</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.amlve</groupId>
+            <artifactId>agent-analysis</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.amlve</groupId>
+            <artifactId>agent-code</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.amlve</groupId>
+            <artifactId>agent-prepare</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.amlve</groupId>
+            <artifactId>agent-qa</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.amlve</groupId>
+            <artifactId>agent-question</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.amlve</groupId>
+            <artifactId>agent-score</artifactId>
+            <version>${project.version}</version>
+        </dependency>
 
     </dependencies>
 

@@ -2,13 +2,13 @@ package com.amlve.system.controller;
 
 import com.amlve.common.request.Result;
 import com.amlve.common.utils.SecurityUtils;
-import com.amlve.system.dto.CommonSettingsRequest;
-import com.amlve.system.dto.StandardConfigRequest;
-import com.amlve.system.dto.StandardConfigUpdateRequest;
+import com.amlve.system.dto.request.CommonSettingsRequest;
+import com.amlve.system.dto.request.StandardConfigRequest;
+import com.amlve.system.dto.request.StandardConfigUpdateRequest;
+import com.amlve.system.dto.response.SettingsResponse;
+import com.amlve.system.dto.response.StandardConfigResponse;
 import com.amlve.system.service.SettingsService;
 import com.amlve.system.service.StandardConfigService;
-import com.amlve.system.vo.SettingsResponse;
-import com.amlve.system.vo.StandardConfigResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
