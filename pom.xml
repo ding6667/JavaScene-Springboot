@@ -46,6 +46,7 @@
         <module>agent-qa</module>
         <module>agent-question</module>
         <module>agent-score</module>
+        <module>agent-qa-api</module>
     </modules>
     <scm>
         <connection/>
