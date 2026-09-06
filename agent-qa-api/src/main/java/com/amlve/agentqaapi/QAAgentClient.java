@@ -6,7 +6,7 @@ import com.amlve.agentqaapi.dto.response.DifyRetrieveResponse;
 import java.io.File;
 import java.util.Map;
 
-public interface QAAgentClinet {
+public interface QAAgentClient {
     /**
      * 纯文本创建文档 不附带元数据
      * @param datasetId
