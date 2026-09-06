@@ -1,10 +1,12 @@
 package com.amlve.agentqaapi;
 
 
+import com.amlve.agentqaapi.dto.response.DifyRetrieveResponse;
+
 import java.io.File;
 import java.util.Map;
 
-public interface QAAgent {
+public interface QAAgentClinet {
     /**
      * 纯文本创建文档 不附带元数据
      * @param datasetId
@@ -12,7 +14,7 @@ public interface QAAgent {
      * @param text
      * @return
      */
-    String createDocumentByText(String datasetId, String documentName, String text ,);
+    String createDocumentByText(String datasetId, String documentName, String text );
 
     /**
      * 更新元数据
@@ -56,5 +58,5 @@ public interface QAAgent {
      * @return Dify 检索响应
      */
     DifyRetrieveResponse retrieve(String datasetId, String query,
-                                         Integer topK, Double scoreThreshold)
+                                  Integer topK, Double scoreThreshold);
 }
