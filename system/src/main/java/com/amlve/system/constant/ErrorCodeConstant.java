@@ -64,4 +64,16 @@ public class ErrorCodeConstant {
 
     //未知错误
     public static final int UNKNOWN_ERROR = 3001;
+
+    /**
+     * 用户不存在
+     * 例如：根据 userId 查询用户时未找到记录
+     */
+    public static final int USER_NOT_FOUND = 1005;
+
+    /**
+     * 权限不足
+     * 例如：学生尝试执行教师专属操作
+     */
+    public static final int PERMISSION_DENIED = 403;
 }
