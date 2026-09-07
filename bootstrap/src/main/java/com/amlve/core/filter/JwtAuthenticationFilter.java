@@ -23,7 +23,7 @@ import java.util.List;
 @Component
 @RequiredArgsConstructor
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
-    private static final List<String> WHITE_LIST = Arrays.asList("/api/auth/login", "/api/auth/register");
+    private static final List<String> WHITE_LIST = Arrays.asList("/api/user/auth/login", "/api/user/auth/register");
     private final JWTUtil jwtUtil;
     private final ObjectMapper objectMapper;
 
