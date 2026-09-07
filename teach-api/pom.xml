@@ -34,7 +34,11 @@
             <artifactId>common</artifactId>
             <version>${project.version}</version>
         </dependency>
-
+        <dependency>
+            <groupId>com.baomidou</groupId>
+            <artifactId>mybatis-plus-annotation</artifactId>
+            <version>3.5.17</version>  <!-- 版本和你项目里其他MP依赖保持一致 -->
+        </dependency>
     </dependencies>
 
     <build>
