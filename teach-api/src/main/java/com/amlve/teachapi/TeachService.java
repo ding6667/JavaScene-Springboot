@@ -1,7 +1,5 @@
 package com.amlve.teachapi;
 
-import com.amlve.common.request.PageResult;
-import com.amlve.teachapi.dto.request.HomeworkPublishRequest;
 import com.amlve.teachapi.dto.response.HomeworkResponse;
 
 import java.util.List;

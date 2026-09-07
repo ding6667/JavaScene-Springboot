@@ -39,6 +39,11 @@
             <artifactId>mybatis-plus-annotation</artifactId>
             <version>3.5.17</version>  <!-- 版本和你项目里其他MP依赖保持一致 -->
         </dependency>
+        <!-- DTO 校验注解（Spring Boot 3 使用 jakarta 命名空间，版本由 parent 管理） -->
+        <dependency>
+            <groupId>jakarta.validation</groupId>
+            <artifactId>jakarta.validation-api</artifactId>
+        </dependency>
     </dependencies>
 
     <build>
