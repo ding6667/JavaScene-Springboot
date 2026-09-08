@@ -15,6 +15,7 @@ python:
 dify:
   grading-api-key: "app-h2yIzEsq6W2C5eHN0MtDVRt2"   # Dify应用的API密钥
   qa-api-key: "app-h2yIzEsq6W2C5eHN0MtDVRt2"   # Dify应用的API密钥
+  prepare-api-key: "app-h2yIzEsq6W2C5eHN0MtDVRt2"   # Dify应用的API密钥
   base-url: "http://localhost:5001/v1" # Dify API服务的地址
   file-base-url: "http://localhost:3000"  # Dify web服务的URL
 jwt:

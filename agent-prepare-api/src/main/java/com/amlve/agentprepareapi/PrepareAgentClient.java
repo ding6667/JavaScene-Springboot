@@ -1,9 +1,15 @@
 package com.amlve.agentprepareapi;
 
 
+import com.amlve.agentprepareapi.dto.request.PrepareRequest;
+import com.amlve.agentprepareapi.dto.response.PrepareResponse;
+import com.amlve.common.request.Result;
+
 public interface PrepareAgentClient {
     /**
-     * 调用 Dify 获取教案文本
+     * 生成备课材料
+     * @param request 备课请求（含章节ID、五个开关）
+     * @return 备课结果（含教案、PPT、重难点、作业、实验）
      */
-    String getLessonText(String lessonPrompt);
+    PrepareResponse generate(PrepareRequest request);
 }
