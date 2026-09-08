@@ -14,9 +14,9 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 /**
- * 用户管理接口
+ * 用户管理接口（仅管理员）
  * 说明：JwtAuthenticationFilter 构建的认证令牌不含角色信息，
- * 教师角色的细粒度校验由 Service 层编程式校验完成（SecurityUtils 取当前用户后查库比对角色）。
+ * 管理员角色的细粒度校验由 Service 层编程式校验完成（SecurityUtils 取当前用户后查库比对角色）。
  */
 @Slf4j
 @RequiredArgsConstructor
@@ -36,7 +36,7 @@ public class UserController {
     }
 
     /**
-     * 新增用户（仅教师）
+     * 新增用户（仅管理员）
      */
     @PostMapping("/create")
     public Result<UserInfoResponse> create(@Valid @RequestBody UserCreateRequest request) {
@@ -44,7 +44,7 @@ public class UserController {
     }
 
     /**
-     * 更新用户（仅教师）
+     * 更新用户（仅管理员）
      */
     @PutMapping("/update")
     public Result<UserInfoResponse> update(@Valid @RequestBody UserUpdateRequest request) {
@@ -61,7 +61,7 @@ public class UserController {
     }
 
     /**
-     * 分页查询用户列表（仅教师）
+     * 分页查询用户列表（仅管理员）
      */
     @GetMapping("/records")
     public Result<PageResult<UserInfoResponse>> records(@RequestParam(defaultValue = "1") Long pageNum

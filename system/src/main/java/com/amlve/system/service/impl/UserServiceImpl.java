@@ -8,6 +8,7 @@ import com.amlve.common.security.CustomUserDetails;
 import com.amlve.system.constant.ErrorCodeConstant;
 import com.amlve.system.constant.ErrorMessageConstant;
 import com.amlve.system.converter.UserConverter;
+import com.amlve.system.dto.request.AdminRegisterRequest;
 import com.amlve.system.dto.request.UserCreateRequest;
 import com.amlve.system.dto.request.UserUpdateRequest;
 import com.amlve.system.dto.response.UserInfoResponse;
@@ -26,6 +27,7 @@ import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -41,6 +43,9 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         com.amlve.systemapi.service.UserService {
     private final UserMapper userMapper;
     private final JWTUtil jwtUtil;
+
+    @Value("${app.admin.init-key:}")
+    private String adminInitKey;
 
     private final PasswordEncoder passwordEncoder;
     private final AuthenticationManager authenticationManager;
@@ -73,10 +78,38 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         user.setUsername(username);
         user.setPassword(passwordEncoder.encode(password)); // ✅ 加密存储
         user.setEnabled(1);
+        user.setRoleName("STUDENT"); // 自助注册仅产生学生，教师/管理员走管理端
         userMapper.insert(user);
 
         // 3. 返回 JWT（注册即登录，直接返回 Token）
         log.info("用户注册成功: {}", username);
+        return jwtUtil.generateToken(user.getId(), user.getUsername());
+    }
+
+    /**
+     * 管理员注册：系统仅支持一名管理员，通过后台初始化密钥（app.admin.init-key）注册，注册即登录
+     */
+    @Override
+    public String registerAdmin(AdminRegisterRequest request) {
+        if (!StringUtils.hasText(adminInitKey) || !adminInitKey.equals(request.getAdminKey())) {
+            log.warn("管理员注册被拒绝: 初始化密钥缺失或错误, 用户名: {}", request.getUsername());
+            throw new BusinessException(ErrorCodeConstant.PERMISSION_DENIED, ErrorMessageConstant.ADMIN_INIT_KEY_INVALID);
+        }
+        Long adminCount = userMapper.selectCount(new LambdaQueryWrapper<User>().eq(User::getRoleName, "ADMIN"));
+        if (adminCount > 0) {
+            throw new BusinessException(ErrorCodeConstant.BUSINESS_ERROR, ErrorMessageConstant.ADMIN_ALREADY_EXISTS);
+        }
+        long count = userMapper.selectCount(new LambdaQueryWrapper<User>().eq(User::getUsername, request.getUsername()));
+        if (count > 0) {
+            throw new BusinessException(ErrorCodeConstant.REGISTER_ERROR, ErrorMessageConstant.USER_USERNAME_EXIST);
+        }
+        User user = new User();
+        user.setUsername(request.getUsername());
+        user.setPassword(passwordEncoder.encode(request.getPassword()));
+        user.setEnabled(1);
+        user.setRoleName("ADMIN");
+        userMapper.insert(user);
+        log.info("管理员注册成功: {}", request.getUsername());
         return jwtUtil.generateToken(user.getId(), user.getUsername());
     }
 
@@ -92,8 +125,8 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
     @Override
     @Transactional(rollbackFor = Exception.class)
     public UserInfoResponse createUser(UserCreateRequest request) {
-        checkTeacherPermission();
-        log.info("教师[{}]新增用户: {}", SecurityUtils.getCurrentUsername(), request.getUsername());
+        checkAdminPermission();
+        log.info("管理员[{}]新增用户: {}", SecurityUtils.getCurrentUsername(), request.getUsername());
         Long count = userMapper.selectCount(new LambdaQueryWrapper<User>().eq(User::getUsername, request.getUsername()));
         if (count > 0) {
             throw new BusinessException(ErrorCodeConstant.REGISTER_ERROR, ErrorMessageConstant.USER_USERNAME_EXIST);
@@ -108,8 +141,8 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
     @Override
     @Transactional(rollbackFor = Exception.class)
     public UserInfoResponse updateUser(UserUpdateRequest request) {
-        checkTeacherPermission();
-        log.info("教师[{}]更新用户: id={}", SecurityUtils.getCurrentUsername(), request.getId());
+        checkAdminPermission();
+        log.info("管理员[{}]更新用户: id={}", SecurityUtils.getCurrentUsername(), request.getId());
         User exist = userMapper.selectById(request.getId());
         if (exist == null) {
             throw new BusinessException(ErrorCodeConstant.USER_NOT_FOUND, ErrorMessageConstant.USER_NOT_FOUND);
@@ -140,12 +173,12 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void deleteUser(Long id) {
-        checkTeacherPermission();
+        checkAdminPermission();
         Long currentUserId = SecurityUtils.getUserId();
         if (currentUserId.equals(id)) {
             throw new BusinessException(ErrorCodeConstant.BUSINESS_ERROR, ErrorMessageConstant.USER_DELETE_SELF);
         }
-        log.info("教师[{}]删除用户: id={}", SecurityUtils.getCurrentUsername(), id);
+        log.info("管理员[{}]删除用户: id={}", SecurityUtils.getCurrentUsername(), id);
         User exist = userMapper.selectById(id);
         if (exist == null) {
             throw new BusinessException(ErrorCodeConstant.USER_NOT_FOUND, ErrorMessageConstant.USER_NOT_FOUND);
@@ -155,7 +188,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
 
     @Override
     public PageResult<UserInfoResponse> records(Long pageNum, Long pageSize, String keyword) {
-        checkTeacherPermission();
+        checkAdminPermission();
         Page<User> page = new Page<>(pageNum, pageSize);
         LambdaQueryWrapper<User> wrapper = Wrappers.<User>lambdaQuery()
                 .and(StringUtils.hasText(keyword), w -> w.like(User::getUsername, keyword)
@@ -187,11 +220,16 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         return user != null && "TEACHER".equals(user.getRoleName());
     }
 
-    private void checkTeacherPermission() {
+    /**
+     * 编程式角色校验：当前登录用户必须是管理员（唯一，后台密钥注册产生）
+     * 说明：JWT 过滤器构建的认证令牌不含角色信息，无法直接使用 @PreAuthorize 的 hasRole，
+     * 此处通过 SecurityUtils 获取当前用户后查库比对角色
+     */
+    private void checkAdminPermission() {
         Long userId = SecurityUtils.getUserId();
         User user = userMapper.selectById(userId);
-        if (user == null || !"TEACHER".equals(user.getRoleName())) {
-            log.warn("权限不足: userId={} 尝试执行教师专属操作", userId);
+        if (user == null || !"ADMIN".equals(user.getRoleName())) {
+            log.warn("权限不足: userId={} 尝试执行管理员专属操作", userId);
             throw new BusinessException(ErrorCodeConstant.PERMISSION_DENIED, ErrorMessageConstant.USER_PERMISSION_DENIED);
         }
     }

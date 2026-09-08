@@ -22,7 +22,7 @@ public class ErrorMessageConstant {
     public static final String CONFIG_VALUE_EMPTY = "配置项值不能为空";
     public static final String CONFIG_NOT_FOUND = "配置项不存在";
     public static final String USER_NOT_FOUND = "用户不存在";
-    public static final String USER_PERMISSION_DENIED = "权限不足，仅教师可执行该操作";
+    public static final String USER_PERMISSION_DENIED = "权限不足，仅管理员可执行该操作";
     public static final String USER_USERNAME_EXIST = "用户名已存在";
     public static final String USER_ROLE_EMPTY = "用户角色不能为空";
     public static final String USER_ROLE_INVALID = "用户角色不合法，仅支持 STUDENT 或 TEACHER";
@@ -30,4 +30,7 @@ public class ErrorMessageConstant {
     public static final String USER_DELETE_SELF = "不能删除当前登录账号";
     public static final String USER_PASSWORD_SIZE = "密码长度需在6~32位之间";
     public static final String USER_EMAIL_INVALID = "邮箱格式不正确";
+    public static final String ADMIN_ALREADY_EXISTS = "管理员已存在，系统仅支持一名管理员";
+    public static final String ADMIN_INIT_KEY_EMPTY = "管理员初始化密钥不能为空";
+    public static final String ADMIN_INIT_KEY_INVALID = "管理员初始化密钥错误";
 }
