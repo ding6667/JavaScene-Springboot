@@ -19,6 +19,15 @@ public final class DifyConstant {
     /** 从知识库检索分段 */
     public static final String RETRIEVE = "/datasets/{datasetId}/retrieve";
 
+    /** 查询/创建知识库元数据字段 */
+    public static final String DATASET_METADATA = "/datasets/{datasetId}/metadata";
+
+    /** 元数据字段类型：数值 */
+    public static final String METADATA_TYPE_NUMBER = "number";
+
+    /** 元数据字段类型：文本 */
+    public static final String METADATA_TYPE_STRING = "string";
+
     /** 索引方式：高质量（嵌入模型，精确检索） */
     public static final String INDEXING_TECHNIQUE_HIGH_QUALITY = "high_quality";
 

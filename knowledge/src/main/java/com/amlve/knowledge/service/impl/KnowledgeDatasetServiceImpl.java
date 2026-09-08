@@ -21,6 +21,7 @@ import com.amlve.knowledge.tableEnt.KnowledgeChapter;
 import com.amlve.knowledge.tableEnt.KnowledgeContent;
 import com.amlve.knowledge.tableEnt.KnowledgeKeyword;
 import com.amlve.systemapi.service.UserService;
+import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -193,14 +194,20 @@ public class KnowledgeDatasetServiceImpl implements KnowledgeDatasetService,
                                 ? null : record.getSegment().getDocument().getId());
                         item.setDocumentName(record.getSegment().getDocument() == null
                                 ? null : record.getSegment().getDocument().getName());
-                        Map<String, Object> metadata = record.getSegment().getMetadata();
-                        if (metadata != null) {
-                            item.setChapterId(metadata.get(KnowledgeConstant.METADATA_CHAPTER_ID));
-                            Object page = metadata.get(KnowledgeConstant.METADATA_PAGE);
-                            item.setPage(page == null ? null : String.valueOf(page));
-                        }
                     }
                     item.setScore(record.getScore());
+                    // 章节与页码以 MySQL 为准：按 dify_document_id 反查 knowledge_content
+                    // （Dify 把元数据放在 segment.document.doc_metadata，api DTO 未映射该层级）
+                    if (item.getDocumentId() != null) {
+                        KnowledgeContent content = contentMapper.selectOne(
+                                Wrappers.lambdaQuery(KnowledgeContent.class)
+                                        .eq(KnowledgeContent::getDifyDocumentId, item.getDocumentId())
+                                        .last("LIMIT 1"));
+                        if (content != null) {
+                            item.setChapterId(content.getChapterId());
+                            item.setPage(content.getPageRef());
+                        }
+                    }
                     items.add(item);
                 }
             }

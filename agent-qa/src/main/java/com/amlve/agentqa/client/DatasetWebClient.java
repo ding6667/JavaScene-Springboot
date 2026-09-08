@@ -119,9 +119,11 @@ public class DatasetWebClient {
      * @return 原始 JSON 响应（result: success）
      */
     public String updateDocumentMetadata(String datasetId, String documentId, Map<String, Object> metadata) {
+        Map<String, String> fieldIds = resolveMetadataFieldIds(datasetId, metadata);
         List<Map<String, Object>> metadataList = metadata.entrySet().stream()
                 .map(entry -> {
                     Map<String, Object> item = new HashMap<>();
+                    item.put("id", fieldIds.get(entry.getKey()));
                     item.put("name", entry.getKey());
                     item.put("value", entry.getValue());
                     return item;
@@ -133,6 +135,37 @@ public class DatasetWebClient {
         operation.put("partial_update", true);
         Map<String, Object> body = Map.of("operation_data", List.of(operation));
         return postJson(DifyConstant.UPDATE_DOCUMENT_METADATA, datasetId, body);
+    }
+
+    /**
+     * 解析元数据字段名到字段ID的映射；字段不存在时按值类型自动创建。
+     * <p>
+     * Dify 的文档元数据更新接口要求 metadata_list 每项携带字段的 id，
+     * id 由 Dify 在字段创建时分配，需先查 GET /datasets/{id}/metadata 获取。
+     */
+    private Map<String, String> resolveMetadataFieldIds(String datasetId, Map<String, Object> metadata) {
+        Map<String, String> fieldIds = new HashMap<>();
+        String response = getJson(DifyConstant.DATASET_METADATA, datasetId);
+        try {
+            OBJECT_MAPPER.readTree(response).path("doc_metadata").forEach(node ->
+                    fieldIds.put(node.path("name").asText(), node.path("id").asText()));
+        } catch (IOException e) {
+            throw new BusinessException("解析 Dify 元数据字段列表失败: " + e.getMessage(), e);
+        }
+        for (Map.Entry<String, Object> entry : metadata.entrySet()) {
+            if (!fieldIds.containsKey(entry.getKey())) {
+                String type = entry.getValue() instanceof Number
+                        ? DifyConstant.METADATA_TYPE_NUMBER : DifyConstant.METADATA_TYPE_STRING;
+                String created = postJson(DifyConstant.DATASET_METADATA, datasetId,
+                        Map.of("name", entry.getKey(), "type", type));
+                try {
+                    fieldIds.put(entry.getKey(), OBJECT_MAPPER.readTree(created).path("id").asText());
+                } catch (IOException e) {
+                    throw new BusinessException("解析 Dify 元数据字段创建响应失败: " + e.getMessage(), e);
+                }
+            }
+        }
+        return fieldIds;
     }
 
     /**
@@ -159,6 +192,26 @@ public class DatasetWebClient {
                 )
         );
         return postJson(DifyConstant.RETRIEVE, datasetId, body);
+    }
+
+    /**
+     * 统一的 JSON GET 请求，带错误处理
+     */
+    private String getJson(String uriTemplate, String datasetId) {
+        try {
+            String response = difyWebClient.get()
+                    .uri(uriTemplate, datasetId)
+                    .retrieve()
+                    .onStatus(HttpStatusCode::isError, this::toError)
+                    .bodyToMono(String.class)
+                    .block();
+            log.debug("Dify 响应: uri={}, body={}", uriTemplate, response);
+            return response;
+        } catch (BusinessException e) {
+            throw e;
+        } catch (Exception e) {
+            throw new BusinessException("Dify API 调用失败: " + e.getMessage(), e);
+        }
     }
 
     /**
