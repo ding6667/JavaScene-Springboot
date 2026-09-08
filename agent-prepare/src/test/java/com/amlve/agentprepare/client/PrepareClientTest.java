@@ -13,16 +13,16 @@ class PrepareClientTest {
     private final PrepareClient prepareClient = new PrepareClient();
 
     @Test
-    void generateTeachingPlan_shouldContainChapterId() {
-        String plan = prepareClient.generateTeachingPlan(3L);
+    void getLessonText_shouldContainLessonPrompt() {
+        String plan = prepareClient.getLessonText("第3章");
 
         assertThat(plan).isNotBlank();
-        assertThat(plan).contains("3");
+        assertThat(plan).contains("第3章");
     }
 
     @Test
-    void generateTeachingPlan_shouldContainTeachingPlanStructure() {
-        String plan = prepareClient.generateTeachingPlan(1L);
+    void getLessonText_shouldContainTeachingPlanStructure() {
+        String plan = prepareClient.getLessonText("第1章");
 
         // 教案五要素：目标、重难点、例题、实训、作业
         assertThat(plan).contains("教学目标");
@@ -33,9 +33,9 @@ class PrepareClientTest {
     }
 
     @Test
-    void generateTeachingPlan_shouldDistinguishChapters() {
-        String plan1 = prepareClient.generateTeachingPlan(1L);
-        String plan2 = prepareClient.generateTeachingPlan(2L);
+    void getLessonText_shouldDistinguishPrompts() {
+        String plan1 = prepareClient.getLessonText("第1章");
+        String plan2 = prepareClient.getLessonText("第2章");
 
         assertThat(plan1).isNotEqualTo(plan2);
     }

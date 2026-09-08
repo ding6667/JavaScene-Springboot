@@ -1,4 +1,4 @@
-package com.amlve.teach.dto;
+package com.amlve.teach.dto.response;
 
 import lombok.Data;
 

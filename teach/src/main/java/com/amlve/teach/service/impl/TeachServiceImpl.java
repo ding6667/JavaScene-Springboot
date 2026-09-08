@@ -1,7 +1,7 @@
 package com.amlve.teach.service.impl;
 
-import com.amlve.teach.dto.HomeworkPublishRequest;
-import com.amlve.teach.dto.HomeworkResponse;
+import com.amlve.teach.dto.request.HomeworkPublishRequest;
+import com.amlve.teach.dto.response.HomeworkResponse;
 import com.amlve.teach.mapper.HomeworkMapper;
 import com.amlve.teach.tableEnt.Homework;
 import com.amlve.teach.service.TeachService;
