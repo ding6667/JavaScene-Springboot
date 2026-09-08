@@ -59,4 +59,14 @@ public interface QAAgentClient {
      */
     DifyRetrieveResponse retrieve(String datasetId, String query,
                                   Integer topK, Double scoreThreshold);
+
+    /**
+     * 答疑工作流：学生针对某章节提问，由 Dify 工作流结合该章节教材内容回答
+     * POST /workflows/run（blocking 模式）
+     *
+     * @param chapterId 章节ID（工作流 inputs 变量名需与 Dify 工作流编排定义一致）
+     * @param userQuery 学生提问内容
+     * @return 工作流输出中的答案文本
+     */
+    String answer(String chapterId, String userQuery);
 }
