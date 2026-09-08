@@ -1,8 +1,11 @@
 package com.amlve.teach.controller;
 
 import com.amlve.agentprepareapi.PrepareAgentClient;
+import com.amlve.agentprepareapi.dto.request.PrepareRequest;
+import com.amlve.agentprepareapi.dto.response.PrepareResponse;
 import com.amlve.teach.config.MethodSecurityTestConfig;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
@@ -12,7 +15,8 @@ import org.springframework.security.test.context.support.WithAnonymousUser;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.MockMvc;
 
-import static org.mockito.ArgumentMatchers.anyString;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -32,10 +36,18 @@ class PrepareControllerTest {
     @MockBean
     private PrepareAgentClient prepareAgentClient;
 
+    /** 构造智能体 Mock 响应 */
+    private PrepareResponse mockResponse(String lessonPlan) {
+        PrepareResponse response = new PrepareResponse();
+        response.setLessonPlan(lessonPlan);
+        return response;
+    }
+
     @Test
     @WithMockUser(roles = "TEACHER")
     void prepare_shouldSucceed_whenTeacherRole() throws Exception {
-        when(prepareAgentClient.getLessonText("第5章")).thenReturn("【教案模板 - 第5章】");
+        when(prepareAgentClient.generate(any(PrepareRequest.class)))
+                .thenReturn(mockResponse("【教案模板 - 第5章】"));
 
         mockMvc.perform(post("/api/agent/teach/prepare")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -88,14 +100,16 @@ class PrepareControllerTest {
     @Test
     @WithMockUser(roles = "TEACHER")
     void prepare_shouldPassChapterIdToClient() throws Exception {
-        when(prepareAgentClient.getLessonText(anyString())).thenReturn("教案");
+        when(prepareAgentClient.generate(any(PrepareRequest.class))).thenReturn(new PrepareResponse());
 
         mockMvc.perform(post("/api/agent/teach/prepare")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"chapterId\":5}"))
                 .andExpect(status().isOk());
 
-        // 验证章节ID被正确组装为提示词传给智能体客户端
-        verify(prepareAgentClient).getLessonText("第5章");
+        // 验证章节ID被正确传递给智能体客户端
+        ArgumentCaptor<PrepareRequest> captor = ArgumentCaptor.forClass(PrepareRequest.class);
+        verify(prepareAgentClient).generate(captor.capture());
+        assertEquals(5L, captor.getValue().getChapterId().longValue());
     }
 }

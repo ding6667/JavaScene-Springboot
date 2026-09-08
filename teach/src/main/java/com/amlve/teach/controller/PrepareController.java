@@ -25,18 +25,26 @@ public class PrepareController {
     @Resource
     private PrepareAgentClient prepareAgentClient;
 
-    /** 根据章节ID生成教案 */
+    /** 根据章节ID与生成开关生成备课材料 */
     @PreAuthorize("hasRole('TEACHER')")
     @PostMapping("/prepare")
     public Result<PrepareResponse> prepare(@Valid @RequestBody PrepareRequest request) {
-        // 将章节ID组装为备课提示词，交由备课智能体生成教案
-        String lessonPrompt = "第" + request.getChapterId() + "章";
-        String teachingPlan = prepareAgentClient.getLessonText(lessonPrompt);
+        // 组装备课智能体请求：透传章节ID与各生成开关（DTO 同名，api 侧使用全限定名）
+        com.amlve.agentprepareapi.dto.request.PrepareRequest apiRequest =
+                new com.amlve.agentprepareapi.dto.request.PrepareRequest();
+        apiRequest.setChapterId(request.getChapterId());
+        apiRequest.setPptx(request.getPptx());
+        apiRequest.setLessonPlan(request.getLessonPlan());
+        apiRequest.setHomework(request.getHomework());
+        apiRequest.setLab(request.getLab());
+        apiRequest.setKeyPoints(request.getKeyPoints());
+        apiRequest.setUserInstruction(request.getUserInstruction());
+        com.amlve.agentprepareapi.dto.response.PrepareResponse apiResponse = prepareAgentClient.generate(apiRequest);
 
         // 组装响应：回显章节ID、教案内容与生成时间
         PrepareResponse response = new PrepareResponse();
         response.setChapterId(request.getChapterId());
-        response.setTeachingPlan(teachingPlan);
+        response.setTeachingPlan(apiResponse.getLessonPlan());
         response.setGenerateTime(LocalDateTime.now());
         return Result.success(response);
     }

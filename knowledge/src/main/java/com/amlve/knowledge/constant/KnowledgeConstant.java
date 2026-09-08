@@ -1,0 +1,25 @@
+package com.amlve.knowledge.constant;
+
+/**
+ * knowledge 模块常量
+ */
+public final class KnowledgeConstant {
+
+    // ===== Dify 检索结果 metadata 中的键名（与 Dify 知识库元数据字段一致） =====
+
+    /** 元数据键：章节ID */
+    public static final String METADATA_CHAPTER_ID = "chapter_id";
+
+    /** 元数据键：章节名称 */
+    public static final String METADATA_CHAPTER_NAME = "chapter_name";
+
+    /** 元数据键：页码 */
+    public static final String METADATA_PAGE = "page";
+
+    // ===== AI 校验兜底关键词（knowledge_keyword 表无数据时使用，后续可替换） =====
+
+    public static final String FALLBACK_KEYWORDS = "面向对象,类,对象,继承,封装,多态,接口,方法,属性,构造器";
+
+    private KnowledgeConstant() {
+    }
+}

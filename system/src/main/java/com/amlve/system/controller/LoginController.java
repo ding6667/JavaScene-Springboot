@@ -3,6 +3,7 @@ package com.amlve.system.controller;
 import com.amlve.common.request.Result;
 import com.amlve.system.dto.request.LoginRequest;
 import com.amlve.system.service.UserService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -12,7 +13,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RequiredArgsConstructor
 @RestController
-@RequestMapping("/api/auth")
+@RequestMapping("/api/user/auth")
 public class LoginController {
 
     private final UserService userService;
@@ -23,7 +24,7 @@ public class LoginController {
      * @return
      */
     @PostMapping("/login")
-    public Result<String> login(@RequestBody LoginRequest loginRequest) {
+    public Result<String> login(@Valid @RequestBody LoginRequest loginRequest) {
         String token = userService.checkUser(loginRequest.getUsername(), loginRequest.getPassword());
         return Result.success(token);
     }

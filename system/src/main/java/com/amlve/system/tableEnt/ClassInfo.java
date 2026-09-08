@@ -26,6 +26,11 @@ public class ClassInfo {
 
     private Long userId;
 
+    /**
+     * 所属课程ID
+     */
+    private Long courseId;
+
     private String semester;
 
     private Integer status;

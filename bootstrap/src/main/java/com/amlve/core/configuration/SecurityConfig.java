@@ -49,7 +49,7 @@ public class SecurityConfig {
                 .csrf(AbstractHttpConfigurer::disable) // JWT 场景下可禁用 CSRF
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)) // 无状态
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/api/auth/**").permitAll() // 放行登录、注册等公开接口
+                        .requestMatchers("/api/user/auth/**").permitAll() // 放行登录、注册等公开接口
                         .anyRequest().authenticated() // 其余所有接口都需要认证[reference:7]
                 )
                 .userDetailsService(userDetailsService)
