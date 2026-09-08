@@ -35,7 +35,7 @@ public class PrepareRequest {
     private String keyPoints = "1";
 
     /**
-     * 用户额外指令（可选）
+     * 用户额外消息（可选）
      */
-    private String userInstruction;
+    private String userMessage;
 }

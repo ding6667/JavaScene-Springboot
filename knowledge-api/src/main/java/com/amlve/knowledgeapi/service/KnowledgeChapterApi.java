@@ -2,6 +2,7 @@ package com.amlve.knowledgeapi.service;
 
 import com.amlve.knowledgeapi.dto.response.ChapterDTO;
 import com.amlve.knowledgeapi.dto.response.KnowledgePointDTO;
+import com.amlve.knowledgeapi.dto.response.TeachingMaterialDTO;
 
 import java.util.List;
 
@@ -27,4 +28,12 @@ public interface KnowledgeChapterApi {
      * @return 知识点列表
      */
     List<KnowledgePointDTO> listPointsByChapter(Long chapterId);
+
+    /**
+     * 根据章节ID获取全部七类备课素材
+     *
+     * @param chapterId 章节ID
+     * @return 七类素材封装对象
+     */
+    TeachingMaterialDTO getTeachingMaterials(Long chapterId);
 }

@@ -11,9 +11,9 @@ public class PrepareResponse {
     private String lessonPlan;
 
     /**
-     * PPT 下载路径（URL 或本地路径）
+     * PPT
      */
-    private String pptxUrl;
+    private String pptx;
 
     /**
      * 重难点清单（Markdown）
