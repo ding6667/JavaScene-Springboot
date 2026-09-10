@@ -1,4 +1,4 @@
 package com.amlve.agentcode;
 
-public class CodeClient {
+public class CodeAgentClient {
 }
