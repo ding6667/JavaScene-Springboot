@@ -14,7 +14,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
 import org.springframework.stereotype.Service;
 
-import java.time.LocalDateTime;
 import java.util.List;
 
 /**
@@ -35,7 +34,8 @@ public class TeachServiceImpl implements TeachService, TeachHomeworkService {
         homework.setChapterId(request.getChapterId());
         homework.setDeadline(request.getDeadline());
         homework.setTeacherId(SecurityUtils.getUserId());
-        homework.setCreateTime(LocalDateTime.now());
+        // 发布即已发布状态（1=未发布，2=已发布）；createTime/updateTime 由 MetaHandler 自动填充
+        homework.setStatus(2);
         homeworkMapper.insert(homework);
         log.info("教师{}发布作业: {} (作业ID={})",
                 homework.getTeacherId(), homework.getTitle(), homework.getId());

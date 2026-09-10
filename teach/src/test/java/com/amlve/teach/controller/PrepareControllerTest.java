@@ -1,9 +1,9 @@
 package com.amlve.teach.controller;
 
-import com.amlve.agentprepareapi.PrepareAgentClient;
-import com.amlve.agentprepareapi.dto.request.PrepareRequest;
-import com.amlve.agentprepareapi.dto.response.PrepareResponse;
 import com.amlve.teach.config.MethodSecurityTestConfig;
+import com.amlve.teach.dto.request.PrepareRequest;
+import com.amlve.teach.dto.response.PrepareResponse;
+import com.amlve.teach.service.TeachPrepareService;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -15,6 +15,8 @@ import org.springframework.security.test.context.support.WithAnonymousUser;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.MockMvc;
 
+import java.time.LocalDateTime;
+
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
@@ -24,7 +26,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
- * 备课智能体接口切片测试。
+ * 备课智能体接口切片测试（Controller 只做参数接收与响应，业务在 Service）。
  */
 @WebMvcTest(PrepareController.class)
 @Import(MethodSecurityTestConfig.class)
@@ -34,20 +36,24 @@ class PrepareControllerTest {
     private MockMvc mockMvc;
 
     @MockBean
-    private PrepareAgentClient prepareAgentClient;
+    private TeachPrepareService teachPrepareService;
 
-    /** 构造智能体 Mock 响应 */
-    private PrepareResponse mockResponse(String lessonPlan) {
+    /** 构造 Service Mock 响应 */
+    private PrepareResponse mockResponse() {
         PrepareResponse response = new PrepareResponse();
-        response.setLessonPlan(lessonPlan);
+        response.setChapterId(5L);
+        response.setLessonPlan("【教案模板 - 第5章】");
+        response.setPptxUrl("D:/temp/commonFile/2026/09/08/xxx.pptx");
+        response.setRecordId(100L);
+        response.setGenerateTime(LocalDateTime.now());
         return response;
     }
 
     @Test
     @WithMockUser(roles = "TEACHER")
     void prepare_shouldSucceed_whenTeacherRole() throws Exception {
-        when(prepareAgentClient.generate(any(PrepareRequest.class)))
-                .thenReturn(mockResponse("【教案模板 - 第5章】"));
+        when(teachPrepareService.generateTeachingMaterials(any(PrepareRequest.class)))
+                .thenReturn(mockResponse());
 
         mockMvc.perform(post("/api/agent/teach/prepare")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -55,8 +61,9 @@ class PrepareControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(200))
                 .andExpect(jsonPath("$.data.chapterId").value(5))
-                .andExpect(jsonPath("$.data.teachingPlan").value("【教案模板 - 第5章】"))
-                .andExpect(jsonPath("$.data.generateTime").isNotEmpty());
+                .andExpect(jsonPath("$.data.lessonPlan").value("【教案模板 - 第5章】"))
+                .andExpect(jsonPath("$.data.pptxUrl").isNotEmpty())
+                .andExpect(jsonPath("$.data.recordId").value(100));
     }
 
     @Test
@@ -99,17 +106,19 @@ class PrepareControllerTest {
 
     @Test
     @WithMockUser(roles = "TEACHER")
-    void prepare_shouldPassChapterIdToClient() throws Exception {
-        when(prepareAgentClient.generate(any(PrepareRequest.class))).thenReturn(new PrepareResponse());
+    void prepare_shouldPassChapterIdToService() throws Exception {
+        when(teachPrepareService.generateTeachingMaterials(any(PrepareRequest.class)))
+                .thenReturn(mockResponse());
 
         mockMvc.perform(post("/api/agent/teach/prepare")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"chapterId\":5}"))
+                        .content("{\"chapterId\":5,\"userMessage\":\"侧重案例讲解\"}"))
                 .andExpect(status().isOk());
 
-        // 验证章节ID被正确传递给智能体客户端
+        // 验证章节ID与用户额外指令被正确传递给 Service
         ArgumentCaptor<PrepareRequest> captor = ArgumentCaptor.forClass(PrepareRequest.class);
-        verify(prepareAgentClient).generate(captor.capture());
+        verify(teachPrepareService).generateTeachingMaterials(captor.capture());
         assertEquals(5L, captor.getValue().getChapterId().longValue());
+        assertEquals("侧重案例讲解", captor.getValue().getUserMessage());
     }
 }

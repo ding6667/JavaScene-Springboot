@@ -40,5 +40,5 @@ public class PrepareRequest {
     /**
      * 用户额外指令（可选），透传给备课智能体
      */
-    private String userInstruction;
+    private String userMessage;
 }

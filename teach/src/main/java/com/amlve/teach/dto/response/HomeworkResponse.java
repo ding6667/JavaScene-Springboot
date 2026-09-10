@@ -20,5 +20,8 @@ public class HomeworkResponse {
 
     private LocalDateTime deadline;
 
+    /** 状态（1=未发布，2=已发布，3=已截止，4=已归档） */
+    private Integer status;
+
     private LocalDateTime createTime;
 }
