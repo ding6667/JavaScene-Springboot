@@ -1,7 +1,7 @@
 package com.amlve.teach.controller;
 
 import com.amlve.common.request.Result;
-import com.amlve.teach.dto.ClassStatsResponse;
+import com.amlve.teach.dto.response.ClassStatsResponse;
 import jakarta.annotation.Resource;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;

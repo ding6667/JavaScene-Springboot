@@ -1,8 +1,8 @@
 package com.amlve.teach.controller;
 
 import com.amlve.common.request.Result;
-import com.amlve.teach.dto.HomeworkPublishRequest;
-import com.amlve.teach.dto.HomeworkResponse;
+import com.amlve.teach.dto.request.HomeworkPublishRequest;
+import com.amlve.teach.dto.response.HomeworkResponse;
 import com.amlve.teach.service.TeachService;
 import jakarta.annotation.Resource;
 import jakarta.validation.Valid;

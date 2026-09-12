@@ -1,8 +1,8 @@
 package com.amlve.teach.service.impl;
 
 import com.amlve.common.security.UserIdAuthenticationToken;
-import com.amlve.teach.dto.HomeworkPublishRequest;
-import com.amlve.teach.dto.HomeworkResponse;
+import com.amlve.teach.dto.request.HomeworkPublishRequest;
+import com.amlve.teach.dto.response.HomeworkResponse;
 import com.amlve.teach.mapper.HomeworkMapper;
 import com.amlve.teach.tableEnt.Homework;
 import com.amlve.teachapi.dto.HomeworkDTO;
@@ -81,7 +81,8 @@ class TeachServiceImplTest {
         assertThat(saved.getChapterId()).isEqualTo(1L);
         assertThat(saved.getDeadline()).isEqualTo(LocalDateTime.of(2026, 9, 15, 23, 59, 59));
         assertThat(saved.getTeacherId()).isEqualTo(TEACHER_ID);
-        assertThat(saved.getCreateTime()).isNotNull();
+        // 发布即已发布状态；createTime 由 MetaHandler 运行时填充（单测 Mock Mapper 不触发）
+        assertThat(saved.getStatus()).isEqualTo(2);
     }
 
     @Test

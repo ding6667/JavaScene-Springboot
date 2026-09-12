@@ -44,6 +44,12 @@
             <artifactId>agent-prepare-api</artifactId>
             <version>${project.version}</version>
         </dependency>
+        <!-- 备课素材查询：跨模块调用 knowledge-api 接口 -->
+        <dependency>
+            <groupId>com.amlve</groupId>
+            <artifactId>knowledge-api</artifactId>
+            <version>${project.version}</version>
+        </dependency>
         <dependency>
             <groupId>com.amlve</groupId>
             <artifactId>study-api</artifactId>
@@ -75,11 +81,6 @@
             <artifactId>spring-boot-starter-validation</artifactId>
         </dependency>
         <dependency>
-            <groupId>com.amlve</groupId>
-            <artifactId>agent-prepare</artifactId>
-            <version>${project.version}</version>
-        </dependency>
-        <dependency>
             <groupId>org.mapstruct</groupId>
             <artifactId>mapstruct</artifactId>
         </dependency>
@@ -98,6 +99,13 @@
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-web</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <!-- 集成测试：引入备课智能体真实实现（无 bootstrap 聚合时单独验证两模块链路） -->
+        <dependency>
+            <groupId>com.amlve</groupId>
+            <artifactId>agent-prepare</artifactId>
+            <version>${project.version}</version>
             <scope>test</scope>
         </dependency>
     </dependencies>
