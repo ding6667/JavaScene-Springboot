@@ -30,6 +30,7 @@ public class ScoreEvaluateResponse {
      */
     private String suggestion;
 
+    @Data
     public static class ErrorDetail {
 
         /**
@@ -56,7 +57,5 @@ public class ScoreEvaluateResponse {
          * 修改建议
          */
         private String suggestion;
-
-        // 省略 getter/setter
     }
 }
