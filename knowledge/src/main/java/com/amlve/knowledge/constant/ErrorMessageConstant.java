@@ -21,4 +21,11 @@ public class ErrorMessageConstant {
     public static final String PERMISSION_DENIED = "无权限执行该操作，仅教师可用";
     public static final String VERIFY_PASSED = "内容包含教材关键词，校验通过";
     public static final String VERIFY_NOT_PASSED = "内容未包含任何教材关键词";
+
+    // ===== 知识点权重配置 =====
+    public static final String WEIGHT_BATCH_EMPTY = "批量保存的权重配置列表不能为空";
+    public static final String WEIGHT_POINT_NOT_FOUND = "知识点不存在";
+    public static final String WEIGHT_POINT_CHAPTER_MISMATCH = "知识点不属于所选章节";
+    public static final String WEIGHT_MAX_LESS_THAN_BASE = "最大出题数量不能小于基础出题数量";
+    public static final String PERMISSION_DENIED_ADMIN = "无权限执行该操作，仅管理员可用";
 }
