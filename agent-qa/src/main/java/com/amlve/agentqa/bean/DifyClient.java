@@ -17,8 +17,12 @@ import java.util.Map;
 /**
  * Dify 工作流客户端（与知识库 DatasetWebClient 分离）：
  * 工作流应用 API 密钥（app- 开头）逐次调用动态传入，便于切换不同工作流应用
+ * <p>
+ * Bean 显式命名 qaDifyClient：避免与 exam 模块
+ * {@code com.amlve.grading.bean.DifyClient} 的默认 Bean 名 difyClient 冲突
+ * （多模块共容器时 Spring 默认 Bean 名只看类名不看包名）
  */
-@Service
+@Service("qaDifyClient")
 @Slf4j
 public class DifyClient {
 
