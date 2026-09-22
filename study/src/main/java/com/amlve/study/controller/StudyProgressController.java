@@ -7,6 +7,7 @@ import com.amlve.study.dto.response.StudyProgressResponse;
 import com.amlve.study.service.StudyProgressService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -17,11 +18,12 @@ import org.springframework.web.bind.annotation.RestController;
 import java.util.List;
 
 /**
- * 学习进度管理
+ * 学习进度管理（仅学生可操作自己的进度）
  */
 @RestController
 @RequestMapping("/api/study/progress")
 @RequiredArgsConstructor
+@PreAuthorize("hasRole('STUDENT')")
 public class StudyProgressController {
 
     private final StudyProgressService studyProgressService;

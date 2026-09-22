@@ -45,6 +45,12 @@
             <artifactId>knowledge-api</artifactId>
             <version>${project.version}</version>
         </dependency>
+        <!-- 跨模块调用代码调试智能体（agent-code-api），仅依赖接口，禁止注入实现类 -->
+        <dependency>
+            <groupId>com.amlve</groupId>
+            <artifactId>agent-code-api</artifactId>
+            <version>${project.version}</version>
+        </dependency>
 
         <dependency>
             <groupId>com.baomidou</groupId>

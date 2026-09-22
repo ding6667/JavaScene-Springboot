@@ -1,10 +1,16 @@
 package com.amlve.study.service.impl;
 
+import com.amlve.agentcodeapi.dto.request.CodeDebugRequest;
+import com.amlve.agentcodeapi.dto.response.CodeDebugResponse;
+import com.amlve.agentcodeapi.service.CodeAgentClient;
 import com.amlve.study.dto.request.CodeRunRequest;
 import com.amlve.study.dto.response.CodeRunResultResponse;
+import com.amlve.study.enumeration.CodeRunStatusEnum;
 import com.amlve.study.mapper.StudyCodeRunRecordMapper;
 import com.amlve.study.service.CodeRunService;
 import com.amlve.study.tableEnt.StudyCodeRunRecord;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -77,6 +83,18 @@ public class CodeRunServiceImpl implements CodeRunService {
      */
     @Autowired(required = false)
     private StudyCodeRunRecordMapper codeRunRecordMapper;
+
+    /**
+     * 代码调试智能体客户端（agent-code-api 接口）。
+     *
+     * <p>与 Mapper 一致使用非必需注入：单元测试无 Spring 容器时为 null，
+     * AI 调试逻辑自动跳过，不影响编译运行主流程。
+     */
+    @Autowired(required = false)
+    private CodeAgentClient codeAgentClient;
+
+    /** AI 字段序列化（knowledgePoints 列表转 JSON 字符串落库） */
+    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
     // ===== 运行状态 =====
     /** 运行成功 */
@@ -152,12 +170,137 @@ public class CodeRunServiceImpl implements CodeRunService {
             Pattern.compile("\\bjava\\s*\\.\\s*nio\\s*\\.\\s*file\\b")
     );
 
+    /**
+     * 异常堆栈中学生代码帧（形如 {@code at Main.main(Main.java:5)}），
+     * 类名与文件名一致可排除 JDK 内部帧，用于运行时错误的本地行号定位。
+     */
+    private static final Pattern STACK_LINE_PATTERN =
+            Pattern.compile("\\bat\\s+([\\w$]+)\\.[\\w$]+\\(\\1\\.java:(\\d+)\\)");
+
     @Override
     public CodeRunResultResponse run(Long userId, CodeRunRequest request) {
         CodeRunResultResponse response = doRun(userId, request);
+        // 出错（编译/运行时错误）时自动调用 AI 调试智能体，回填错误原因与优化建议
+        invokeAiDebug(userId, request, response, false);
         // 每次运行都写入 study_code_run_record（含被拦截/失败的运行），落库异常不影响主流程
         saveRecord(userId, request, response);
         return response;
+    }
+
+    @Override
+    public CodeRunResultResponse debugRun(Long userId, CodeRunRequest request) {
+        CodeRunResultResponse response = doRun(userId, request);
+        // 调试模式：无论成败都调用 AI 调试智能体（成功时 error_type=none 传运行输出）
+        invokeAiDebug(userId, request, response, true);
+        saveRecord(userId, request, response);
+        return response;
+    }
+
+    // ============ AI 调试智能体 ============
+
+    /**
+     * 调用代码调试智能体并回填 AI 字段。
+     *
+     * <p>触发规则：
+     * <ul>
+     *   <li>{@code always=true}（调试接口）：编译错误、运行时错误、运行成功都触发</li>
+     *   <li>{@code always=false}（运行接口）：仅编译错误、运行时错误触发</li>
+     *   <li>安全拦截（4）/系统内部错误（5）：本地已给出明确原因，AI 无调试价值，不触发</li>
+     * </ul>
+     *
+     * <p>智能体未装配（单测环境）或调用失败时仅记录日志，绝不影响编译运行主流程。
+     */
+    private void invokeAiDebug(Long userId, CodeRunRequest request,
+                               CodeRunResultResponse response, boolean always) {
+        if (codeAgentClient == null) {
+            return;
+        }
+        CodeRunStatusEnum status = CodeRunStatusEnum.fromCode(response.getStatus());
+        if (status == null || status == CodeRunStatusEnum.SECURITY_REJECTED
+                || status == CodeRunStatusEnum.INTERNAL_ERROR) {
+            return;
+        }
+        boolean failed = status == CodeRunStatusEnum.COMPILE_ERROR
+                || status == CodeRunStatusEnum.RUNTIME_ERROR;
+        if (!always && !failed) {
+            return;
+        }
+        try {
+            CodeDebugRequest debugRequest = buildDebugRequest(request, response);
+            CodeDebugResponse debugResponse = codeAgentClient.debug(debugRequest);
+            if (debugResponse != null) {
+                response.setErrorReason(debugResponse.getErrorReason());
+                response.setOptimizeSuggest(debugResponse.getOptimizeSuggest());
+                response.setStandardIdea(debugResponse.getStandardIdea());
+                response.setKnowledgePoints(debugResponse.getKnowledgePoints());
+                // 本地未定位到错误行时，参考 AI 返回的行号列表
+                if (response.getErrorLine() == null
+                        && debugResponse.getErrorLineList() != null
+                        && !debugResponse.getErrorLineList().isEmpty()) {
+                    try {
+                        response.setErrorLine(Integer.valueOf(debugResponse.getErrorLineList().get(0)));
+                    } catch (NumberFormatException ignore) {
+                        // AI 返回的行号不可解析时保留空值
+                    }
+                }
+            }
+        } catch (Exception e) {
+            log.warn("AI 调试智能体调用失败，不影响运行结果返回: userId={}, error={}", userId, e.getMessage());
+        }
+    }
+
+    /**
+     * 把运行请求 + 运行结果组装为调试智能体请求。
+     *
+     * <p>章节名称、题目内容/标准答案需等题库模块就绪后补充，目前不传（Dify 端为可选变量）。
+     */
+    private CodeDebugRequest buildDebugRequest(CodeRunRequest request, CodeRunResultResponse response) {
+        CodeRunStatusEnum status = CodeRunStatusEnum.fromCode(response.getStatus());
+        String errorType = switch (status) {
+            case COMPILE_ERROR -> "syntax_error";
+            case RUNTIME_ERROR -> "runtime_error";
+            default -> "none";
+        };
+        Integer errorLine = response.getErrorLine();
+        if (errorLine == null) {
+            // 运行时错误本地从堆栈定位行号，回传 AI 的同时回填响应（前端与落库可见）
+            errorLine = extractErrorLineFromStack(response.getErrorMsg());
+            if (errorLine != null) {
+                response.setErrorLine(errorLine);
+            }
+        }
+        return CodeDebugRequest.builder()
+                .code(request.getCodeContent())
+                .chapterId(toStr(request.getChapterId()))
+                .questionId(toStr(request.getQuestionId()))
+                .errorType(errorType)
+                .errorMsg(response.getErrorMsg())
+                .errorLine(errorLine == null ? null : String.valueOf(errorLine))
+                .runResult(response.getOutput())
+                .build();
+    }
+
+    /**
+     * 运行时错误的本地行号定位：从异常堆栈中提取第一处
+     * {@code at Xxx.main(Xxx.java:N)} 的行号，供 AI 调试参考。
+     */
+    private Integer extractErrorLineFromStack(String errorMsg) {
+        if (errorMsg == null || errorMsg.isBlank()) {
+            return null;
+        }
+        Matcher matcher = STACK_LINE_PATTERN.matcher(errorMsg);
+        if (matcher.find()) {
+            try {
+                return Integer.valueOf(matcher.group(2));
+            } catch (NumberFormatException ignore) {
+                return null;
+            }
+        }
+        return null;
+    }
+
+    private String toStr(Long value) {
+        return value == null ? null : String.valueOf(value);
     }
 
     /** 编译运行主流程，返回最终响应；不负责落库 */
@@ -573,6 +716,9 @@ public class CodeRunServiceImpl implements CodeRunService {
     /**
      * 把本次运行结果写入 study_code_run_record，并把主键回填到响应体的 runId。
      *
+     * <p>AI 调试字段（errorReason/optimizeSuggest/standardIdea/knowledgePoints）
+     * 由 {@link #invokeAiDebug} 在落库前回填到响应，此处一并落库。
+     *
      * <p>落库失败只记录日志，绝不向上抛出，避免影响学生看到编译运行结果。
      */
     private void saveRecord(Long userId, CodeRunRequest request, CodeRunResultResponse response) {
@@ -590,11 +736,27 @@ public class CodeRunServiceImpl implements CodeRunService {
             entity.setErrorMsg(response.getErrorMsg());
             entity.setErrorLine(response.getErrorLine());
             entity.setRunDuration(response.getRunDuration());
-            // AI 调试字段暂时预留，后续由 AI 诊断服务回填
+            entity.setErrorReason(response.getErrorReason());
+            entity.setOptimizeSuggest(response.getOptimizeSuggest());
+            entity.setStandardIdea(response.getStandardIdea());
+            entity.setKnowledgePoints(toJsonArray(response.getKnowledgePoints()));
             codeRunRecordMapper.insert(entity);
             response.setRunId(entity.getId());
         } catch (Exception e) {
             log.error("写入代码运行记录失败: userId={}", userId, e);
+        }
+    }
+
+    /** 知识点列表序列化为 JSON 数组字符串存储；空列表返回 null */
+    private String toJsonArray(java.util.List<String> list) {
+        if (list == null || list.isEmpty()) {
+            return null;
+        }
+        try {
+            return OBJECT_MAPPER.writeValueAsString(list);
+        } catch (JsonProcessingException e) {
+            log.warn("知识点列表序列化失败: {}", list, e);
+            return null;
         }
     }
 
