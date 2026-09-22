@@ -5,11 +5,13 @@ import com.amlve.common.exception.BusinessException;
 import com.amlve.common.request.PageResult;
 import com.amlve.common.request.Result;
 import com.amlve.common.utils.SecurityUtils;
+import com.amlve.exam.dto.request.QuestionAiGenerateRequest;
 import com.amlve.exam.dto.request.QuestionGenerateRequest;
 import com.amlve.exam.dto.request.QuestionSaveRequest;
 import com.amlve.exam.enumeration.QuestionDifficultyEnum;
 import com.amlve.exam.enumeration.QuestionTypeEnum;
 import com.amlve.exam.service.ExamQuestionService;
+import com.amlve.exam.service.QuestionAgentImpl;
 import com.amlve.exam.tableEnt.ExamQuestion;
 import com.amlve.systemapi.service.UserService;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
@@ -27,6 +29,7 @@ import java.util.List;
 public class ExamQuestionController {
 
     private final ExamQuestionService questionService;
+    private final QuestionAgentImpl questionAgent;
     private final UserService userService;
 
     @PostMapping
@@ -80,6 +83,12 @@ public class ExamQuestionController {
     public Result<List<ExamQuestion>> generate(@Valid @RequestBody QuestionGenerateRequest request) {
         checkTeacherOrAdmin();
         return Result.success(questionService.generate(request));
+    }
+
+    @PostMapping("/generate/ai")
+    public Result<List<ExamQuestion>> generateAi(@Valid @RequestBody QuestionAiGenerateRequest request) {
+        checkTeacherOrAdmin();
+        return Result.success(questionAgent.generate(request));
     }
 
     private ExamQuestion toEntity(QuestionSaveRequest request) {
