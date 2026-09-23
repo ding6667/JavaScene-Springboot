@@ -58,6 +58,7 @@ public class ExamQuestionController {
 
     @GetMapping("/{id}")
     public Result<ExamQuestion> get(@PathVariable Long id) {
+        checkTeacherOrAdmin();
         return Result.success(questionService.getById(id));
     }
 
@@ -66,6 +67,7 @@ public class ExamQuestionController {
                                                  @RequestParam(required = false) Integer type,
                                                  @RequestParam(defaultValue = "1") Integer page,
                                                  @RequestParam(defaultValue = "10") Integer size) {
+        checkTeacherOrAdmin();
         LambdaQueryWrapper<ExamQuestion> wrapper = Wrappers.<ExamQuestion>lambdaQuery()
                 .eq(chapterId != null, ExamQuestion::getChapterId, chapterId)
                 .eq(type != null, ExamQuestion::getType, QuestionTypeEnum.fromCode(type))
