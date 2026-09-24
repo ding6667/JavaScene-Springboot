@@ -16,7 +16,7 @@ public interface UserService {
     boolean isTeacher(Long userId);
 
     /**
-     * 判断用户是否为管理员角色
+     * 判断用户是否为管理员角色（系统仅一名，后台密钥注册产生）
      *
      * @param userId 用户ID
      * @return true=管理员

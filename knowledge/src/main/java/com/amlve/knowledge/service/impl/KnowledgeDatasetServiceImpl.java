@@ -18,10 +18,10 @@ import com.amlve.knowledge.mapper.KnowledgeContentMapper;
 import com.amlve.knowledge.mapper.KnowledgeKeywordMapper;
 import com.amlve.knowledge.mapper.KnowledgePointMapper;
 import com.amlve.knowledge.service.KnowledgeDatasetService;
+import com.amlve.knowledge.service.KnowledgeWeightConfigService;
 import com.amlve.knowledge.tableEnt.KnowledgeChapter;
 import com.amlve.knowledge.tableEnt.KnowledgeContent;
 import com.amlve.knowledge.tableEnt.KnowledgeKeyword;
-import com.amlve.knowledge.tableEnt.KnowledgePoint;
 import com.amlve.knowledgeapi.dto.response.WeightConfigVO;
 import com.amlve.systemapi.service.UserService;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
@@ -62,6 +62,7 @@ public class KnowledgeDatasetServiceImpl implements KnowledgeDatasetService,
     private final KnowledgePointMapper knowledgePointMapper;
     private final KnowledgeConverter knowledgeConverter;
     private final UserService userService;
+    private final KnowledgeWeightConfigService weightConfigService;
 
     @Override
     public KnowledgeResponse query(String keywords) {
@@ -177,26 +178,15 @@ public class KnowledgeDatasetServiceImpl implements KnowledgeDatasetService,
         return result;
     }
 
+    /**
+     * 根据章节ID获取该章节所有知识点权重配置（供出题智能体跨模块调用）
+     * <p>
+     * 委托给 {@link KnowledgeWeightConfigServiceImpl#listByChapter(Long)}，
+     * 关联知识点名称的组装逻辑集中在权重配置服务内。
+     */
     @Override
     public List<WeightConfigVO> getWeightConfigsByChapter(Long chapterId) {
-        List<KnowledgePoint> points = knowledgePointMapper.selectList(
-                Wrappers.lambdaQuery(KnowledgePoint.class)
-                        .eq(KnowledgePoint::getChapterId, chapterId)
-                        .orderByAsc(KnowledgePoint::getId));
-        List<WeightConfigVO> result = new ArrayList<>();
-        for (KnowledgePoint point : points) {
-            int difficulty = point.getDifficulty() == null ? 1 : point.getDifficulty();
-            result.add(WeightConfigVO.builder()
-                    .chapterId(chapterId)
-                    .knowledgePointId(point.getId())
-                    .knowledgePointName(point.getName())
-                    .weight(BigDecimal.valueOf(difficulty))
-                    .baseQuestionCount(1)
-                    .maxQuestionCount(10)
-                    .isActive(true)
-                    .build());
-        }
-        return result;
+        return weightConfigService.listByChapter(chapterId);
     }
 
     // ===== 私有方法 =====
