@@ -16,6 +16,7 @@ import com.amlve.knowledge.dto.response.VerifyResponse;
 import com.amlve.knowledge.mapper.KnowledgeChapterMapper;
 import com.amlve.knowledge.mapper.KnowledgeContentMapper;
 import com.amlve.knowledge.mapper.KnowledgeKeywordMapper;
+import com.amlve.knowledge.mapper.KnowledgePointMapper;
 import com.amlve.knowledge.service.KnowledgeDatasetService;
 import com.amlve.knowledge.service.KnowledgeWeightConfigService;
 import com.amlve.knowledge.tableEnt.KnowledgeChapter;
@@ -34,6 +35,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.io.File;
 import java.io.IOException;
+import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -57,6 +59,7 @@ public class KnowledgeDatasetServiceImpl implements KnowledgeDatasetService,
     private final KnowledgeChapterMapper chapterMapper;
     private final KnowledgeContentMapper contentMapper;
     private final KnowledgeKeywordMapper keywordMapper;
+    private final KnowledgePointMapper knowledgePointMapper;
     private final KnowledgeConverter knowledgeConverter;
     private final UserService userService;
     private final KnowledgeWeightConfigService weightConfigService;
