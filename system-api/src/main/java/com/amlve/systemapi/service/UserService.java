@@ -14,4 +14,12 @@ public interface UserService {
      * @return true=教师
      */
     boolean isTeacher(Long userId);
+
+    /**
+     * 判断用户是否为管理员角色
+     *
+     * @param userId 用户ID
+     * @return true=管理员
+     */
+    boolean isAdmin(Long userId);
 }

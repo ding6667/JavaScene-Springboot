@@ -221,6 +221,18 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
     }
 
     /**
+     * 编程式角色校验：判断当前用户是否为管理员
+     */
+    @Override
+    public boolean isAdmin(Long userId) {
+        if (userId == null) {
+            return false;
+        }
+        User user = userMapper.selectById(userId);
+        return user != null && "ADMIN".equals(user.getRoleName());
+    }
+
+    /**
      * 编程式角色校验：当前登录用户必须是管理员（唯一，后台密钥注册产生）
      * 说明：JWT 过滤器构建的认证令牌不含角色信息，无法直接使用 @PreAuthorize 的 hasRole，
      * 此处通过 SecurityUtils 获取当前用户后查库比对角色

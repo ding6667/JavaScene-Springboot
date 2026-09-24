@@ -38,6 +38,11 @@ public class QuestionGenerateRequest {
      */
     private String userInstruction;
 
+    /**
+     * 知识点分配（由 QuestionAgentImpl 计算后传入），结构 [{pointId, name, count}]
+     */
+    private List<AllocationItem> allocation;
+
 
     /**
      * 难度配置静态内部类（直接传给 Dify）
@@ -71,5 +76,15 @@ public class QuestionGenerateRequest {
         private List<String> cognitiveLevels;
 
 
+    }
+
+    /**
+     * 知识点分配项
+     */
+    @Data
+    public static class AllocationItem {
+        private String pointId;
+        private String name;
+        private Integer count;
     }
 }

@@ -16,10 +16,13 @@ import com.amlve.knowledge.dto.response.VerifyResponse;
 import com.amlve.knowledge.mapper.KnowledgeChapterMapper;
 import com.amlve.knowledge.mapper.KnowledgeContentMapper;
 import com.amlve.knowledge.mapper.KnowledgeKeywordMapper;
+import com.amlve.knowledge.mapper.KnowledgePointMapper;
 import com.amlve.knowledge.service.KnowledgeDatasetService;
 import com.amlve.knowledge.tableEnt.KnowledgeChapter;
 import com.amlve.knowledge.tableEnt.KnowledgeContent;
 import com.amlve.knowledge.tableEnt.KnowledgeKeyword;
+import com.amlve.knowledge.tableEnt.KnowledgePoint;
+import com.amlve.knowledgeapi.dto.response.WeightConfigVO;
 import com.amlve.systemapi.service.UserService;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import lombok.RequiredArgsConstructor;
@@ -32,6 +35,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.io.File;
 import java.io.IOException;
+import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -55,6 +59,7 @@ public class KnowledgeDatasetServiceImpl implements KnowledgeDatasetService,
     private final KnowledgeChapterMapper chapterMapper;
     private final KnowledgeContentMapper contentMapper;
     private final KnowledgeKeywordMapper keywordMapper;
+    private final KnowledgePointMapper knowledgePointMapper;
     private final KnowledgeConverter knowledgeConverter;
     private final UserService userService;
 
@@ -169,6 +174,28 @@ public class KnowledgeDatasetServiceImpl implements KnowledgeDatasetService,
         result.setQuery(response.getQuery());
         result.setMessage(response.getMessage());
         result.setItems(knowledgeConverter.toKnowledgeItems(response.getItems()));
+        return result;
+    }
+
+    @Override
+    public List<WeightConfigVO> getWeightConfigsByChapter(Long chapterId) {
+        List<KnowledgePoint> points = knowledgePointMapper.selectList(
+                Wrappers.lambdaQuery(KnowledgePoint.class)
+                        .eq(KnowledgePoint::getChapterId, chapterId)
+                        .orderByAsc(KnowledgePoint::getId));
+        List<WeightConfigVO> result = new ArrayList<>();
+        for (KnowledgePoint point : points) {
+            int difficulty = point.getDifficulty() == null ? 1 : point.getDifficulty();
+            result.add(WeightConfigVO.builder()
+                    .chapterId(chapterId)
+                    .knowledgePointId(point.getId())
+                    .knowledgePointName(point.getName())
+                    .weight(BigDecimal.valueOf(difficulty))
+                    .baseQuestionCount(1)
+                    .maxQuestionCount(10)
+                    .isActive(true)
+                    .build());
+        }
         return result;
     }
 

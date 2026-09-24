@@ -36,6 +36,11 @@
         </dependency>
         <dependency>
             <groupId>com.amlve</groupId>
+            <artifactId>agent-score-api</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.amlve</groupId>
             <artifactId>common</artifactId>
             <version>${project.version}</version>
         </dependency>

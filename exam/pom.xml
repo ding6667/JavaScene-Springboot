@@ -42,6 +42,16 @@
         </dependency>
         <dependency>
             <groupId>com.amlve</groupId>
+            <artifactId>agent-score-api</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.amlve</groupId>
+            <artifactId>agent-question-api</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.amlve</groupId>
             <artifactId>system-api</artifactId>
             <version>${project.version}</version>
         </dependency>
@@ -53,6 +63,11 @@
         <dependency>
             <groupId>com.amlve</groupId>
             <artifactId>file-api</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.amlve</groupId>
+            <artifactId>knowledge-api</artifactId>
             <version>${project.version}</version>
         </dependency>
         <dependency>
