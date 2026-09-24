@@ -34,9 +34,20 @@
             <groupId>org.springframework</groupId>
             <artifactId>spring-web</artifactId>
         </dependency>
+        <!-- WebClient 调用 Dify 工作流所需 -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-webflux</artifactId>
+        </dependency>
         <dependency>
             <groupId>com.amlve</groupId>
             <artifactId>common</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <!-- 代码调试智能体接口与 DTO 定义在 api 模块，实现类在本模块 -->
+        <dependency>
+            <groupId>com.amlve</groupId>
+            <artifactId>agent-code-api</artifactId>
             <version>${project.version}</version>
         </dependency>
         <dependency>
