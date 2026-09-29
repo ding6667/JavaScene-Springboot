@@ -8,6 +8,8 @@ import lombok.Data;
 /**
  * 题目新增/更新请求
  */
+// TODO 缺少code_framework,cognitive_level字段，修改后适配相关方法
+    // TODOoptions应为list<String>
 @Data
 public class QuestionSaveRequest {
 

@@ -27,6 +27,6 @@ public class Configuration {
      *   dataset-id: a8e0e5b5-78c6-4130-a5ce-25feb0e0b4ac
      * </pre>
      */
-    @Value("${dify.dataset-id:}")
+    @Value("${dify.dataset-id}")
     private String difyDatasetId;
 }

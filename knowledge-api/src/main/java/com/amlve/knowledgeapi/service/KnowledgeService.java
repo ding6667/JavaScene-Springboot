@@ -1,5 +1,6 @@
 package com.amlve.knowledgeapi.service;
 
+import com.amlve.common.request.Result;
 import com.amlve.knowledgeapi.dto.response.KnowledgeResponse;
 import com.amlve.knowledgeapi.dto.response.WeightConfigVO;
 
@@ -16,14 +17,14 @@ public interface KnowledgeService {
      * @param keywords 检索关键词
      * @return 检索结果（未命中时 message 为"未找到相关知识"）
      */
-    KnowledgeResponse queryKnowledge(String keywords);
+    Result<KnowledgeResponse> queryKnowledge(String keywords);
 
 
     /**
      * 根据章节ID获取该章节所有知识点权重配置
      * 用于出题智能体计算各知识点出题数量
      */
-    List<WeightConfigVO> getWeightConfigsByChapter(Long chapterId);
+    Result<List<WeightConfigVO>> getWeightConfigsByChapter(Long chapterId);
 
 
 }

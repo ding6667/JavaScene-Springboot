@@ -1,5 +1,7 @@
 package com.amlve.systemapi.service;
 
+import com.amlve.common.request.Result;
+
 /**
  * 用户设置对外服务接口（供其他模块调用）
  * <p>
@@ -13,5 +15,5 @@ public interface SettingsService {
      * @param userId 用户ID
      * @return 解密后的 API 密钥明文
      */
-    String getEncryptedAPIKey(Long userId);
+    Result<String> getEncryptedAPIKey(Long userId);
 }

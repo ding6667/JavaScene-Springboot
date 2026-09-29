@@ -227,7 +227,9 @@ public class CodeRunServiceImpl implements CodeRunService {
         }
         try {
             CodeDebugRequest debugRequest = buildDebugRequest(request, response);
-            CodeDebugResponse debugResponse = codeAgentClient.debug(debugRequest);
+
+            // TODO 需处理 Result 异常情况
+            CodeDebugResponse debugResponse = codeAgentClient.debug(debugRequest).getData();
             if (debugResponse != null) {
                 response.setErrorReason(debugResponse.getErrorReason());
                 response.setOptimizeSuggest(debugResponse.getOptimizeSuggest());

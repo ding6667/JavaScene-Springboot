@@ -6,6 +6,7 @@ import com.amlve.teach.dto.response.PrepareResponse;
 import com.amlve.teach.service.TeachPrepareService;
 import jakarta.annotation.Resource;
 import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -17,10 +18,10 @@ import org.springframework.web.bind.annotation.RestController;
  */
 @RestController
 @RequestMapping("/api/agent/teach")
+@RequiredArgsConstructor
 public class PrepareController {
 
-    @Resource
-    private TeachPrepareService teachPrepareService;
+    private final TeachPrepareService teachPrepareService;
 
     /** 根据章节ID与生成开关生成备课材料（教案/PPT/重难点/课后习题/上机实训） */
     @PreAuthorize("hasRole('TEACHER')")

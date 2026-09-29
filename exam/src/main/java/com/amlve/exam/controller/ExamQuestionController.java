@@ -11,7 +11,7 @@ import com.amlve.exam.dto.request.QuestionSaveRequest;
 import com.amlve.exam.enumeration.QuestionDifficultyEnum;
 import com.amlve.exam.enumeration.QuestionTypeEnum;
 import com.amlve.exam.service.ExamQuestionService;
-import com.amlve.exam.service.QuestionAgentImpl;
+import com.amlve.exam.service.impl.QuestionAgentImpl;
 import com.amlve.exam.tableEnt.ExamQuestion;
 import com.amlve.systemapi.service.UserService;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
@@ -22,6 +22,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+// TODO 建议将checkTeacherOrAdmin改为@PreAuthorize("hasRole('TEACHER')")或者@PreAuthorize("hasRole('ADMIN')")或者@PreAuthorize("hasRole('STUDENT')")
+// TODO 缺少javadoc注释
 
 @RestController
 @RequestMapping("/api/exam/question")
@@ -62,6 +64,7 @@ public class ExamQuestionController {
         return Result.success(questionService.getById(id));
     }
 
+    // TODO 丰富查询参数
     @GetMapping("/list")
     public Result<PageResult<ExamQuestion>> list(@RequestParam(required = false) Long chapterId,
                                                  @RequestParam(required = false) Integer type,

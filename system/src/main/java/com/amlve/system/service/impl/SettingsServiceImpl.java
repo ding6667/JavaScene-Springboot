@@ -1,5 +1,6 @@
 package com.amlve.system.service.impl;
 
+import com.amlve.common.request.Result;
 import com.amlve.system.dto.request.CommonSettingsRequest;
 import com.amlve.system.dto.response.SettingsResponse;
 import com.amlve.system.enumeration.UserConfigKeyEnum;
@@ -113,13 +114,13 @@ public class SettingsServiceImpl extends ServiceImpl<SettingsMapper, UserConfig>
     }
 
     @Override
-    public String getEncryptedAPIKey(Long userId) {
+    public Result<String> getEncryptedAPIKey(Long userId) {
         UserConfig userConfig = settingsMapper.selectOne(Wrappers.lambdaQuery(UserConfig.class)
                 .eq(UserConfig::getUserId, userId)
                 .eq(UserConfig::getConfigKey, UserConfigKeyEnum.DIALOG_API_API_KEY.getConfigKey()));
         if (userConfig == null) {
             return null;
         }
-        return userConfig.getConfigValue();
+        return Result.success(userConfig.getConfigValue());
     }
 }

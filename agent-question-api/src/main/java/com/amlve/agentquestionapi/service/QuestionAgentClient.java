@@ -2,8 +2,9 @@ package com.amlve.agentquestionapi.service;
 
 import com.amlve.agentquestionapi.dto.request.QuestionGenerateRequest;
 import com.amlve.agentquestionapi.dto.response.QuestionGenerateResponse;
+import com.amlve.common.request.Result;
 
 public interface QuestionAgentClient {
-    QuestionGenerateResponse generate(QuestionGenerateRequest request);
+    Result<QuestionGenerateResponse> generate(QuestionGenerateRequest request);
 }
 

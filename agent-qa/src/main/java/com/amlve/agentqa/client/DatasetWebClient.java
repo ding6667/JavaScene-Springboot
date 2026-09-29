@@ -5,6 +5,7 @@ import com.amlve.common.exception.BusinessException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.core.io.FileSystemResource;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.MediaType;
@@ -36,7 +37,7 @@ import java.util.Map;
 public class DatasetWebClient {
 
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
-
+    @Qualifier("knowledgeDifyWebClient")
     private final WebClient difyWebClient;
 
     /**

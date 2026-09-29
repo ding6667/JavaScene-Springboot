@@ -62,7 +62,8 @@ public class StudyProgressServiceImpl
     @Override
     public List<StudyProgressResponse> listProgressByUser(Long userId, Long courseId) {
         // 1. 该课程下的全部章节（已按 sortOrder 升序）
-        List<ChapterDTO> chapters = knowledgeChapterApi.listChaptersByCourse(courseId);
+        // TODO 需处理result.code == error 异常情况
+        List<ChapterDTO> chapters = knowledgeChapterApi.listChaptersByCourse(courseId).getData();
         if (chapters == null || chapters.isEmpty()) {
             return List.of();
         }

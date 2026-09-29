@@ -98,7 +98,7 @@ public class MarkdownToPptxUtil {
         }
 
         // marp2pptx 为子命令式 CLI：marp2pptx convert <md> -o <pptx>
-        ProcessBuilder pb = new ProcessBuilder(marpCommand, "convert", mdFilePath, "-o", pptxPath);
+        ProcessBuilder pb = new ProcessBuilder(marpCommand,  mdFilePath, "-o", pptxPath);
         pb.redirectErrorStream(true);
 
         long startTime = System.currentTimeMillis();

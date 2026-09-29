@@ -1,5 +1,6 @@
 package com.amlve.knowledgeapi.service;
 
+import com.amlve.common.request.Result;
 import com.amlve.knowledgeapi.dto.response.ChapterDTO;
 import com.amlve.knowledgeapi.dto.response.KnowledgePointDTO;
 import com.amlve.knowledgeapi.dto.response.TeachingMaterialDTO;
@@ -19,7 +20,7 @@ public interface KnowledgeChapterApi {
      * @param courseId 课程ID
      * @return 章节列表
      */
-    List<ChapterDTO> listChaptersByCourse(Long courseId);
+    Result<List<ChapterDTO>> listChaptersByCourse(Long courseId);
 
     /**
      * 按章节查询知识点列表
@@ -27,7 +28,7 @@ public interface KnowledgeChapterApi {
      * @param chapterId 章节ID
      * @return 知识点列表
      */
-    List<KnowledgePointDTO> listPointsByChapter(Long chapterId);
+    Result<List<KnowledgePointDTO>> listPointsByChapter(Long chapterId);
 
     /**
      * 根据章节ID获取全部七类备课素材
@@ -35,5 +36,5 @@ public interface KnowledgeChapterApi {
      * @param chapterId 章节ID
      * @return 七类素材封装对象
      */
-    TeachingMaterialDTO getTeachingMaterials(Long chapterId);
+    Result<TeachingMaterialDTO> getTeachingMaterials(Long chapterId);
 }

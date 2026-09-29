@@ -1,6 +1,7 @@
 package com.amlve.system.service.impl;
 
 
+import com.amlve.common.request.Result;
 import com.amlve.system.converter.StandardConfigConverter;
 import com.amlve.system.dto.request.StandardConfigRequest;
 import com.amlve.system.dto.request.StandardConfigUpdateRequest;
@@ -38,15 +39,15 @@ public class StandardConfigServiceImpl extends ServiceImpl<StandardConfigMapper,
     private final SettingsMapper userConfigMapper;
 
     @Override
-    public StandardConfigDTO selectByName(String name) {
+    public Result<StandardConfigDTO> selectByName(String name) {
         LambdaQueryWrapper<StandardConfig> queryWrapper = Wrappers.<StandardConfig>lambdaQuery();
         queryWrapper.eq(StandardConfig::getStandardName, name);
-        return standardConfigMapMapper.toDTO(standardConfigMapper.selectOne(queryWrapper));
+        return Result.success(standardConfigMapMapper.toDTO(standardConfigMapper.selectOne(queryWrapper)));
     }
 
     @Override
-    public StandardConfigDTO selectById(Long id) {
-        return standardConfigMapMapper.toDTO(standardConfigMapper.selectById(id));
+    public Result<StandardConfigDTO> selectById(Long id) {
+        return Result.success(standardConfigMapMapper.toDTO(standardConfigMapper.selectById(id)));
     }
 
     @Override

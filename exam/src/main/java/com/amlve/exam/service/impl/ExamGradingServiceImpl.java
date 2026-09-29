@@ -108,6 +108,7 @@ public class ExamGradingServiceImpl implements ExamGradingService {
                 .eq(ExamGradingTask::getHomeworkId, homeworkId)
                 .eq(ExamGradingTask::getUserId, userId));
         if (task == null) {
+            // TODO 常量字段提取为静态变量，放入constant
             throw new BusinessException("批改结果不存在");
         }
         GradingResultResponse response = new GradingResultResponse();

@@ -17,7 +17,7 @@ import java.util.Map;
 /**
  * Dify 工作流客户端
  */
-@Service
+@Service("gradingDifyClient")
 @Slf4j
 @RequiredArgsConstructor
 public class DifyClient {

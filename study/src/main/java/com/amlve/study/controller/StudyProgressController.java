@@ -36,7 +36,7 @@ public class StudyProgressController {
         return Result.success(studyProgressService.saveProgress(userId, request));
     }
 
-    /** 查询当前登录学生在指定课程下的所有章节学习进度（未学章节进度为 0） */
+    /** 查询当前登录学生在指定课程下的所有章节学习进度 */
     @GetMapping("/get")
     public Result<List<StudyProgressResponse>> getStudyProgress(@RequestParam Long courseId) {
         Long userId = SecurityUtils.getUserId();

@@ -1,11 +1,12 @@
 package com.amlve.teach.service.impl;
 
+import com.amlve.common.request.Result;
 import com.amlve.teach.dto.request.HomeworkPublishRequest;
 import com.amlve.teach.dto.response.HomeworkResponse;
 import com.amlve.teach.mapper.HomeworkMapper;
 import com.amlve.teach.tableEnt.Homework;
 import com.amlve.teach.service.TeachService;
-import com.amlve.teachapi.TeachHomeworkService;
+import com.amlve.teachapi.service.TeachHomeworkService;
 import com.amlve.teachapi.dto.HomeworkDTO;
 import com.amlve.common.utils.SecurityUtils;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
@@ -57,21 +58,23 @@ public class TeachServiceImpl implements TeachService, TeachHomeworkService {
     }
 
     @Override
-    public HomeworkDTO getHomeworkById(Long homeworkId) {
+    public Result<HomeworkDTO> getHomeworkById(Long homeworkId) {
+        // TODO 检查作业是否存在,需要给出Result.error情况
         Homework homework = homeworkMapper.selectById(homeworkId);
         if (homework == null) {
             return null;
         }
-        return toDTO(homework);
+        return Result.success(toDTO(homework));
     }
 
     @Override
-    public List<HomeworkDTO> listHomeworkByTeacherId(Long teacherId) {
-        return homeworkMapper.selectList(
+    public Result<List<HomeworkDTO>> listHomeworkByTeacherId(Long teacherId) {
+        // TODO 检查作业是否存在,需要给出Result.error情况
+        return Result.success(homeworkMapper.selectList(
                         new LambdaQueryWrapper<Homework>()
                                 .eq(Homework::getTeacherId, teacherId)
                                 .orderByDesc(Homework::getCreateTime))
-                .stream().map(this::toDTO).toList();
+                .stream().map(this::toDTO).toList());
     }
 
     private HomeworkDTO toDTO(Homework homework) {

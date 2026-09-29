@@ -1,5 +1,6 @@
-package com.amlve.studyapi;
+package com.amlve.studyapi.service;
 
+import com.amlve.common.request.Result;
 import com.amlve.studyapi.dto.response.ClassStatisticsResponse;
 
 public interface StudyStatisticsService {
@@ -9,5 +10,5 @@ public interface StudyStatisticsService {
      * @param classId 班级ID
      * @return 班级统计数据
      */
-    ClassStatisticsResponse getClassStatistics(Long classId);
+    Result<ClassStatisticsResponse> getClassStatistics(Long classId);
 }

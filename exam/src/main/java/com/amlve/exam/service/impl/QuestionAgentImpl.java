@@ -1,4 +1,4 @@
-package com.amlve.exam.service;
+package com.amlve.exam.service.impl;
 
 import com.amlve.agentquestionapi.dto.request.QuestionGenerateRequest;
 import com.amlve.agentquestionapi.dto.response.QuestionGenerateResponse;
@@ -36,7 +36,8 @@ public class QuestionAgentImpl {
 
     public List<ExamQuestion> generate(QuestionAiGenerateRequest request) {
         // 1. 计算知识点分配
-        List<WeightConfigVO> weightConfigs = knowledgeService.getWeightConfigsByChapter(request.getChapterId());
+        // TODO 考虑返回code为error的情况
+        List<WeightConfigVO> weightConfigs = knowledgeService.getWeightConfigsByChapter(request.getChapterId()).getData();
         List<QuestionGenerateRequest.AllocationItem> allocation = computeAllocation(weightConfigs, request.getCount());
         if (allocation.isEmpty()) {
             throw new BusinessException("该章节暂无知识点配置，无法出题");
@@ -46,7 +47,8 @@ public class QuestionAgentImpl {
         QuestionGenerateRequest agentRequest = buildAgentRequest(request, allocation);
 
         // 3. 调用出题智能体（Dify）
-        QuestionGenerateResponse response = questionAgentClient.generate(agentRequest);
+        // TODO 未考虑返回代码为error的情况
+        QuestionGenerateResponse response = questionAgentClient.generate(agentRequest).getData();
 
         // 4. 落库
         return saveGeneratedQuestions(request.getChapterId(), response);

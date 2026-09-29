@@ -78,6 +78,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         user.setUsername(username);
         user.setPassword(passwordEncoder.encode(password)); // ✅ 加密存储
         user.setEnabled(1);
+        user.setRoleId(1);
         user.setRoleName("STUDENT"); // 自助注册仅产生学生，教师/管理员走管理端
         userMapper.insert(user);
 

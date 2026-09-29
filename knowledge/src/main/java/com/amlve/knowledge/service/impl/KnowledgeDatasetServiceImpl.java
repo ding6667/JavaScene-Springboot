@@ -1,8 +1,9 @@
 package com.amlve.knowledge.service.impl;
 
-import com.amlve.agentqaapi.QAAgentClient;
+import com.amlve.agentqaapi.service.QAAgentClient;
 import com.amlve.agentqaapi.dto.response.DifyRetrieveResponse;
 import com.amlve.common.exception.BusinessException;
+import com.amlve.common.request.Result;
 import com.amlve.common.utils.SecurityUtils;
 import com.amlve.knowledge.Configuration;
 import com.amlve.knowledge.constant.ErrorMessageConstant;
@@ -35,7 +36,6 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.io.File;
 import java.io.IOException;
-import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -79,13 +79,13 @@ public class KnowledgeDatasetServiceImpl implements KnowledgeDatasetService,
     @Override
     @Transactional(rollbackFor = Exception.class)
     public UploadResponse uploadText(UploadTextRequest request) {
-        requireTeacher();
         KnowledgeChapter chapter = requireChapter(request.getChapterId());
         log.info("上传文本文档: chapterId={}, documentName={}", request.getChapterId(), request.getDocumentName());
 
         // 1. Dify 创建文本文档（返回 documentId；createChapterDocument 返回 void，故不用）
+        //TODO 需增加请求失败时的分支处理
         String documentId = qaAgentClient.createDocumentByText(
-                requireDatasetId(), request.getDocumentName(), request.getContent());
+                requireDatasetId(), request.getDocumentName(), request.getContent()).getData();
 
         // 2. 写入元数据：chapter_id / chapter_name / page（partial_update 追加）
         Map<String, Object> metadata = new HashMap<>();
@@ -107,7 +107,6 @@ public class KnowledgeDatasetServiceImpl implements KnowledgeDatasetService,
     @Override
     @Transactional(rollbackFor = Exception.class)
     public UploadResponse uploadFile(Long chapterId, MultipartFile file) {
-        requireTeacher();
         KnowledgeChapter chapter = requireChapter(chapterId);
         if (file == null || file.isEmpty()) {
             throw new BusinessException(ErrorMessageConstant.UPLOAD_FILE_EMPTY);
@@ -124,8 +123,9 @@ public class KnowledgeDatasetServiceImpl implements KnowledgeDatasetService,
             Map<String, Object> metadata = Map.of(
                     KnowledgeConstant.METADATA_CHAPTER_ID, chapterId.intValue(),
                     KnowledgeConstant.METADATA_CHAPTER_NAME, chapter.getTitle());
-            String documentId = qaAgentClient.createDocumentByFile(requireDatasetId(), tempFile,
-                    file.getOriginalFilename(), metadata);
+            //TODO 需增加请求失败时的分支处理
+                       String documentId = qaAgentClient.createDocumentByFile(requireDatasetId(), tempFile,
+                    file.getOriginalFilename(), metadata).getData();
 
             insertKnowledgeContent(chapterId, null, null, null, documentId);
             log.info("文件文档上传完成: documentId={}", documentId);
@@ -141,10 +141,10 @@ public class KnowledgeDatasetServiceImpl implements KnowledgeDatasetService,
 
     @Override
     public String updateMetadata(UpdateMetadataRequest request) {
-        requireTeacher();
         log.info("更新文档元数据: documentId={}, metadata={}", request.getDocumentId(), request.getMetadata());
+        //TODO 需增加请求失败时的分支处理
         return qaAgentClient.updateDocumentMetadata(requireDatasetId(),
-                request.getDocumentId(), request.getMetadata());
+                request.getDocumentId(), request.getMetadata()).getData();
     }
 
     @Override
@@ -168,14 +168,14 @@ public class KnowledgeDatasetServiceImpl implements KnowledgeDatasetService,
     // ===== 对外接口实现（knowledge-api）=====
 
     @Override
-    public com.amlve.knowledgeapi.dto.response.KnowledgeResponse queryKnowledge(String keywords) {
+    public Result<com.amlve.knowledgeapi.dto.response.KnowledgeResponse> queryKnowledge(String keywords) {
         KnowledgeResponse response = query(keywords);
         com.amlve.knowledgeapi.dto.response.KnowledgeResponse result =
                 new com.amlve.knowledgeapi.dto.response.KnowledgeResponse();
         result.setQuery(response.getQuery());
         result.setMessage(response.getMessage());
         result.setItems(knowledgeConverter.toKnowledgeItems(response.getItems()));
-        return result;
+        return Result.success(result);
     }
 
     /**
@@ -185,8 +185,8 @@ public class KnowledgeDatasetServiceImpl implements KnowledgeDatasetService,
      * 关联知识点名称的组装逻辑集中在权重配置服务内。
      */
     @Override
-    public List<WeightConfigVO> getWeightConfigsByChapter(Long chapterId) {
-        return weightConfigService.listByChapter(chapterId);
+    public Result<List<WeightConfigVO>> getWeightConfigsByChapter(Long chapterId) {
+        return Result.success(weightConfigService.listByChapter(chapterId));
     }
 
     // ===== 私有方法 =====
@@ -196,8 +196,9 @@ public class KnowledgeDatasetServiceImpl implements KnowledgeDatasetService,
      */
     private KnowledgeResponse doQuery(String keywords) {
         try {
+            //TODO 需增加请求失败时的分支处理
             DifyRetrieveResponse retrieveResponse =
-                    qaAgentClient.retrieve(requireDatasetId(), keywords, null, null);
+                    qaAgentClient.retrieve(requireDatasetId(), keywords, null, null).getData();
             KnowledgeResponse response = new KnowledgeResponse();
             response.setQuery(keywords);
             List<KnowledgeResponse.KnowledgeItem> items = new ArrayList<>();

@@ -1,17 +1,16 @@
 package com.amlve.system.tableEnt;
+import com.amlve.common.entity.BaseEntity;
 import com.baomidou.mybatisplus.annotation.*;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.*;
 
 import java.time.LocalDateTime;
+@EqualsAndHashCode(callSuper = true)
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
 @TableName("sys_user")
-public class User {
+public class User extends BaseEntity {
     /**
      * 主键ID
      */
@@ -48,25 +47,8 @@ public class User {
      */
     private Integer enabled;
 
-    /**
-     * 逻辑删除（0-未删，1-已删）
-     */
-    @TableLogic
-    private Integer deleted;
 
-    /**
-     * 创建时间
-     */
-    @TableField(fill = FieldFill.INSERT)
-    private LocalDateTime createTime;
-
-    /**
-     * 更新时间
-     */
-    @TableField(fill = FieldFill.INSERT_UPDATE)
-    private LocalDateTime updateTime;
-
-    private String roleId;
+    private Integer roleId;
 
     private String roleName;
 }

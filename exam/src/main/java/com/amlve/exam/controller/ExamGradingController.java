@@ -9,7 +9,8 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
-
+// TODO 缺少@PreAuthorize注解
+// TODO 缺少javadoc注释
 @RestController
 @RequestMapping("/api/exam/grading")
 @RequiredArgsConstructor
