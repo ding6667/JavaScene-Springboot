@@ -45,6 +45,8 @@ CREATE TABLE `exam_question` (
   `chapter_id` bigint NOT NULL COMMENT '关联章节ID',
   `difficulty` tinyint DEFAULT '1' COMMENT '难度（1=基础，2=进阶，3=拔高）',
   `score` int DEFAULT '5' COMMENT '默认分值',
+  `code_framework` text COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT '编程题代码骨架',
+  `cognitive_level` varchar(50) COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT '认知层次',
   `create_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
   `update_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
   `deleted` tinyint NOT NULL DEFAULT '0' COMMENT '逻辑删除',

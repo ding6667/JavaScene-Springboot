@@ -5,11 +5,11 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import lombok.Data;
 
+import java.util.List;
+
 /**
  * 题目新增/更新请求
  */
-// TODO 缺少code_framework,cognitive_level字段，修改后适配相关方法
-    // TODOoptions应为list<String>
 @Data
 public class QuestionSaveRequest {
 
@@ -19,7 +19,7 @@ public class QuestionSaveRequest {
     @NotNull(message = "题型不能为空")
     private Integer type;
 
-    private String options;
+    private List<String> options;
 
     @NotNull(message = "标准答案不能为空")
     private ExamQuestion.QuestionAnswer answer;
@@ -30,4 +30,8 @@ public class QuestionSaveRequest {
     private Integer difficulty;
 
     private Integer score;
+
+    private String codeFramework;
+
+    private String cognitiveLevel;
 }

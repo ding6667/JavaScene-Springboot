@@ -100,12 +100,25 @@ public class ExamQuestionController {
         ExamQuestion question = new ExamQuestion();
         question.setContent(request.getContent());
         question.setType(QuestionTypeEnum.fromCode(request.getType()));
-        question.setOptions(request.getOptions());
+        question.setOptions(toOptionsJson(request.getOptions()));
         question.setAnswer(request.getAnswer());
         question.setChapterId(request.getChapterId());
         question.setDifficulty(QuestionDifficultyEnum.fromCode(request.getDifficulty()));
         question.setScore(request.getScore() == null ? 5 : request.getScore());
+        question.setCodeFramework(request.getCodeFramework());
+        question.setCognitiveLevel(request.getCognitiveLevel());
         return question;
+    }
+
+    private String toOptionsJson(List<String> options) {
+        if (options == null || options.isEmpty()) {
+            return null;
+        }
+        try {
+            return new com.fasterxml.jackson.databind.ObjectMapper().writeValueAsString(options);
+        } catch (Exception e) {
+            return String.join(";", options);
+        }
     }
 
     private void checkTeacherOrAdmin() {
