@@ -1,5 +1,6 @@
 package com.amlve.teach.service.impl;
 
+import com.amlve.common.constant.ErrorCodeConstant;
 import com.amlve.common.request.Result;
 import com.amlve.teach.dto.request.HomeworkPublishRequest;
 import com.amlve.teach.dto.response.HomeworkResponse;
@@ -59,17 +60,17 @@ public class TeachServiceImpl implements TeachService, TeachHomeworkService {
 
     @Override
     public Result<HomeworkDTO> getHomeworkById(Long homeworkId) {
-        // TODO 检查作业是否存在,需要给出Result.error情况
         Homework homework = homeworkMapper.selectById(homeworkId);
+        // 作业不存在时返回 NOT_FOUND 错误码，调用方通过 code 判断而非判空
         if (homework == null) {
-            return null;
+            return Result.error(ErrorCodeConstant.NOT_FOUND, "作业不存在: id=" + homeworkId);
         }
         return Result.success(toDTO(homework));
     }
 
     @Override
     public Result<List<HomeworkDTO>> listHomeworkByTeacherId(Long teacherId) {
-        // TODO 检查作业是否存在,需要给出Result.error情况
+        // 教师无已发布作业返回空列表，属正常业务结果，不返回 error
         return Result.success(homeworkMapper.selectList(
                         new LambdaQueryWrapper<Homework>()
                                 .eq(Homework::getTeacherId, teacherId)

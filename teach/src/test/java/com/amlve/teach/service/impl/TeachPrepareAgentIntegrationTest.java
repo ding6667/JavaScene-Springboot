@@ -3,6 +3,7 @@ package com.amlve.teach.service.impl;
 import com.amlve.agentprepare.bean.DifyClient;
 import com.amlve.agentprepare.client.PrepareAgentClientImpl;
 import com.amlve.common.exception.BusinessException;
+import com.amlve.common.request.Result;
 import com.amlve.knowledgeapi.dto.response.TeachingMaterialDTO;
 import com.amlve.knowledgeapi.service.KnowledgeChapterApi;
 import com.amlve.teach.dto.request.PrepareRequest;
@@ -106,7 +107,7 @@ class TeachPrepareAgentIntegrationTest {
     @Test
     void generateTeachingMaterials_success_persistsRecord() {
         // 素材接口返回模拟数据（实现归 knowledge 模块，不在本上下文内）
-        when(knowledgeChapterApi.getTeachingMaterials(CHAPTER_ID)).thenReturn(mockMaterial());
+        when(knowledgeChapterApi.getTeachingMaterials(CHAPTER_ID)).thenReturn(Result.success(mockMaterial()));
 
         PrepareRequest request = new PrepareRequest();
         request.setChapterId(CHAPTER_ID);
