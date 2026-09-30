@@ -36,6 +36,26 @@ public class UserInfoResponse {
     private String phone;
 
     /**
+     * 学号（学生角色，教师/管理员为 null）
+     */
+    private String studentNo;
+
+    /**
+     * 班级（学生角色，教师/管理员为 null）
+     */
+    private String className;
+
+    /**
+     * 专业（学生角色，教师/管理员为 null）
+     */
+    private String major;
+
+    /**
+     * 职称（教师角色，学生/管理员为 null）
+     */
+    private String title;
+
+    /**
      * 角色ID
      */
     private String roleId;
