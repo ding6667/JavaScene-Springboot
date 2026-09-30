@@ -84,14 +84,14 @@ public class ExamQuestionController {
         return Result.success(result);
     }
 
-    @PostMapping("/generate")
+    @PostMapping("/random")
     public Result<List<ExamQuestion>> generate(@Valid @RequestBody QuestionGenerateRequest request) {
         checkTeacherOrAdmin();
         return Result.success(questionService.generate(request));
     }
 
-    @PostMapping("/generate/ai")
-    public Result<List<ExamQuestion>> generateAi(@Valid @RequestBody QuestionAiGenerateRequest request) {
+    @PostMapping("/generate")
+    public Result<Integer> generateAi(@Valid @RequestBody QuestionAiGenerateRequest request) {
         checkTeacherOrAdmin();
         return Result.success(questionAgent.generate(request));
     }
