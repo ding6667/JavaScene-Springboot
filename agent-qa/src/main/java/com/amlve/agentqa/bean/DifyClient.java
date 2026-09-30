@@ -4,8 +4,10 @@ import com.amlve.common.exception.BusinessException;
 import jakarta.annotation.PostConstruct;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.MediaType;
+import org.springframework.http.codec.ServerSentEvent;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Flux;
@@ -76,13 +78,17 @@ public class DifyClient {
     }
 
     /**
-     * 流式调用工作流，返回 SSE 流式响应字符串流
+     * 流式调用工作流，返回结构化 SSE 事件流
+     * <p>
+     * Dify streaming 模式按事件推送：text_chunk（答案文本片段）、
+     * workflow_finished（执行结束，含 status 与 outputs）、error 等，
+     * 事件语义由上层 {@code QAAgentClientImpl} 解析。
      *
      * @param apiKey      动态传入的工作流应用 API 密钥
      * @param extraInputs 工作流 inputs 变量 Map
-     * @return Flux&lt;String&gt; 纯净的 SSE 流式响应字符串
+     * @return Dify SSE 事件流（event 为事件名，data 为 JSON 字符串）
      */
-    public Flux<String> streamWorkflow(String apiKey, Map<String, Object> extraInputs) {
+    public Flux<ServerSentEvent<String>> streamWorkflow(String apiKey, Map<String, Object> extraInputs) {
         Map<String, Object> requestBody = new HashMap<>();
         requestBody.put("inputs", extraInputs != null ? extraInputs : new HashMap<>());
         requestBody.put("user", "user-" + System.currentTimeMillis());
@@ -110,10 +116,8 @@ public class DifyClient {
                                     return Mono.error(new BusinessException("Dify 服务暂时不可用: " + errorBody));
                                 })
                 )
-                .bodyToFlux(String.class)
-                .onErrorResume(e -> {
-                    log.error("Dify 流式请求发生异常", e);
-                    return Flux.just("{\"error\": \"" + e.getMessage() + "\"}");
-                });
+                .bodyToFlux(new ParameterizedTypeReference<ServerSentEvent<String>>() {})
+                .onErrorMap(e -> !(e instanceof BusinessException),
+                        e -> new BusinessException("Dify 流式请求异常: " + e.getMessage(), e));
     }
 }

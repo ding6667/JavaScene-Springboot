@@ -196,12 +196,24 @@ public class DatasetWebClient {
     }
 
     /**
+     * 查询文档索引状态
+     * GET /datasets/{dataset_id}/documents/{batch}/indexing-status
+     *
+     * @param datasetId 知识库ID
+     * @param batch     创建文档响应中的 batch（一次创建的批次号）
+     * @return 原始 JSON 响应（data 数组含 indexing_status / error 字段）
+     */
+    public String getIndexingStatus(String datasetId, String batch) {
+        return getJson(DifyConstant.DOCUMENT_INDEXING_STATUS, datasetId, batch);
+    }
+
+    /**
      * 统一的 JSON GET 请求，带错误处理
      */
-    private String getJson(String uriTemplate, String datasetId) {
+    private String getJson(String uriTemplate, Object... uriVariables) {
         try {
             String response = difyWebClient.get()
-                    .uri(uriTemplate, datasetId)
+                    .uri(uriTemplate, uriVariables)
                     .retrieve()
                     .onStatus(HttpStatusCode::isError, this::toError)
                     .bodyToMono(String.class)
