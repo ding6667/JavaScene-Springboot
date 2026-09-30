@@ -1,7 +1,8 @@
-package com.amlve.agentqaapi;
+package com.amlve.agentqaapi.service;
 
 
 import com.amlve.agentqaapi.dto.response.DifyRetrieveResponse;
+import com.amlve.common.request.Result;
 
 import java.io.File;
 import java.util.Map;
@@ -14,7 +15,7 @@ public interface QAAgentClient {
      * @param text
      * @return
      */
-    String createDocumentByText(String datasetId, String documentName, String text );
+    Result<String> createDocumentByText(String datasetId, String documentName, String text );
 
     /**
      * 更新元数据
@@ -24,7 +25,7 @@ public interface QAAgentClient {
      * @param metadata
      * @return
      */
-    String updateDocumentMetadata(String datasetId, String documentId, Map<String, Object> metadata);
+    Result<String> updateDocumentMetadata(String datasetId, String documentId, Map<String, Object> metadata);
 
     /**
      * 内部调用createDocumentByText和updateDocumentMetadata
@@ -34,7 +35,7 @@ public interface QAAgentClient {
      * @param chapterContent
      * @param chapterId
      */
-    void createChapterDocument(String datasetId, String documentName, String chapterContent, Integer chapterId);
+    Result<Void> createChapterDocument(String datasetId, String documentName, String chapterContent, Integer chapterId);
 
     /**
      * 通过上传文件创建文档
@@ -46,7 +47,7 @@ public interface QAAgentClient {
      * @param metadata 自定义元数据（如 chapter_id, chapter_name）
      * @return 返回的 document_id
      */
-    String createDocumentByFile(String datasetId, File file, String documentName, Map<String, Object> metadata);
+    Result<String> createDocumentByFile(String datasetId, File file, String documentName, Map<String, Object> metadata);
 
     /**
      * 根据关键词从 Dify 知识库检索相关文档片段（自定义参数）
@@ -57,7 +58,7 @@ public interface QAAgentClient {
      * @param scoreThreshold 相似度阈值
      * @return Dify 检索响应
      */
-    DifyRetrieveResponse retrieve(String datasetId, String query,
+    Result<DifyRetrieveResponse> retrieve(String datasetId, String query,
                                   Integer topK, Double scoreThreshold);
 
     /**
@@ -68,5 +69,6 @@ public interface QAAgentClient {
      * @param userQuery 学生提问内容
      * @return 工作流输出中的答案文本
      */
-    String answer(String chapterId, String userQuery);
+    // TODO 需改为流式输出模式
+    Result<String> answer(String chapterId, String userQuery);
 }

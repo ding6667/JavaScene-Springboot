@@ -130,8 +130,9 @@ public class GradingServiceImpl implements GradingService {
         if (uploadIds.isEmpty()) {
             throw new BusinessException(ErrorMessageConstant.FILES_NOT_FOUND);
         }
+        // TODO 需处理result.code == error 异常情况
 
-        List<RubricItem> rubric = standardConfigService.selectById(standardConfigId).getStandardContent();
+        List<RubricItem> rubric = standardConfigService.selectById(standardConfigId).getData().getStandardContent();
 
         List<Callable<Void>> tasks = uploadIds.stream()
                 .map(uploadId -> (Callable<Void>) () -> {
@@ -401,8 +402,9 @@ public class GradingServiceImpl implements GradingService {
             try {
                 // 获取评分标准
                 List<RubricItem> rubric = null;
+                // TODO 需处理result.code == error 异常情况
                 if (standardConfigId != null) {
-                    StandardConfigDTO config = standardConfigService.selectById(standardConfigId);
+                    StandardConfigDTO config = standardConfigService.selectById(standardConfigId).getData();
                     if (config != null) {
                         rubric = config.getStandardContent();
                     }
@@ -776,11 +778,6 @@ public class GradingServiceImpl implements GradingService {
         return sb.toString();
     }
 
-
-    /**
-     * TODO 强制重启任务
-     * 扫描当前task是否有对应的数据库记录
-     */
 
     /**
      * 持久化批阅结果到数据库（合并策略：支持重试场景）

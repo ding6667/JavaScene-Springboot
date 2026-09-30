@@ -23,7 +23,7 @@ import java.util.Map;
 public class JWTUtil {
 
     // 配置文件填写密钥，长度至少32位！
-    @Value("${jwt.secret:abcdefghabcdefghabcdefgh12345678}")
+    @Value("${jwt.secret}")
     private String secretStr;
 
     @Value("${jwt.expiration}") // 默认2小时
@@ -35,7 +35,10 @@ public class JWTUtil {
     public void init() {
         byte[] bytes = secretStr.getBytes(StandardCharsets.UTF_8);
         secretKey = Keys.hmacShaKeyFor(bytes);
-        log.info("JWT 密钥初始化成功");
+        log.info("========== JWT 密钥初始化 ==========");
+        log.info("  secretStr = [{}]", secretStr);
+        log.info("  secretStr 长度 = {} 字节 / {} 字符", bytes.length, secretStr.length());
+        log.info("====================================");
     }
 
     /**
@@ -46,13 +49,22 @@ public class JWTUtil {
         claims.put("userId", userId);
         claims.put("username", username);
 
-        return Jwts.builder()
+        String token = Jwts.builder()
                 .setClaims(claims)
                 .setSubject(String.valueOf(userId))
                 .setIssuedAt(new Date())
                 .setExpiration(new Date(System.currentTimeMillis() + expiration))
                 .signWith(secretKey)
                 .compact();
+
+        // 自验：如果这里都过不了，说明密钥初始化就有问题
+        try {
+            Jwts.parserBuilder().setSigningKey(secretKey).build().parseClaimsJws(token);
+            log.info("✅ generateToken 自验通过 | userId={} | 生成的token前50={}", userId, token.substring(0, Math.min(50, token.length())));
+        } catch (Exception e) {
+            log.error("❌ generateToken 自验失败！！！原因：{}", e.getMessage());
+        }
+        return token;
     }
 
     /**
@@ -83,6 +95,10 @@ public class JWTUtil {
      * 校验 token 是否合法、没过期
      */
     public boolean verifyToken(String token) {
+        // 诊断：打印 Filter 收到的 token
+        if (token != null) {
+            log.info("🔍 verifyToken 收到的token | 长度={} | 前50={}", token.length(), token.substring(0, Math.min(50, token.length())));
+        }
         try {
             Jwts.parserBuilder()
                     .setSigningKey(secretKey)

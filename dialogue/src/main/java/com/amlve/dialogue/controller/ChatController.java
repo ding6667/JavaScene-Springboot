@@ -61,7 +61,7 @@ public class ChatController {
             @RequestParam(value = "confirm", defaultValue = "false") boolean confirm,
             @RequestParam(value = "operationId", required = false) String operationId) {
         log.info("streamChat: {}, {}, {}, {}", message, conversationId, confirm, operationId);
-        String userApiKey = settingsService.getEncryptedAPIKey(SecurityUtils.getUserId());
+        String userApiKey = settingsService.getEncryptedAPIKey(SecurityUtils.getUserId()).getData();
         // ========== 分支 1：确认后的执行流程 ==========
         if (confirm && operationId != null) {
             PendingOperation pending = pendingCache.get(operationId);

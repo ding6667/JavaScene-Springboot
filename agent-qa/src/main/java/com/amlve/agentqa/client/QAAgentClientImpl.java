@@ -1,11 +1,11 @@
-package com.amlve.agentqa.client.impl;
+package com.amlve.agentqa.client;
 
 import com.amlve.agentqa.bean.DifyClient;
-import com.amlve.agentqa.client.DatasetWebClient;
 import com.amlve.agentqa.constant.DifyConstant;
-import com.amlve.agentqaapi.QAAgentClient;
+import com.amlve.agentqaapi.service.QAAgentClient;
 import com.amlve.agentqaapi.dto.response.DifyRetrieveResponse;
 import com.amlve.common.exception.BusinessException;
+import com.amlve.common.request.Result;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -54,40 +54,42 @@ public class QAAgentClientImpl implements QAAgentClient {
      * 答疑工作流应用密钥（app- 开头）：优先读 dify.workflow-api-key，
      * 未配置时回落到 dify.api-key（需与队长确认工作流应用的实际密钥）
      */
-    @Value("${dify.workflow-api-key:${dify.api-key:}}")
-    private String workflowApiKey;
+    @Value("${dify.qa-api-key}")
+    private String qaApiKey;
 
     @Override
-    public String createDocumentByText(String datasetId, String documentName, String text) {
+    public Result<String> createDocumentByText(String datasetId, String documentName, String text) {
         log.info("Dify 创建文本文档: datasetId={}, documentName={}", datasetId, documentName);
         String response = datasetWebClient.createDocumentByText(datasetId, documentName, text);
         String documentId = extractDocumentId(response);
         log.info("Dify 文档创建成功(异步索引中): documentId={}, documentName={}", documentId, documentName);
-        return documentId;
+        return Result.success(documentId);
     }
 
     @Override
-    public String updateDocumentMetadata(String datasetId, String documentId, Map<String, Object> metadata) {
+    public Result<String> updateDocumentMetadata(String datasetId, String documentId, Map<String, Object> metadata) {
         log.info("Dify 更新文档元数据: datasetId={}, documentId={}, metadata={}", datasetId, documentId, metadata);
         String response = datasetWebClient.updateDocumentMetadata(datasetId, documentId, metadata);
         log.info("Dify 文档元数据更新完成: documentId={}", documentId);
-        return response;
+        return Result.success(response);
     }
 
     @Override
-    public void createChapterDocument(String datasetId, String documentName, String chapterContent, Integer chapterId) {
+    public Result<Void> createChapterDocument(String datasetId, String documentName, String chapterContent, Integer chapterId) {
         log.info("Dify 上传章节文档: datasetId={}, documentName={}, chapterId={}", datasetId, documentName, chapterId);
         // 1. 先创建文档（内部调用 createDocumentByText）
-        String documentId = createDocumentByText(datasetId, documentName, chapterContent);
+        //TODO 需增加请求失败时的分支处理
+        String documentId = createDocumentByText(datasetId, documentName, chapterContent).getData();
         // 2. 再写入章节元数据（内部调用 updateDocumentMetadata），便于检索时按章节过滤
         Map<String, Object> metadata = new HashMap<>();
         metadata.put(DifyConstant.METADATA_KEY_CHAPTER_ID, chapterId);
         updateDocumentMetadata(datasetId, documentId, metadata);
         log.info("Dify 章节文档上传完成: documentId={}, chapterId={}", documentId, chapterId);
+        return Result.success(null);
     }
 
     @Override
-    public String createDocumentByFile(String datasetId, File file, String documentName, Map<String, Object> metadata) {
+    public Result<String> createDocumentByFile(String datasetId, File file, String documentName, Map<String, Object> metadata) {
         log.info("Dify 上传文件文档: datasetId={}, file={}, documentName={}", datasetId, file.getName(), documentName);
         String response = datasetWebClient.createDocumentByFile(datasetId, file, documentName);
         String documentId = extractDocumentId(response);
@@ -96,24 +98,25 @@ public class QAAgentClientImpl implements QAAgentClient {
             updateDocumentMetadata(datasetId, documentId, metadata);
         }
         log.info("Dify 文件文档创建成功(异步索引中): documentId={}, file={}", documentId, file.getName());
-        return documentId;
+        return Result.success(documentId);
     }
 
     @Override
-    public DifyRetrieveResponse retrieve(String datasetId, String query, Integer topK, Double scoreThreshold) {
+    public Result<DifyRetrieveResponse> retrieve(String datasetId, String query, Integer topK, Double scoreThreshold) {
         log.info("Dify 知识库检索: datasetId={}, query={}, topK={}, scoreThreshold={}", datasetId, query, topK, scoreThreshold);
         String response = datasetWebClient.retrieve(datasetId, query, topK, scoreThreshold);
         DifyRetrieveResponse result = parseRetrieveResponse(response);
         log.info("Dify 检索完成: query={}, 命中记录数={}", query,
                 result.getRecords() == null ? 0 : result.getRecords().size());
-        return result;
+        return Result.success(result);
     }
 
+    // TODO 需改为流式输出模式
     @Override
-    public String answer(String chapterId, String userQuery) {
+    public Result<String> answer(String chapterId, String userQuery) {
         log.info("Dify 答疑工作流: chapterId={}, userQuery={}", chapterId, userQuery);
-        if (workflowApiKey == null || workflowApiKey.isBlank()) {
-            throw new BusinessException("Dify 工作流 API 密钥未配置（dify.workflow-api-key 或 dify.api-key）");
+        if (qaApiKey == null || qaApiKey.isBlank()) {
+            throw new BusinessException("Dify 工作流 API 密钥未配置（dify.qa-api-key 或 dify.api-key）");
         }
         Map<String, Object> inputs = new HashMap<>();
         // 章节ID：数字型字符串转数值后传（Dify 元数据 chapter_id 为 number 类型，
@@ -128,10 +131,10 @@ public class QAAgentClientImpl implements QAAgentClient {
             inputs.put("chapterId", chapterIdValue);
         }
         inputs.put("userQuery", userQuery);
-        String response = difyClient.runWorkflowBlocking(workflowApiKey, inputs);
+        String response = difyClient.runWorkflowBlocking(qaApiKey, inputs);
         String answerText = extractAnswer(response);
         log.info("Dify 答疑完成: chapterId={}, 答案长度={}", chapterId, answerText.length());
-        return answerText;
+        return Result.success(answerText);
     }
 
     /**

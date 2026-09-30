@@ -1,23 +1,31 @@
-# 拉取后请复制该文件并在同级目录下，重命名为application-dev.yml,并将相关配置改为自己的配置
-
 spring:
   datasource:
-    url: jdbc:mysql://localhost:3306/javascene  # 数据库连接URL
-    username: root  # 数据库用户名
-    password: 123456  # 数据库密码
+    url: jdbc:mysql://localhost:3306/javascene
+    username: root
+    password: 123456
   ai:
     deepseek:
-      api-key: "sk-ed1212127594b12a5269024f8f0dbf5" # Deepseek API密钥
+      api-key: "sk-ed75f5302a5269024f8f0dbf5" # Deepseek API密钥
     dashscope:
-      api-key: "sk-b69b4a321e1bcb44dc3132d8cd2b6ac4413a9"
+      api-key: "sk-b69b4ae1bcd2b6ac44bb13a9"
+
 python:
-  exe: "E:python" #python3.11以上的路径或者环境变量中的python路径
+  exe: "python"
 dify:
   grading-api-key: "app-h2yIzEsq6W2C5eHN0MtDVRt2"   # Dify应用的API密钥
-  qa-api-key: "app-h2yIzEsq6W2C5eHN0MtDVRt2"   # Dify应用的API密钥
-  prepare-api-key: "app-h2yIzEsq6W2C5eHN0MtDVRt2"   # Dify应用的API密钥
-  code-api-key: "app-h2yIzEsq6W2C5eHN0MtDVRt2"   # Dify应用的API密钥
+  dataset-api-key: "dataset-6vSQURG2YAYj1Hf9E2M5V0qz"   # Dify应用的API密钥
+  question-api-key: "app-dIQo4XHlQW5ZmqXozLXN7qP1"   # Dify应用的API密钥
+  prepare-api-key: "app-wrrVeZoifFKVH6ziCguuUANC"   # Dify应用的API密钥
+  code-api-key: "app-K4VyLfHNI8hrrh8SVlxVwOjy"   # Dify应用的API密钥
+  qa-api-key: "app-ebHSWuUaqrgbxSD15njOnKCi"   # Dify应用的API密钥
+  dataset-id: "114fec12-c227-4ce8-934a-9a4bc5294fe6"   # Dify应用的API密钥
   base-url: "http://localhost:5001/v1" # Dify API服务的地址
   file-base-url: "http://localhost:3000"  # Dify web服务的URL
 jwt:
-  secret: "abcdefghahabcdgh12345678"
+  secret: "abcdefghabcdefghabcdefgh12345678abcdefghabcdefghabcdefgh12"
+app:
+  crypto:
+    master-password: "0123456789abcdef0123456789abcdef"
+    salt: "0123456789abcdef"
+  admin:
+    init-key: "admin"

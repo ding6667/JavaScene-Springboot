@@ -1,5 +1,6 @@
 package com.amlve.systemapi.service;
 
+import com.amlve.common.request.Result;
 import com.amlve.systemapi.dto.api.StandardConfigDTO;
 
 /**
@@ -15,7 +16,7 @@ public interface StandardService {
      * @param name 标准名称
      * @return 评分标准配置，不存在时返回 null
      */
-    StandardConfigDTO selectByName(String name);
+    Result<StandardConfigDTO> selectByName(String name);
 
     /**
      * 按ID查询评分标准
@@ -23,5 +24,5 @@ public interface StandardService {
      * @param id 标准ID
      * @return 评分标准配置，不存在时返回 null
      */
-    StandardConfigDTO selectById(Long id);
+    Result<StandardConfigDTO> selectById(Long id);
 }

@@ -24,6 +24,7 @@ import java.util.List;
  * @PreAuthorize hasRole 不可用，实际角色拦截在 Service 层经
  * system-api 的 isAdmin 编程式校验完成。
  */
+// TODO 缺少@PreAuthorize注解，@PreAuthorize("isAuthenticated()") 仅说明用户登录，但无法证明是否有角色权限访问，需在对应方法上添加@PreAuthorize("hasRole('')"注解
 @Slf4j
 @RestController
 @RequestMapping("/api/knowledge/weight")

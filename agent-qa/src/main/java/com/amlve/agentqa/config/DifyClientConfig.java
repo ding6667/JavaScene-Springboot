@@ -30,7 +30,7 @@ import java.time.Duration;
 @Configuration
 public class DifyClientConfig {
 
-    @Value("${dify.dataset-api-key:}")
+    @Value("${dify.dataset-api-key}")
     private String datasetApiKey;
 
     @Value("${dify.base-url:https://api.dify.ai/v1}")
@@ -44,7 +44,7 @@ public class DifyClientConfig {
     @Value("${dify.connect-timeout:10}")
     private long connectTimeout;
 
-    @Bean
+    @Bean("knowledgeDifyWebClient")
     public WebClient difyWebClient() {
         if (datasetApiKey == null || datasetApiKey.isBlank()) {
             log.warn("dify.dataset-api-key 未配置，Dify 知识库接口将不可用，请在配置文件中配置");

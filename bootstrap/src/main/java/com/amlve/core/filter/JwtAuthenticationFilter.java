@@ -5,6 +5,7 @@ import com.amlve.common.security.UserIdAuthenticationToken;
 import com.amlve.common.exception.BusinessException;
 import com.amlve.common.request.Result;
 import com.amlve.common.utils.JWTUtil;
+import com.amlve.system.service.impl.UserDetailsServiceImpl;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -12,6 +13,7 @@ import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
@@ -26,6 +28,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     private static final List<String> WHITE_LIST = Arrays.asList("/api/user/auth/login", "/api/user/auth/register");
     private final JWTUtil jwtUtil;
     private final ObjectMapper objectMapper;
+    private final UserDetailsServiceImpl userDetailsService;
 
     @Override
     protected boolean shouldNotFilterAsyncDispatch() {
@@ -40,7 +43,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             chain.doFilter(request, response);
             return;
         }
-        
+
         String token = extractToken(request);
 
         if (token != null) {
@@ -49,8 +52,10 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                     Long userId = jwtUtil.getUserIdByToken(token);
                     String username = jwtUtil.getUsernameByToken(token);
 
+                    UserDetails userDetails = userDetailsService.loadUserByUsername(username);
+
                     UserIdAuthenticationToken authentication =
-                            new UserIdAuthenticationToken(userId, username, null);
+                            new UserIdAuthenticationToken(userDetails, userId, username);
                     SecurityContextHolder.getContext().setAuthentication(authentication);
                 }
             } catch (BusinessException e) {

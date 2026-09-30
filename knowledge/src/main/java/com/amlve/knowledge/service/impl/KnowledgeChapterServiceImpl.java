@@ -1,6 +1,7 @@
 package com.amlve.knowledge.service.impl;
 
 import com.amlve.common.exception.BusinessException;
+import com.amlve.common.request.Result;
 import com.amlve.knowledge.constant.ErrorMessageConstant;
 import com.amlve.knowledge.converter.KnowledgeConverter;
 import com.amlve.knowledge.dto.response.ChapterResponse;
@@ -60,12 +61,12 @@ public class KnowledgeChapterServiceImpl implements KnowledgeChapterService,
     }
 
     @Override
-    public List<ChapterDTO> listChaptersByCourse(Long courseId) {
-        return knowledgeConverter.toChapterDTOList(selectChaptersByCourse(courseId));
+    public Result<List<ChapterDTO>> listChaptersByCourse(Long courseId) {
+        return Result.success(knowledgeConverter.toChapterDTOList(selectChaptersByCourse(courseId)));
     }
 
     @Override
-    public List<KnowledgePointDTO> listPointsByChapter(Long chapterId) {
+    public Result<List<KnowledgePointDTO>> listPointsByChapter(Long chapterId) {
         if (ObjectUtils.isEmpty(chapterId)) {
             throw new BusinessException(ErrorMessageConstant.CHAPTER_ID_EMPTY);
         }
@@ -74,11 +75,11 @@ public class KnowledgeChapterServiceImpl implements KnowledgeChapterService,
                         .eq(KnowledgePoint::getChapterId, chapterId)
         );
         log.info("查询章节知识点: chapterId={}, 命中{}条", chapterId, points.size());
-        return knowledgeConverter.toKnowledgePointDTOList(points);
+        return Result.success(knowledgeConverter.toKnowledgePointDTOList(points));
     }
 
     @Override
-    public TeachingMaterialDTO getTeachingMaterials(Long chapterId) {
+    public Result<TeachingMaterialDTO> getTeachingMaterials(Long chapterId) {
         if (ObjectUtils.isEmpty(chapterId)) {
             throw new BusinessException(ErrorMessageConstant.CHAPTER_ID_EMPTY);
         }
@@ -98,7 +99,7 @@ public class KnowledgeChapterServiceImpl implements KnowledgeChapterService,
         String labTasks = "[]";
 
         log.info("查询章节备课素材: chapterId={}, title={}", chapterId, chapter.getTitle());
-        return TeachingMaterialDTO.builder()
+        return Result.success(TeachingMaterialDTO.builder()
                 .chapterSummary(chapterSummary)
                 .conceptDefinitions(conceptDefinitions)
                 .codeExamples(codeExamples)
@@ -106,7 +107,7 @@ public class KnowledgeChapterServiceImpl implements KnowledgeChapterService,
                 .pageReferences(pageReferences)
                 .exercises(exercises)
                 .labTasks(labTasks)
-                .build();
+                .build());
     }
 
     private String buildConceptDefinitionsJson(Long chapterId) {

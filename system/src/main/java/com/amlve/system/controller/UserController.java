@@ -52,7 +52,7 @@ public class UserController {
     }
 
     /**
-     * 删除用户（仅教师，逻辑删除）
+     * 删除用户（仅管理员，逻辑删除）
      */
     @DeleteMapping("/delete/{id}")
     public Result<Void> delete(@PathVariable Long id) {

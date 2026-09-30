@@ -18,7 +18,7 @@ import java.util.Map;
  * Dify 工作流客户端：
  * 工作流应用 API 密钥（app- 开头）逐次调用动态传入，便于切换不同工作流应用
  */
-@Service
+@Service("codeDifyClient")
 @Slf4j
 public class DifyClient {
 

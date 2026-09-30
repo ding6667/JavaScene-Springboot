@@ -5,6 +5,7 @@ import com.amlve.agentquestionapi.dto.request.QuestionGenerateRequest;
 import com.amlve.agentquestionapi.dto.response.QuestionGenerateResponse;
 import com.amlve.agentquestionapi.service.QuestionAgentClient;
 import com.amlve.common.exception.BusinessException;
+import com.amlve.common.request.Result;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -26,25 +27,26 @@ import java.util.Map;
 @Service
 @Slf4j
 @RequiredArgsConstructor
-public class QuestionClient implements QuestionAgentClient {
+public class QuestionAgentClientImpl implements QuestionAgentClient {
 
     private static final ObjectMapper MAPPER = new ObjectMapper()
             .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
 
     private final DifyClient difyClient;
 
-    @Value("${dify.question-api-key:${dify.api-key:}}")
+    @Value("${dify.question-api-key}")
     private String questionApiKey;
 
+
     @Override
-    public QuestionGenerateResponse generate(QuestionGenerateRequest request) {
+    public Result<QuestionGenerateResponse> generate(QuestionGenerateRequest request) {
         if (questionApiKey == null || questionApiKey.isBlank()) {
             log.warn("未配置 dify.question-api-key，出题智能体走 Mock 兜底返回示例题");
-            return mockGenerate(request);
+            return Result.success(mockGenerate(request));
         }
         Map<String, Object> inputs = buildInputs(request);
         String response = difyClient.runWorkflowBlocking(questionApiKey, inputs);
-        return parseResponse(response);
+        return Result.success(parseResponse(response));
     }
 
     /**

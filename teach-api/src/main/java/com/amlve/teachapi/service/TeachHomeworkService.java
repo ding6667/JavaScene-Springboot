@@ -1,5 +1,6 @@
-package com.amlve.teachapi;
+package com.amlve.teachapi.service;
 
+import com.amlve.common.request.Result;
 import com.amlve.teachapi.dto.HomeworkDTO;
 
 import java.util.List;
@@ -16,7 +17,7 @@ public interface TeachHomeworkService {
      * @param homeworkId 作业ID
      * @return 作业信息，不存在时返回 null
      */
-    HomeworkDTO getHomeworkById(Long homeworkId);
+    Result<HomeworkDTO> getHomeworkById(Long homeworkId);
 
     /**
      * 查询某教师发布的作业列表
@@ -24,5 +25,5 @@ public interface TeachHomeworkService {
      * @param teacherId 教师ID
      * @return 作业列表
      */
-    List<HomeworkDTO> listHomeworkByTeacherId(Long teacherId);
+    Result<List<HomeworkDTO>> listHomeworkByTeacherId(Long teacherId);
 }

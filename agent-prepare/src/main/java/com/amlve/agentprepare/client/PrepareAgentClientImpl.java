@@ -1,11 +1,12 @@
 package com.amlve.agentprepare.client;
 
 import com.amlve.agentprepare.bean.DifyClient;
-import com.amlve.agentprepareapi.PrepareAgentClient;
+import com.amlve.agentprepareapi.service.PrepareAgentClient;
 import com.amlve.agentprepareapi.dto.request.PrepareRequest;
 import com.amlve.agentprepareapi.dto.request.TeachingMaterialDTO;
 import com.amlve.agentprepareapi.dto.response.PrepareResponse;
 import com.amlve.common.exception.BusinessException;
+import com.amlve.common.request.Result;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -39,15 +40,15 @@ public class PrepareAgentClientImpl implements PrepareAgentClient {
      * 备课工作流应用密钥（app- 开头）：优先读 dify.prepare-api-key，
      * 未配置时回落 dify.api-key；两者均空则走 Mock 兜底
      */
-    @Value("${dify.prepare-api-key:${dify.api-key:}}")
+    @Value("${dify.prepare-api-key}")
     private String prepareApiKey;
 
     @Override
-    public PrepareResponse generate(PrepareRequest request, TeachingMaterialDTO teachingMaterial) {
+    public Result<PrepareResponse> generate(PrepareRequest request, TeachingMaterialDTO teachingMaterial) {
         // 密钥未配置：Mock 兜底，返回模板材料
         if (prepareApiKey == null || prepareApiKey.isBlank()) {
             log.warn("未配置 dify.prepare-api-key，备课智能体走 Mock 兜底返回模板材料");
-            return mockGenerate(request);
+            return Result.success(mockGenerate(request));
         }
 
         log.info("调用备课智能体: chapterId={}, pptx={}, lessonPlan={}, homework={}, lab={}, keyPoints={}, userMessage={}",
@@ -66,7 +67,7 @@ public class PrepareAgentClientImpl implements PrepareAgentClient {
                 request.getChapterId(),
                 len(result.getLessonPlan()), len(result.getPptx()), len(result.getKeyPoints()),
                 len(result.getHomework()), len(result.getLab()));
-        return result;
+        return Result.success(result);
     }
 
     /**

@@ -1,9 +1,10 @@
-package com.amlve.agentcode.service.impl;
+package com.amlve.agentcode.client;
 
 import com.amlve.agentcode.bean.DifyClient;
 import com.amlve.agentcodeapi.dto.request.CodeDebugRequest;
 import com.amlve.agentcodeapi.dto.response.CodeDebugResponse;
 import com.amlve.agentcodeapi.service.CodeAgentClient;
+import com.amlve.common.request.Result;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -45,21 +46,21 @@ public class CodeAgentClientImpl implements CodeAgentClient {
     private final DifyClient difyClient;
 
     @Override
-    public CodeDebugResponse debug(CodeDebugRequest request) {
+    public Result<CodeDebugResponse> debug(CodeDebugRequest request) {
         // 1. 密钥未配置 → 直接 Mock 兜底
         if (apiKey == null || apiKey.isBlank()) {
             log.warn("Dify 代码调试密钥未配置（dify.code-api-key），返回 Mock 调试结果");
-            return buildMockResponse(request);
+            return Result.success(buildMockResponse(request));
         }
         // 2. 调用 Dify 工作流；任何异常都兜底为 Mock，不向上抛
         try {
             Map<String, Object> inputs = buildInputs(request);
             String response = difyClient.runWorkflowBlocking(apiKey, inputs);
-            return parseResponse(response);
+            return Result.success(parseResponse(response));
         } catch (Exception e) {
             log.warn("Dify 代码调试工作流调用失败，返回 Mock 调试结果: {}", e.getMessage());
             log.debug("Dify 调用失败堆栈", e);
-            return buildMockResponse(request);
+            return Result.success(buildMockResponse(request));
         }
     }
 

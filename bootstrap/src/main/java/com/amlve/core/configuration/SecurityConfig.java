@@ -3,6 +3,7 @@ package com.amlve.core.configuration;
 import com.amlve.core.filter.JwtAuthenticationFilter;
 import com.amlve.system.service.impl.UserDetailsServiceImpl;
 import jakarta.servlet.http.HttpServletResponse;
+import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -30,6 +31,13 @@ public class SecurityConfig {
                           UserDetailsServiceImpl userDetailsService) {
         this.jwtAuthenticationFilter = jwtAuthenticationFilter;
         this.userDetailsService = userDetailsService;
+    }
+
+    @Bean
+    public FilterRegistrationBean<JwtAuthenticationFilter> disableJafInSpringMvc(JwtAuthenticationFilter filter) {
+        FilterRegistrationBean<JwtAuthenticationFilter> registration = new FilterRegistrationBean<>(filter);
+        registration.setEnabled(false);
+        return registration;
     }
 
     @Bean

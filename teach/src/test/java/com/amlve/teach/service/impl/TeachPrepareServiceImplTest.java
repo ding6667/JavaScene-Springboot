@@ -1,6 +1,6 @@
 package com.amlve.teach.service.impl;
 
-import com.amlve.agentprepareapi.PrepareAgentClient;
+import com.amlve.agentprepareapi.service.PrepareAgentClient;
 import com.amlve.common.exception.BusinessException;
 import com.amlve.knowledgeapi.service.KnowledgeChapterApi;
 import com.amlve.teach.dto.request.PrepareRequest;
