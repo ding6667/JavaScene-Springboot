@@ -39,7 +39,7 @@ CREATE TABLE `exam_homework_submit` (
 CREATE TABLE `exam_question` (
   `id` bigint NOT NULL AUTO_INCREMENT COMMENT '主键ID',
   `content` text COLLATE utf8mb4_unicode_ci NOT NULL COMMENT '题目内容',
-  `type` tinyint NOT NULL COMMENT '题型（1=选择，2=填空，3=判断，4=程序阅读，5=编程题）',
+  `type` tinyint NOT NULL COMMENT '题型（1=选择，2=填空，3=判断，4=程序阅读，5=程序改错，6=编程题）',
   `options` json DEFAULT NULL COMMENT '选项（JSON数组，选择题用）',
   `answer` json NOT NULL COMMENT '标准答案',
   `chapter_id` bigint NOT NULL COMMENT '关联章节ID',
@@ -54,6 +54,42 @@ CREATE TABLE `exam_question` (
   KEY `idx_difficulty` (`difficulty`),
   KEY `idx_deleted` (`deleted`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='题目表'
+
+CREATE TABLE `exam_question_difficulty_config` (
+  `id` bigint NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+  `code` varchar(50) COLLATE utf8mb4_unicode_ci NOT NULL COMMENT '难度编码，如 basic/medium/hard/custom_001',
+  `name` varchar(50) COLLATE utf8mb4_unicode_ci NOT NULL COMMENT '难度名称，如 简单、中等、困难',
+  `description` varchar(500) COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT '难度说明',
+  `example` text COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT '题目示例',
+  `level_order` int DEFAULT '1' COMMENT '难度排序，1最简单',
+  `cognitive_levels` json DEFAULT NULL COMMENT '认知层次，如 ["记忆","理解"]',
+  `knowledge_point_min` int DEFAULT '1' COMMENT '最少知识点数量',
+  `knowledge_point_max` int DEFAULT '1' COMMENT '最多知识点数量',
+  `allow_cross_points` tinyint DEFAULT '0' COMMENT '是否允许跨知识点，0否1是',
+  `reasoning_steps_min` int DEFAULT '0' COMMENT '最少推理步骤',
+  `reasoning_steps_max` int DEFAULT '1' COMMENT '最多推理步骤',
+  `code_lines_min` int DEFAULT '0' COMMENT '最少代码行数',
+  `code_lines_max` int DEFAULT '5' COMMENT '最多代码行数',
+  `question_length_max` int DEFAULT '80' COMMENT '题干最大字数',
+  `option_count` int DEFAULT '4' COMMENT '选项数量',
+  `distractor_strength` varchar(20) COLLATE utf8mb4_unicode_ci DEFAULT 'low' COMMENT '干扰项强度：low/medium/high',
+  `score_min` decimal(5,2) DEFAULT '1.00' COMMENT '难度分下限',
+  `score_max` decimal(5,2) DEFAULT '2.00' COMMENT '难度分上限',
+  `is_system` tinyint DEFAULT '0' COMMENT '是否系统预设',
+  `teacher_id` bigint DEFAULT NULL COMMENT '教师ID，NULL表示系统级',
+  `chapter_id` bigint DEFAULT NULL COMMENT '绑定章节，NULL表示通用',
+  `status` tinyint NOT NULL DEFAULT '1' COMMENT '1启用 0禁用',
+  `sort_order` int DEFAULT '0' COMMENT '排序序号',
+  `create_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  `update_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  `deleted` tinyint NOT NULL DEFAULT '0' COMMENT '逻辑删除',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_code` (`code`),
+  KEY `idx_teacher_id` (`teacher_id`),
+  KEY `idx_chapter_id` (`chapter_id`),
+  KEY `idx_status` (`status`),
+  KEY `idx_deleted` (`deleted`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='出题难度配置表'
 
 CREATE TABLE `exam_grading_task` (
   `id` bigint NOT NULL AUTO_INCREMENT COMMENT '主键ID',

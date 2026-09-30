@@ -85,6 +85,6 @@ public class QuestionGenerateRequest {
     public static class AllocationItem {
         private String pointId;
         private String name;
-        private Integer count;
+        private String count;
     }
 }

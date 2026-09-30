@@ -92,15 +92,15 @@ public class ExamQuestionController {
     }
 
     /** 按章节随机抽取题目（教师/管理员） */
-    @PostMapping("/generate")
+    @PostMapping("/random")
     public Result<List<ExamQuestion>> generate(@Valid @RequestBody QuestionGenerateRequest request) {
         examAuthSupport.requireTeacherOrAdmin();
         return Result.success(questionService.generate(request));
     }
 
-    /** AI 出题：调用出题智能体生成并落库（教师/管理员） */
-    @PostMapping("/generate/ai")
-    public Result<List<ExamQuestion>> generateAi(@Valid @RequestBody QuestionAiGenerateRequest request) {
+    /** AI 出题：调用出题智能体生成并落库，返回 1 成功 / 0 失败（教师/管理员） */
+    @PostMapping("/generate")
+    public Result<Integer> generateAi(@Valid @RequestBody QuestionAiGenerateRequest request) {
         examAuthSupport.requireTeacherOrAdmin();
         return Result.success(questionAgent.generate(request));
     }
