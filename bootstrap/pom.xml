@@ -32,6 +32,16 @@
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-web</artifactId>
         </dependency>
+        <!--
+            MyBatis-Plus 3.5.9 起，PaginationInnerInterceptor 等依赖 JSqlParser 的插件
+            从 mybatis-plus-extension 拆到独立 artifact，starter 不再传递引入，
+            需显式声明才能注册分页插件。版本与父 POM 的 mybatis-plus 3.5.17 对齐。
+        -->
+        <dependency>
+            <groupId>com.baomidou</groupId>
+            <artifactId>mybatis-plus-jsqlparser</artifactId>
+            <version>3.5.17</version>
+        </dependency>
         <dependency>
             <groupId>com.amlve</groupId>
             <artifactId>system</artifactId>
