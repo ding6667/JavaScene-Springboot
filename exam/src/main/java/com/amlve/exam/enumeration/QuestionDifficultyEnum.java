@@ -40,4 +40,16 @@ public enum QuestionDifficultyEnum {
         }
         return null;
     }
+
+    public static QuestionDifficultyEnum fromDifficulty(String difficulty) {
+        if (difficulty == null) {
+            return null;
+        }
+        for (QuestionDifficultyEnum value : values()) {
+            if (value.name().equalsIgnoreCase(difficulty)) {
+                return value;
+            }
+        }
+        return null;
+    }
 }

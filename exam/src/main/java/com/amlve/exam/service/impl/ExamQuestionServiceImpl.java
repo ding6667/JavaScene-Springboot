@@ -15,9 +15,19 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
+/**
+ * 题库服务实现：提供按章节随机抽题。
+ */
 @Service
 public class ExamQuestionServiceImpl extends ServiceImpl<ExamQuestionMapper, ExamQuestion> implements ExamQuestionService {
 
+    /**
+     * 按章节随机抽取题目（不调用智能体）。
+     * 从符合条件的题库中随机打乱后取前 count 道；题库为空或数量不足时按实际返回。
+     *
+     * @param request 抽题请求
+     * @return 随机抽取的题目列表（无题时为空列表）
+     */
     @Override
     public List<ExamQuestion> generate(QuestionGenerateRequest request) {
         LambdaQueryWrapper<ExamQuestion> wrapper = Wrappers.<ExamQuestion>lambdaQuery()
@@ -25,11 +35,12 @@ public class ExamQuestionServiceImpl extends ServiceImpl<ExamQuestionMapper, Exa
                 .eq(request.getType() != null, ExamQuestion::getType, QuestionTypeEnum.fromCode(request.getType()))
                 .eq(request.getDifficulty() != null, ExamQuestion::getDifficulty, QuestionDifficultyEnum.fromCode(request.getDifficulty()));
         List<ExamQuestion> all = list(wrapper);
-        if (all.isEmpty()) {
+        if (all == null || all.isEmpty()) {
             return List.of();
         }
         Collections.shuffle(all);
-        int count = Math.min(request.getCount(), all.size());
+        int want = request.getCount() == null ? all.size() : request.getCount();
+        int count = Math.min(want, all.size());
         return new ArrayList<>(all.subList(0, count));
     }
 }

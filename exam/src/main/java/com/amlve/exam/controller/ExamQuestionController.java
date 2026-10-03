@@ -19,21 +19,28 @@ import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
-// TODO 建议将checkTeacherOrAdmin改为@PreAuthorize("hasRole('TEACHER')")或者@PreAuthorize("hasRole('ADMIN')")或者@PreAuthorize("hasRole('STUDENT')")
-// TODO 缺少javadoc注释
 
+/**
+ * 题库管理接口（题目增删改查、随机抽题、AI 出题）。
+ * <p>
+ * 类级 {@code @PreAuthorize("isAuthenticated()")} 要求登录；
+ * 写操作与查询均限教师/管理员，由 {@link #checkTeacherOrAdmin()} 编程式校验。
+ */
 @RestController
 @RequestMapping("/api/exam/question")
 @RequiredArgsConstructor
+@PreAuthorize("isAuthenticated()")
 public class ExamQuestionController {
 
     private final ExamQuestionService questionService;
     private final QuestionAgentImpl questionAgent;
     private final UserService userService;
 
+    /** 新增题目（教师/管理员） */
     @PostMapping
     public Result<Long> create(@Valid @RequestBody QuestionSaveRequest request) {
         checkTeacherOrAdmin();
@@ -42,6 +49,7 @@ public class ExamQuestionController {
         return Result.success(question.getId());
     }
 
+    /** 更新题目（教师/管理员） */
     @PutMapping("/{id}")
     public Result<Void> update(@PathVariable Long id, @Valid @RequestBody QuestionSaveRequest request) {
         checkTeacherOrAdmin();
@@ -51,6 +59,7 @@ public class ExamQuestionController {
         return Result.success(null);
     }
 
+    /** 删除题目（教师/管理员） */
     @DeleteMapping("/{id}")
     public Result<Void> delete(@PathVariable Long id) {
         checkTeacherOrAdmin();
@@ -58,13 +67,14 @@ public class ExamQuestionController {
         return Result.success(null);
     }
 
+    /** 查询单题（教师/管理员） */
     @GetMapping("/{id}")
     public Result<ExamQuestion> get(@PathVariable Long id) {
         checkTeacherOrAdmin();
         return Result.success(questionService.getById(id));
     }
 
-    // TODO 丰富查询参数
+    /** 分页查询题目列表（教师/管理员） */
     @GetMapping("/list")
     public Result<PageResult<ExamQuestion>> list(@RequestParam(required = false) Long chapterId,
                                                  @RequestParam(required = false) Integer type,
@@ -84,30 +94,48 @@ public class ExamQuestionController {
         return Result.success(result);
     }
 
-    @PostMapping("/generate")
+    /** 按章节随机抽取题目（教师/管理员） */
+    @PostMapping("/random")
     public Result<List<ExamQuestion>> generate(@Valid @RequestBody QuestionGenerateRequest request) {
         checkTeacherOrAdmin();
         return Result.success(questionService.generate(request));
     }
 
-    @PostMapping("/generate/ai")
-    public Result<List<ExamQuestion>> generateAi(@Valid @RequestBody QuestionAiGenerateRequest request) {
+    /** AI 出题：调用出题智能体生成并落库，返回 1 成功 / 0 失败（教师/管理员） */
+    @PostMapping("/generate")
+    public Result<Integer> generateAi(@Valid @RequestBody QuestionAiGenerateRequest request) {
         checkTeacherOrAdmin();
         return Result.success(questionAgent.generate(request));
     }
 
+    /** 将保存请求转换为题目实体，options 序列化为 JSON 字符串 */
     private ExamQuestion toEntity(QuestionSaveRequest request) {
         ExamQuestion question = new ExamQuestion();
         question.setContent(request.getContent());
         question.setType(QuestionTypeEnum.fromCode(request.getType()));
-        question.setOptions(request.getOptions());
+        question.setOptions(toOptionsJson(request.getOptions()));
         question.setAnswer(request.getAnswer());
         question.setChapterId(request.getChapterId());
         question.setDifficulty(QuestionDifficultyEnum.fromCode(request.getDifficulty()));
         question.setScore(request.getScore() == null ? 5 : request.getScore());
+        question.setCodeFramework(request.getCodeFramework());
+        question.setCognitiveLevel(request.getCognitiveLevel());
         return question;
     }
 
+    /** 选项列表序列化为 JSON 字符串，失败时退化为分号拼接 */
+    private String toOptionsJson(List<String> options) {
+        if (options == null || options.isEmpty()) {
+            return null;
+        }
+        try {
+            return new com.fasterxml.jackson.databind.ObjectMapper().writeValueAsString(options);
+        } catch (Exception e) {
+            return String.join(";", options);
+        }
+    }
+
+    /** 校验当前用户为教师或管理员，否则抛出权限异常 */
     private void checkTeacherOrAdmin() {
         Long userId = SecurityUtils.getUserId();
         if (!userService.isTeacher(userId) && !userService.isAdmin(userId)) {

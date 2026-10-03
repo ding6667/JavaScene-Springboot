@@ -25,6 +25,13 @@ import java.util.Map;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
+/**
+ * 答题批改服务实现。
+ * <p>
+ * 异步逐题调用评分智能体（{@link ScoreAgentClient}），汇总得分与错误原因写回批改任务。
+ * 批改运行在异步线程，异常无法向外回传，故统一记录日志并把失败信息写入批改任务的 errorMessage，
+ * 便于前端/排查时定位。
+ */
 @Slf4j
 @Service
 @RequiredArgsConstructor
@@ -35,13 +42,32 @@ public class ExamGradingServiceImpl implements ExamGradingService {
     private final ExamQuestionMapper questionMapper;
     private final ScoreAgentClient scoreClient;
 
+    /**
+     * 异步批改指定学生某次作业的全部提交。
+     *
+     * @param homeworkId 作业 ID
+     * @param userId     学生 ID
+     */
     @Async("examGradingExecutor")
     @Override
     public void gradeAsync(Long homeworkId, Long userId) {
+        try {
+            doGrade(homeworkId, userId);
+        } catch (Exception e) {
+            log.error("作业批改失败: homeworkId={}, userId={}", homeworkId, userId, e);
+            markFailed(homeworkId, userId, e);
+        }
+    }
+
+    /**
+     * 执行批改主流程：逐题评分并写回批改任务结果。
+     */
+    private void doGrade(Long homeworkId, Long userId) {
         List<ExamHomeworkSubmit> submits = submitMapper.selectList(Wrappers.<ExamHomeworkSubmit>lambdaQuery()
                 .eq(ExamHomeworkSubmit::getHomeworkId, homeworkId)
                 .eq(ExamHomeworkSubmit::getUserId, userId));
-        if (submits.isEmpty()) {
+        if (submits == null || submits.isEmpty()) {
+            log.warn("作业无提交记录，跳过批改: homeworkId={}, userId={}", homeworkId, userId);
             return;
         }
 
@@ -49,7 +75,8 @@ public class ExamGradingServiceImpl implements ExamGradingService {
                 .map(ExamHomeworkSubmit::getQuestionId)
                 .distinct()
                 .toList();
-        Map<Long, ExamQuestion> questionMap = questionMapper.selectBatchIds(questionIds).stream()
+        List<ExamQuestion> questions = questionMapper.selectBatchIds(questionIds);
+        Map<Long, ExamQuestion> questionMap = (questions == null ? List.<ExamQuestion>of() : questions).stream()
                 .collect(Collectors.toMap(ExamQuestion::getId, Function.identity()));
 
         int studentScore = 0;
@@ -57,6 +84,7 @@ public class ExamGradingServiceImpl implements ExamGradingService {
         for (ExamHomeworkSubmit submit : submits) {
             ExamQuestion question = questionMap.get(submit.getQuestionId());
             if (question == null) {
+                log.warn("提交的题目不存在，跳过: questionId={}", submit.getQuestionId());
                 continue;
             }
             int fullScore = question.getScore() == null ? 0 : question.getScore();
@@ -93,15 +121,40 @@ public class ExamGradingServiceImpl implements ExamGradingService {
         ExamGradingTask task = gradingTaskMapper.selectOne(Wrappers.<ExamGradingTask>lambdaQuery()
                 .eq(ExamGradingTask::getHomeworkId, homeworkId)
                 .eq(ExamGradingTask::getUserId, userId));
-        if (task != null) {
-            task.setStudentScore(studentScore);
-            task.setScoreDetail(details);
-            task.setStatus(ExamGradingTaskStatus.DONE);
-            task.setErrorMessage(null);
-            gradingTaskMapper.updateById(task);
+        if (task == null) {
+            log.warn("批改任务不存在，无法写回结果: homeworkId={}, userId={}", homeworkId, userId);
+            return;
+        }
+        task.setStudentScore(studentScore);
+        task.setScoreDetail(details);
+        task.setStatus(ExamGradingTaskStatus.DONE);
+        task.setErrorMessage(null);
+        if (gradingTaskMapper.updateById(task) == 0) {
+            log.warn("批改结果写回失败: homeworkId={}, userId={}", homeworkId, userId);
         }
     }
 
+    /**
+     * 批改异常时把失败信息写入批改任务，便于前端展示与排查。
+     */
+    private void markFailed(Long homeworkId, Long userId, Exception e) {
+        ExamGradingTask task = gradingTaskMapper.selectOne(Wrappers.<ExamGradingTask>lambdaQuery()
+                .eq(ExamGradingTask::getHomeworkId, homeworkId)
+                .eq(ExamGradingTask::getUserId, userId));
+        if (task == null) {
+            return;
+        }
+        task.setErrorMessage("批改失败: " + e.getMessage());
+        gradingTaskMapper.updateById(task);
+    }
+
+    /**
+     * 查询指定学生某次作业的批改结果。
+     *
+     * @param homeworkId 作业 ID
+     * @param userId     学生 ID
+     * @return 批改结果
+     */
     @Override
     public GradingResultResponse getByHomeworkAndUser(Long homeworkId, Long userId) {
         ExamGradingTask task = gradingTaskMapper.selectOne(Wrappers.<ExamGradingTask>lambdaQuery()
@@ -123,6 +176,9 @@ public class ExamGradingServiceImpl implements ExamGradingService {
         return response;
     }
 
+    /**
+     * 将评分智能体返回的分析与错误明细拼接为可读的错误原因。
+     */
     private String buildReason(ScoreEvaluateResponse response) {
         StringBuilder sb = new StringBuilder();
         if (response.getAnalysis() != null && !response.getAnalysis().isEmpty()) {
