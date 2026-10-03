@@ -14,8 +14,10 @@ import java.util.List;
 
 /**
  * 章节接口
+ * <p>
+ * 章节目录是三类角色共用的只读导航数据（学生看进度、教师选题、管理员总览），
+ * 无角色专属信息，故维持登录级校验 isAuthenticated()，不做角色细分。
  */
-// TODO 缺少@PreAuthorize注解，@PreAuthorize("isAuthenticated()") 仅说明用户登录，但无法证明是否有角色权限访问，需在对应方法上添加@PreAuthorize("hasRole('')"注解
 @RestController
 @RequestMapping("/api/knowledge/chapter")
 @RequiredArgsConstructor

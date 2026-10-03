@@ -52,6 +52,8 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                     Long userId = jwtUtil.getUserIdByToken(token);
                     String username = jwtUtil.getUsernameByToken(token);
 
+                    // 每次请求按用户名加载 UserDetails，其 authorities 已含 ROLE_<roleName>，
+                    // 因此 @PreAuthorize 的 hasRole() 可直接生效
                     UserDetails userDetails = userDetailsService.loadUserByUsername(username);
 
                     UserIdAuthenticationToken authentication =

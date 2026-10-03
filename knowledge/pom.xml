@@ -34,6 +34,11 @@
             <groupId>org.springframework</groupId>
             <artifactId>spring-web</artifactId>
         </dependency>
+        <!-- SSE 流式接口（SseEmitter）位于 spring-webmvc，控制器层使用 -->
+        <dependency>
+            <groupId>org.springframework</groupId>
+            <artifactId>spring-webmvc</artifactId>
+        </dependency>
         <dependency>
             <groupId>com.amlve</groupId>
             <artifactId>knowledge-api</artifactId>

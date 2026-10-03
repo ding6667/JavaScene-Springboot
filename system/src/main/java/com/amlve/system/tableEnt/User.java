@@ -43,6 +43,26 @@ public class User extends BaseEntity {
     private String phone;
 
     /**
+     * 学号（学生角色）
+     */
+    private String studentNo;
+
+    /**
+     * 班级（学生角色，如 2024级软件工程1班）
+     */
+    private String className;
+
+    /**
+     * 专业（学生角色）
+     */
+    private String major;
+
+    /**
+     * 职称（教师角色，如 副教授）
+     */
+    private String title;
+
+    /**
      * 账号状态：0-禁用，1-启用
      */
     private Integer enabled;

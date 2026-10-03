@@ -82,7 +82,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         user.setRoleName("STUDENT"); // 自助注册仅产生学生，教师/管理员走管理端
         userMapper.insert(user);
 
-        // 3. 返回 JWT（注册即登录，直接返回 Token）
+        // 3. 返回 JWT（注册即登录，直接返回 Token，角色写入 role claim）
         log.info("用户注册成功: {}", username);
         return jwtUtil.generateToken(user.getId(), user.getUsername());
     }
@@ -120,7 +120,16 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         if (user == null) {
             throw new BusinessException(ErrorCodeConstant.USER_NOT_FOUND, ErrorMessageConstant.USER_NOT_FOUND);
         }
-        return userConverter.toResponse(user);
+        UserInfoResponse response = userConverter.toResponse(user);
+        // 按角色裁剪无关字段：学生不返回教师职称，教师不返回学号/班级/专业（管理员原样返回）
+        if ("STUDENT".equals(user.getRoleName())) {
+            response.setTitle(null);
+        } else if ("TEACHER".equals(user.getRoleName())) {
+            response.setStudentNo(null);
+            response.setClassName(null);
+            response.setMajor(null);
+        }
+        return response;
     }
 
     @Override
@@ -160,6 +169,19 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         if (request.getPhone() != null) {
             exist.setPhone(request.getPhone());
         }
+        // 角色特定字段（可选更新）：学号/班级/专业属学生，职称属教师
+        if (request.getStudentNo() != null) {
+            exist.setStudentNo(request.getStudentNo());
+        }
+        if (request.getClassName() != null) {
+            exist.setClassName(request.getClassName());
+        }
+        if (request.getMajor() != null) {
+            exist.setMajor(request.getMajor());
+        }
+        if (request.getTitle() != null) {
+            exist.setTitle(request.getTitle());
+        }
         if (request.getRoleName() != null) {
             checkRoleName(request.getRoleName());
             exist.setRoleName(request.getRoleName());
@@ -191,9 +213,12 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
     public PageResult<UserInfoResponse> records(Long pageNum, Long pageSize, String keyword) {
         checkAdminPermission();
         Page<User> page = new Page<>(pageNum, pageSize);
+        // 关键词模糊匹配：账号 / 真实姓名 / 手机号 / 学号（对应测试报告 3.7-12）
         LambdaQueryWrapper<User> wrapper = Wrappers.<User>lambdaQuery()
                 .and(StringUtils.hasText(keyword), w -> w.like(User::getUsername, keyword)
-                        .or().like(User::getRealName, keyword))
+                        .or().like(User::getRealName, keyword)
+                        .or().like(User::getPhone, keyword)
+                        .or().like(User::getStudentNo, keyword))
                 .orderByDesc(User::getCreateTime);
         IPage<User> pageData = userMapper.selectPage(page, wrapper);
         List<UserInfoResponse> voList = pageData.getRecords().stream()

@@ -14,12 +14,14 @@ import org.springframework.web.bind.annotation.RestController;
 
 /**
  * AI 内容校验接口
+ * <p>
+ * 校验用于教材入库前的关键词把关，属教师侧运维能力，故限 TEACHER / ADMIN；
+ * teach 等模块的服务内调用走 KnowledgeDatasetService，不经过本接口。
  */
-// TODO 缺少@PreAuthorize注解，@PreAuthorize("isAuthenticated()") 仅说明用户登录，但无法证明是否有角色权限访问，需在对应方法上添加@PreAuthorize("hasRole('')"注解
 @RestController
 @RequestMapping("/api/knowledge/verify")
 @RequiredArgsConstructor
-@PreAuthorize("isAuthenticated()")
+@PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
 public class KnowledgeVerifyController {
 
     private final KnowledgeDatasetService knowledgeDatasetService;

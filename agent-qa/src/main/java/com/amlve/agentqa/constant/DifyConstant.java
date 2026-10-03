@@ -16,6 +16,10 @@ public final class DifyConstant {
     /** 批量更新文档元数据 */
     public static final String UPDATE_DOCUMENT_METADATA = "/datasets/{datasetId}/documents/metadata";
 
+    /** 查询文档索引状态（按创建时返回的 batch 查询，含 error 信息） */
+    public static final String DOCUMENT_INDEXING_STATUS =
+            "/datasets/{datasetId}/documents/{batch}/indexing-status";
+
     /** 从知识库检索分段 */
     public static final String RETRIEVE = "/datasets/{datasetId}/retrieve";
 
