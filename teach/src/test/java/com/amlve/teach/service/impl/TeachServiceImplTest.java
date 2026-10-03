@@ -1,5 +1,8 @@
 package com.amlve.teach.service.impl;
 
+import com.amlve.common.constant.ErrorCodeConstant;
+import com.amlve.common.request.Result;
+import com.amlve.common.security.UserIdAuthenticationToken;
 import com.amlve.teach.dto.request.HomeworkPublishRequest;
 import com.amlve.teach.mapper.HomeworkMapper;
 import com.amlve.teach.tableEnt.Homework;
@@ -111,7 +114,7 @@ class TeachServiceImplTest {
         homework.setTeacherId(TEACHER_ID);
         when(homeworkMapper.selectById(100L)).thenReturn(homework);
 
-        HomeworkResponse dto = teachService.getHomeworkById(100L);
+        HomeworkDTO dto = teachService.getHomeworkById(100L).getData();
 
         assertThat(dto).isNotNull();
         assertThat(dto.getId()).isEqualTo(100L);
@@ -119,10 +122,13 @@ class TeachServiceImplTest {
     }
 
     @Test
-    void getHomeworkById_shouldReturnNull_whenNotExists() {
+    void getHomeworkById_shouldReturnNotFound_whenNotExists() {
         when(homeworkMapper.selectById(999L)).thenReturn(null);
 
-        assertThat(teachService.getHomeworkById(999L)).isNull();
+        // 作业不存在：返回 NOT_FOUND 错误码而非 null，调用方通过 code 判断
+        Result<HomeworkDTO> result = teachService.getHomeworkById(999L);
+        assertThat(result.getCode()).isEqualTo(ErrorCodeConstant.NOT_FOUND);
+        assertThat(result.getData()).isNull();
     }
 
     @Test
@@ -133,7 +139,7 @@ class TeachServiceImplTest {
         homework.setTeacherId(TEACHER_ID);
         when(homeworkMapper.selectList(any())).thenReturn(List.of(homework));
 
-        List<HomeworkResponse> dtoList = teachService.listHomeworkByTeacherId(TEACHER_ID);
+        List<HomeworkDTO> dtoList = teachService.listHomeworkByTeacherId(TEACHER_ID).getData();
 
         assertThat(dtoList).hasSize(1);
         assertThat(dtoList.get(0).getId()).isEqualTo(100L);

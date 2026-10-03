@@ -2,7 +2,9 @@ package com.amlve.teach.service.impl;
 
 import com.amlve.agentprepareapi.service.PrepareAgentClient;
 import com.amlve.agentprepareapi.dto.request.TeachingMaterialDTO;
+import com.amlve.common.constant.ErrorCodeConstant;
 import com.amlve.common.exception.BusinessException;
+import com.amlve.common.request.Result;
 import com.amlve.common.utils.SecurityUtils;
 import com.amlve.knowledgeapi.service.KnowledgeChapterApi;
 import com.amlve.teach.dto.request.PrepareRequest;
@@ -54,15 +56,23 @@ public class TeachPrepareServiceImpl implements TeachPrepareService {
     public PrepareResponse generateTeachingMaterials(PrepareRequest request) {
         Long teacherId = SecurityUtils.getUserId();
         try {
-            // 1. 跨模块查询章节备课素材（knowledge 已按 page/pageOrder 升序序列化）
-            // TODO 需处理result.code == error 异常情况
-            com.amlve.knowledgeapi.dto.response.TeachingMaterialDTO material =
-                    knowledgeChapterApi.getTeachingMaterials(request.getChapterId()).getData();
+            // 1. 跨模块查询章节备课素材（knowledge 已按 page/pageOrder 升序序列化），失败即中断备课
+            Result<com.amlve.knowledgeapi.dto.response.TeachingMaterialDTO> materialResult =
+                    knowledgeChapterApi.getTeachingMaterials(request.getChapterId());
+            if (materialResult == null || materialResult.getCode() != ErrorCodeConstant.SUCCESS) {
+                throw new BusinessException("查询备课素材失败: "
+                        + (materialResult == null ? "接口返回为空" : materialResult.getMessage()));
+            }
+            com.amlve.knowledgeapi.dto.response.TeachingMaterialDTO material = materialResult.getData();
 
-            // 2. 调用备课智能体（素材 DTO 跨模块转换后传入）
-            // TODO 需处理 Result 异常情况
-            com.amlve.agentprepareapi.dto.response.PrepareResponse agentResult =
-                    prepareAgentClient.generate(toApiRequest(request), toApiMaterial(material)).getData();
+            // 2. 调用备课智能体（素材 DTO 跨模块转换后传入），失败即中断备课
+            Result<com.amlve.agentprepareapi.dto.response.PrepareResponse> agentResultRaw =
+                    prepareAgentClient.generate(toApiRequest(request), toApiMaterial(material));
+            if (agentResultRaw == null || agentResultRaw.getCode() != ErrorCodeConstant.SUCCESS) {
+                throw new BusinessException("备课智能体调用失败: "
+                        + (agentResultRaw == null ? "接口返回为空" : agentResultRaw.getMessage()));
+            }
+            com.amlve.agentprepareapi.dto.response.PrepareResponse agentResult = agentResultRaw.getData();
 
             // 3. PPT Markdown 转 pptx 文件（转换失败返回 null，其余材料正常返回）
             String pptxUrl = null;

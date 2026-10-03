@@ -2,6 +2,7 @@ package com.amlve.teach.service.impl;
 
 import com.amlve.agentprepareapi.service.PrepareAgentClient;
 import com.amlve.common.exception.BusinessException;
+import com.amlve.common.request.Result;
 import com.amlve.knowledgeapi.service.KnowledgeChapterApi;
 import com.amlve.teach.dto.request.PrepareRequest;
 import com.amlve.teach.dto.response.PrepareResponse;
@@ -110,10 +111,10 @@ class TeachPrepareServiceImplTest {
 
     @Test
     void generate_shouldConvertMaterialFields_andSaveSuccessRecord() {
-        when(knowledgeChapterApi.getTeachingMaterials(CHAPTER_ID)).thenReturn(buildKnowledgeMaterial());
+        when(knowledgeChapterApi.getTeachingMaterials(CHAPTER_ID)).thenReturn(Result.success(buildKnowledgeMaterial()));
         when(prepareAgentClient.generate(any(com.amlve.agentprepareapi.dto.request.PrepareRequest.class),
                 any(com.amlve.agentprepareapi.dto.request.TeachingMaterialDTO.class)))
-                .thenReturn(buildAgentResult());
+                .thenReturn(Result.success(buildAgentResult()));
         when(markdownToPptxUtil.convertContent(anyString())).thenReturn(PPTX_PATH);
         mockInsertBackfillId();
 
@@ -165,8 +166,8 @@ class TeachPrepareServiceImplTest {
         // 智能体未返回 PPT（开关关闭）：不生成文件、不落 PPT 记录
         com.amlve.agentprepareapi.dto.response.PrepareResponse agentResult = buildAgentResult();
         agentResult.setPptx(null);
-        when(knowledgeChapterApi.getTeachingMaterials(CHAPTER_ID)).thenReturn(buildKnowledgeMaterial());
-        when(prepareAgentClient.generate(any(), any())).thenReturn(agentResult);
+        when(knowledgeChapterApi.getTeachingMaterials(CHAPTER_ID)).thenReturn(Result.success(buildKnowledgeMaterial()));
+        when(prepareAgentClient.generate(any(), any())).thenReturn(Result.success(agentResult));
         mockInsertBackfillId();
 
         PrepareResponse response = service.generateTeachingMaterials(buildRequest());
@@ -184,8 +185,8 @@ class TeachPrepareServiceImplTest {
     @Test
     void generate_shouldDegrade_whenPptxConvertFail() {
         // marp2pptx 不可用：pptxUrl=null，其余材料正常返回
-        when(knowledgeChapterApi.getTeachingMaterials(CHAPTER_ID)).thenReturn(buildKnowledgeMaterial());
-        when(prepareAgentClient.generate(any(), any())).thenReturn(buildAgentResult());
+        when(knowledgeChapterApi.getTeachingMaterials(CHAPTER_ID)).thenReturn(Result.success(buildKnowledgeMaterial()));
+        when(prepareAgentClient.generate(any(), any())).thenReturn(Result.success(buildAgentResult()));
         when(markdownToPptxUtil.convertContent(anyString())).thenReturn(null);
         mockInsertBackfillId();
 
@@ -225,7 +226,7 @@ class TeachPrepareServiceImplTest {
     @Test
     void generate_shouldSaveFailedRecord_andRethrow_whenAgentFail() {
         // 智能体调用失败：同样落 status=0 记录并上抛
-        when(knowledgeChapterApi.getTeachingMaterials(CHAPTER_ID)).thenReturn(buildKnowledgeMaterial());
+        when(knowledgeChapterApi.getTeachingMaterials(CHAPTER_ID)).thenReturn(Result.success(buildKnowledgeMaterial()));
         when(prepareAgentClient.generate(any(), any()))
                 .thenThrow(new BusinessException("Dify 备课工作流执行失败: status=failed"));
 
@@ -237,5 +238,43 @@ class TeachPrepareServiceImplTest {
         verify(teachPrepareRecordMapper).insert(captor.capture());
         assertThat(captor.getValue().getStatus()).isEqualTo(0);
         assertThat(captor.getValue().getErrorMsg()).contains("Dify");
+    }
+
+    @Test
+    void generate_shouldSaveFailedRecord_andRethrow_whenMaterialQueryReturnError() {
+        // 素材接口返回 error Result（不抛异常）：判错后中断备课并落失败记录
+        when(knowledgeChapterApi.getTeachingMaterials(CHAPTER_ID))
+                .thenReturn(Result.error("章节不存在"));
+
+        assertThatThrownBy(() -> service.generateTeachingMaterials(buildRequest()))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("查询备课素材失败");
+
+        ArgumentCaptor<TeachPrepareRecord> captor = ArgumentCaptor.forClass(TeachPrepareRecord.class);
+        verify(teachPrepareRecordMapper).insert(captor.capture());
+        assertThat(captor.getValue().getStatus()).isEqualTo(0);
+        assertThat(captor.getValue().getErrorMsg()).contains("查询备课素材失败");
+        // 判错路径不触达智能体与 PPT 记录
+        verify(prepareAgentClient, never()).generate(any(), any());
+        verify(teachPptMapper, never()).insert(any(TeachPpt.class));
+    }
+
+    @Test
+    void generate_shouldSaveFailedRecord_andRethrow_whenAgentReturnError() {
+        // 智能体返回 error Result（不抛异常）：判错后中断备课并落失败记录
+        when(knowledgeChapterApi.getTeachingMaterials(CHAPTER_ID))
+                .thenReturn(Result.success(buildKnowledgeMaterial()));
+        when(prepareAgentClient.generate(any(), any()))
+                .thenReturn(Result.error("工作流执行失败"));
+
+        assertThatThrownBy(() -> service.generateTeachingMaterials(buildRequest()))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("备课智能体调用失败");
+
+        ArgumentCaptor<TeachPrepareRecord> captor = ArgumentCaptor.forClass(TeachPrepareRecord.class);
+        verify(teachPrepareRecordMapper).insert(captor.capture());
+        assertThat(captor.getValue().getStatus()).isEqualTo(0);
+        assertThat(captor.getValue().getErrorMsg()).contains("备课智能体调用失败");
+        verify(teachPptMapper, never()).insert(any(TeachPpt.class));
     }
 }
