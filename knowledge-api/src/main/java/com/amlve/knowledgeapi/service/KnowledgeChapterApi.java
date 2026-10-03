@@ -1,9 +1,8 @@
 package com.amlve.knowledgeapi.service;
 
 import com.amlve.common.request.Result;
-import com.amlve.knowledgeapi.dto.response.ChapterDTO;
-import com.amlve.knowledgeapi.dto.response.KnowledgePointDTO;
-import com.amlve.knowledgeapi.dto.response.TeachingMaterialDTO;
+import com.amlve.knowledgeapi.dto.request.ChapterNamesRequest;
+import com.amlve.knowledgeapi.dto.response.*;
 
 import java.util.List;
 
@@ -37,4 +36,19 @@ public interface KnowledgeChapterApi {
      * @return 七类素材封装对象
      */
     Result<TeachingMaterialDTO> getTeachingMaterials(Long chapterId);
+
+
+
+    Result<KnowledgeVerifyResponse> verify(KnowledgeVerifyRequest knowledgeVerifyRequest);
+
+    Result<ChapterNameResponse> getChapterNameById(Long chapterId);
+
+
+    Result<ChapterNamesResponse> getChapterNamesById(ChapterNamesRequest chapterIds);
+
+    /**
+     * 全量章节名称（结果可缓存，TTL ≥ 1 小时）
+     */
+    Result<List<ChapterNameResponse>> listAllChapterNames();
+
 }

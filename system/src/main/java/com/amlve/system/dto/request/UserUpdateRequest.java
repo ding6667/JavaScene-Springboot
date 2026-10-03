@@ -35,6 +35,26 @@ public class UserUpdateRequest {
     private String phone;
 
     /**
+     * 学号（可选，学生角色）
+     */
+    private String studentNo;
+
+    /**
+     * 班级（可选，学生角色）
+     */
+    private String className;
+
+    /**
+     * 专业（可选，学生角色）
+     */
+    private String major;
+
+    /**
+     * 职称（可选，教师角色）
+     */
+    private String title;
+
+    /**
      * 角色名称（可选，STUDENT / TEACHER）
      */
     private String roleName;

@@ -3,6 +3,7 @@ package com.amlve.agentqaapi.service;
 
 import com.amlve.agentqaapi.dto.response.DifyRetrieveResponse;
 import com.amlve.common.request.Result;
+import reactor.core.publisher.Flux;
 
 import java.io.File;
 import java.util.Map;
@@ -69,6 +70,21 @@ public interface QAAgentClient {
      * @param userQuery 学生提问内容
      * @return 工作流输出中的答案文本
      */
-    // TODO 需改为流式输出模式
     Result<String> answer(String chapterId, String userQuery);
+
+    /**
+     * 答疑工作流（流式）：与 {@link #answer} 入参语义一致，
+     * 但以 SSE 流式返回文本片段，前端可边生成边展示（对应测试报告 S-08）。
+     * <p>
+     * 流式语义与 Result 包装不兼容，故直接返回 Flux：
+     * 出错时以 Flux 错误信号终止，由控制层转为 error 事件。
+     * <p>
+     * 与 blocking 的 {@link #answer} 不同：本方法<b>不剥除</b>模型思考链，
+     * 按 Dify 片段原样返回，think 与正文的分流由控制层负责。
+     *
+     * @param chapterId 章节ID（可为 null / 空串，表示不限章节）
+     * @param userQuery 学生提问内容
+     * @return 文本片段流（含思考链标签原文），流自然结束表示回答完成
+     */
+    Flux<String> answerStream(String chapterId, String userQuery);
 }

@@ -5,17 +5,14 @@ import com.amlve.common.request.Result;
 import com.amlve.system.converter.StandardConfigConverter;
 import com.amlve.system.dto.request.StandardConfigRequest;
 import com.amlve.system.dto.request.StandardConfigUpdateRequest;
-import com.amlve.system.dto.response.StandardConfigResponse;
-import com.amlve.systemapi.dto.api.StandardConfigDTO;
+import com.amlve.systemapi.dto.api.StandardConfigResponse;
 import com.amlve.common.exception.BusinessException;
 import com.amlve.system.service.StandardConfigService;
 import com.amlve.system.constant.ErrorCodeConstant;
 import com.amlve.system.constant.ErrorMessageConstant;
-import com.amlve.system.enumeration.UserConfigKeyEnum;
 import com.amlve.system.mapper.SettingsMapper;
 import com.amlve.system.mapper.StandardConfigMapper;
 import com.amlve.system.tableEnt.StandardConfig;
-import com.amlve.system.tableEnt.UserConfig;
 import com.amlve.systemapi.service.StandardService;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
@@ -39,14 +36,14 @@ public class StandardConfigServiceImpl extends ServiceImpl<StandardConfigMapper,
     private final SettingsMapper userConfigMapper;
 
     @Override
-    public Result<StandardConfigDTO> selectByName(String name) {
+    public Result<StandardConfigResponse> selectByName(String name) {
         LambdaQueryWrapper<StandardConfig> queryWrapper = Wrappers.<StandardConfig>lambdaQuery();
         queryWrapper.eq(StandardConfig::getStandardName, name);
         return Result.success(standardConfigMapMapper.toDTO(standardConfigMapper.selectOne(queryWrapper)));
     }
 
     @Override
-    public Result<StandardConfigDTO> selectById(Long id) {
+    public Result<StandardConfigResponse> selectById(Long id) {
         return Result.success(standardConfigMapMapper.toDTO(standardConfigMapper.selectById(id)));
     }
 
@@ -57,7 +54,7 @@ public class StandardConfigServiceImpl extends ServiceImpl<StandardConfigMapper,
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public StandardConfigResponse createStandardSettings(Long userId, StandardConfigRequest standardConfigDTO) {
+    public com.amlve.system.dto.response.StandardConfigResponse createStandardSettings(Long userId, StandardConfigRequest standardConfigDTO) {
         StandardConfig standardConfig = standardConfigMapper.selectOne(Wrappers.lambdaQuery(StandardConfig.class).eq(StandardConfig::getStandardName, standardConfigDTO.getStandardName()));
         if (standardConfig != null) {
             throw new BusinessException(ErrorMessageConstant.STANDARD_NAME_EXIST);
@@ -81,7 +78,7 @@ public class StandardConfigServiceImpl extends ServiceImpl<StandardConfigMapper,
             throw new BusinessException(ErrorMessageConstant.CREATE_FAILED);
         }
 
-        return StandardConfigResponse.builder()
+        return com.amlve.system.dto.response.StandardConfigResponse.builder()
                 .id(sc.getId())
                 .standardName(standardConfigDTO.getStandardName())
                 .standardContent(standardConfigDTO.getStandardContent())
@@ -93,12 +90,12 @@ public class StandardConfigServiceImpl extends ServiceImpl<StandardConfigMapper,
     }
 
     @Override
-    public List<StandardConfigResponse> getByUserId(Long userId) {
+    public List<com.amlve.system.dto.response.StandardConfigResponse> getByUserId(Long userId) {
         LambdaQueryWrapper<StandardConfig> queryWrapper = Wrappers.<StandardConfig>lambdaQuery()
                 .eq(StandardConfig::getUserId, userId)
                 .eq(StandardConfig::getDeleted, 0);
         List<StandardConfig> configs = standardConfigMapper.selectList(queryWrapper);
-        return configs.stream().map(config -> StandardConfigResponse.builder()
+        return configs.stream().map(config -> com.amlve.system.dto.response.StandardConfigResponse.builder()
                 .id(config.getId())
                 .standardName(config.getStandardName())
                 .standardContent(config.getStandardContent())
@@ -111,7 +108,7 @@ public class StandardConfigServiceImpl extends ServiceImpl<StandardConfigMapper,
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public StandardConfigResponse updateStandard(Long id, StandardConfigUpdateRequest request) {
+    public com.amlve.system.dto.response.StandardConfigResponse updateStandard(Long id, StandardConfigUpdateRequest request) {
         StandardConfig existing = standardConfigMapper.selectById(id);
         if (existing == null || existing.getDeleted() == 1) {
             throw new BusinessException(ErrorCodeConstant.BUSINESS_ERROR, ErrorMessageConstant.STANDARD_NOT_FOUND);
@@ -124,7 +121,7 @@ public class StandardConfigServiceImpl extends ServiceImpl<StandardConfigMapper,
         if (rows != 1) {
             throw new BusinessException(ErrorCodeConstant.BUSINESS_ERROR, ErrorMessageConstant.UPDATE_FAILED);
         }
-        return StandardConfigResponse.builder()
+        return com.amlve.system.dto.response.StandardConfigResponse.builder()
                 .id(existing.getId())
                 .standardName(existing.getStandardName())
                 .standardContent(existing.getStandardContent())

@@ -4,10 +4,9 @@ import com.amlve.common.constant.ErrorCodeConstant;
 import com.amlve.common.request.Result;
 import com.amlve.common.security.UserIdAuthenticationToken;
 import com.amlve.teach.dto.request.HomeworkPublishRequest;
-import com.amlve.teach.dto.response.HomeworkResponse;
 import com.amlve.teach.mapper.HomeworkMapper;
 import com.amlve.teach.tableEnt.Homework;
-import com.amlve.teachapi.dto.HomeworkDTO;
+import com.amlve.teachapi.dto.response.HomeworkResponse;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -98,10 +97,10 @@ class TeachServiceImplTest {
         homework.setCreateTime(LocalDateTime.of(2026, 9, 7, 10, 0));
         when(homeworkMapper.selectList(any())).thenReturn(List.of(homework));
 
-        List<HomeworkResponse> result = teachService.listMyHomework();
+        List<com.amlve.teach.dto.response.HomeworkResponse> result = teachService.listMyHomework();
 
         assertThat(result).hasSize(1);
-        HomeworkResponse response = result.get(0);
+        com.amlve.teach.dto.response.HomeworkResponse response = result.get(0);
         assertThat(response.getId()).isEqualTo(100L);
         assertThat(response.getTitle()).isEqualTo("第一次Java作业");
         assertThat(response.getChapterId()).isEqualTo(1L);

@@ -20,11 +20,9 @@ import java.util.List;
 /**
  * 知识点权重配置接口
  * <p>
- * 写操作（保存/批量保存）仅管理员可用：因 JWT 令牌无角色信息，
- * @PreAuthorize hasRole 不可用，实际角色拦截在 Service 层经
- * system-api 的 isAdmin 编程式校验完成。
+ * 权重配置仅管理员可用：过滤器按用户名加载 UserDetails，其 authorities 已含 ROLE_ADMIN，
+ * 故控制层可直接用 hasRole('ADMIN') 拦截；Service 层的 isAdmin 编程式校验保留作双保险。
  */
-// TODO 缺少@PreAuthorize注解，@PreAuthorize("isAuthenticated()") 仅说明用户登录，但无法证明是否有角色权限访问，需在对应方法上添加@PreAuthorize("hasRole('')"注解
 @Slf4j
 @RestController
 @RequestMapping("/api/knowledge/weight")
@@ -40,6 +38,7 @@ public class KnowledgeWeightConfigController {
      * POST /api/knowledge/weight/save
      * 同一章节+知识点重复提交为更新（upsert）
      */
+    @PreAuthorize("hasRole('ADMIN')")
     @PostMapping("/save")
     public Result<Long> saveWeightConfig(@Valid @RequestBody WeightConfigSaveRequest request) {
         log.info("保存权重配置: chapterId={}, knowledgePointId={}, weight={}",
@@ -54,6 +53,7 @@ public class KnowledgeWeightConfigController {
      * POST /api/knowledge/weight/batch
      * 整体一个事务，任一条失败全部回滚
      */
+    @PreAuthorize("hasRole('ADMIN')")
     @PostMapping("/batch")
     public Result<Integer> batchSaveWeightConfigs(@Valid @RequestBody List<WeightConfigSaveRequest> requests) {
         log.info("批量保存权重配置: 共 {} 条", requests.size());
@@ -66,6 +66,7 @@ public class KnowledgeWeightConfigController {
      * <p>
      * GET /api/knowledge/weight/list?chapterId=5
      */
+    @PreAuthorize("hasRole('ADMIN')")
     @GetMapping("/list")
     public Result<List<WeightConfigVO>> listByChapter(@RequestParam Long chapterId) {
         return Result.success(weightConfigService.listByChapter(chapterId));

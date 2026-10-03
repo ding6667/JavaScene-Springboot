@@ -34,6 +34,11 @@
             <artifactId>common</artifactId>
             <version>${project.version}</version>
         </dependency>
+        <!-- answerStream 流式答疑方法签名使用 Flux（版本由父 POM 的 Spring Boot BOM 管理） -->
+        <dependency>
+            <groupId>io.projectreactor</groupId>
+            <artifactId>reactor-core</artifactId>
+        </dependency>
     </dependencies>
 
     <build>

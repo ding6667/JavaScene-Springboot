@@ -1,5 +1,7 @@
 package com.amlve.knowledge.constant;
 
+import java.util.Set;
+
 /**
  * knowledge 模块常量
  */
@@ -19,6 +21,15 @@ public final class KnowledgeConstant {
     // ===== AI 校验兜底关键词（knowledge_keyword 表无数据时使用，后续可替换） =====
 
     public static final String FALLBACK_KEYWORDS = "面向对象,类,对象,继承,封装,多态,接口,方法,属性,构造器";
+
+    // ===== 知识库文件上传（Dify 支持的文档类型，与官方白名单一致） =====
+
+    /**
+     * Dify 知识库支持的上传文件扩展名（小写）；zip 等压缩包与无扩展名文件会被 Dify 拒绝，
+     * 在入口处提前拦截并返回明确错误，而不是透传 Dify 的 400
+     */
+    public static final Set<String> UPLOAD_FILE_ALLOWED_EXTENSIONS = Set.of(
+            "txt", "md", "markdown", "pdf", "html", "htm", "docx", "xlsx", "csv", "pptx", "xml", "epub");
 
     private KnowledgeConstant() {
     }

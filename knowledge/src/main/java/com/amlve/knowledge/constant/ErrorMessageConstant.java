@@ -16,6 +16,8 @@ public class ErrorMessageConstant {
     public static final String CONTENT_EMPTY = "文档内容不能为空";
     public static final String VERIFY_CONTENT_EMPTY = "校验内容不能为空";
     public static final String UPLOAD_FILE_EMPTY = "上传文件不能为空";
+    public static final String UPLOAD_FILE_TYPE_UNSUPPORTED =
+            "不支持的文件类型，仅支持: TXT / MARKDOWN / PDF / HTML / DOCX / XLSX / CSV / PPTX / XML / EPUB";
     public static final String DOCUMENT_ID_EMPTY = "文档ID不能为空";
     public static final String METADATA_EMPTY = "元数据不能为空";
     public static final String PERMISSION_DENIED = "无权限执行该操作，仅教师可用";

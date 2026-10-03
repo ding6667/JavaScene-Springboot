@@ -15,7 +15,7 @@ import com.amlve.grading.tableEnt.GradingTask;
 import com.amlve.grading.enumeration.GradingTaskStatus;
 import com.amlve.grading.enumeration.FileType;
 import com.amlve.grading.enumeration.TaskCategory;
-import com.amlve.systemapi.dto.api.StandardConfigDTO;
+import com.amlve.systemapi.dto.api.StandardConfigResponse;
 import com.amlve.fileapi.dto.api.UploadFileDTO;
 import com.amlve.common.entity.RubricItem;
 import com.amlve.common.exception.BusinessException;
@@ -35,7 +35,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
@@ -404,7 +403,7 @@ public class GradingServiceImpl implements GradingService {
                 List<RubricItem> rubric = null;
                 // TODO 需处理result.code == error 异常情况
                 if (standardConfigId != null) {
-                    StandardConfigDTO config = standardConfigService.selectById(standardConfigId).getData();
+                    StandardConfigResponse config = standardConfigService.selectById(standardConfigId).getData();
                     if (config != null) {
                         rubric = config.getStandardContent();
                     }
