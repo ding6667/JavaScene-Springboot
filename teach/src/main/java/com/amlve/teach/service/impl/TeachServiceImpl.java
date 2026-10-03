@@ -2,12 +2,11 @@ package com.amlve.teach.service.impl;
 
 import com.amlve.common.request.Result;
 import com.amlve.teach.dto.request.HomeworkPublishRequest;
-import com.amlve.teach.dto.response.HomeworkResponse;
 import com.amlve.teach.mapper.HomeworkMapper;
 import com.amlve.teach.tableEnt.Homework;
 import com.amlve.teach.service.TeachService;
 import com.amlve.teachapi.service.TeachHomeworkService;
-import com.amlve.teachapi.dto.HomeworkDTO;
+import com.amlve.teachapi.dto.response.HomeworkResponse;
 import com.amlve.common.utils.SecurityUtils;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import jakarta.annotation.Resource;
@@ -44,21 +43,21 @@ public class TeachServiceImpl implements TeachService, TeachHomeworkService {
     }
 
     @Override
-    public List<HomeworkResponse> listMyHomework() {
+    public List<com.amlve.teach.dto.response.HomeworkResponse> listMyHomework() {
         Long teacherId = SecurityUtils.getUserId();
         List<Homework> homeworkList = homeworkMapper.selectList(
                 new LambdaQueryWrapper<Homework>()
                         .eq(Homework::getTeacherId, teacherId)
                         .orderByDesc(Homework::getCreateTime));
         return homeworkList.stream().map(homework -> {
-            HomeworkResponse response = new HomeworkResponse();
+            com.amlve.teach.dto.response.HomeworkResponse response = new com.amlve.teach.dto.response.HomeworkResponse();
             BeanUtils.copyProperties(homework, response);
             return response;
         }).toList();
     }
 
     @Override
-    public Result<HomeworkDTO> getHomeworkById(Long homeworkId) {
+    public Result<HomeworkResponse> getHomeworkById(Long homeworkId) {
         // TODO 检查作业是否存在,需要给出Result.error情况
         Homework homework = homeworkMapper.selectById(homeworkId);
         if (homework == null) {
@@ -68,7 +67,7 @@ public class TeachServiceImpl implements TeachService, TeachHomeworkService {
     }
 
     @Override
-    public Result<List<HomeworkDTO>> listHomeworkByTeacherId(Long teacherId) {
+    public Result<List<HomeworkResponse>> listHomeworkByTeacherId(Long teacherId) {
         // TODO 检查作业是否存在,需要给出Result.error情况
         return Result.success(homeworkMapper.selectList(
                         new LambdaQueryWrapper<Homework>()
@@ -77,8 +76,8 @@ public class TeachServiceImpl implements TeachService, TeachHomeworkService {
                 .stream().map(this::toDTO).toList());
     }
 
-    private HomeworkDTO toDTO(Homework homework) {
-        HomeworkDTO dto = new HomeworkDTO();
+    private HomeworkResponse toDTO(Homework homework) {
+        HomeworkResponse dto = new HomeworkResponse();
         BeanUtils.copyProperties(homework, dto);
         return dto;
     }
