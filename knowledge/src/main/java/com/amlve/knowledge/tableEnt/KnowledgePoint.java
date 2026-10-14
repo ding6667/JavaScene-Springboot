@@ -16,7 +16,7 @@ import lombok.EqualsAndHashCode;
 @TableName("knowledge_point")
 public class KnowledgePoint extends BaseEntity {
 
-    @TableId(type = IdType.AUTO)
+    @TableId(type = IdType.ASSIGN_ID)
     private Long id;
 
     /**
@@ -48,6 +48,16 @@ public class KnowledgePoint extends BaseEntity {
     /**
      * 教材页码（如 P.123-125）
      */
+    /**
+     * 教材页码（如 P.123-125）。知识点表保留 varchar 口径，
+     * 与 knowledge_content 的 int page 不同，以新表结构为准
+     */
     @TableField("page_ref")
     private String pageRef;
+
+    /**
+     * 同一页内顺序（数字越小越靠前，新版表结构新增）
+     */
+    @TableField("page_order")
+    private Integer pageOrder;
 }
