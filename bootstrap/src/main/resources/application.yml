@@ -3,6 +3,12 @@ spring:
     active: dev
   application:
     name: "core"
+  servlet:
+    multipart:
+      # Spring Boot 默认单文件仅 1MB，教材 PDF/docx 很容易超，请求会在进控制器前被解析层拒绝，
+      # 既没有业务日志也没有上传留痕——九月"byfile 上传失败"的疑似根因，故显式放宽
+      max-file-size: 50MB
+      max-request-size: 60MB
   datasource:
     driver-class-name: com.mysql.cj.jdbc.Driver
   threads:
