@@ -30,6 +30,16 @@ public class ScoreEvaluateResponse {
      */
     private String suggestion;
 
+    /**
+     * 是否完全正确（true=满分/正确，false=有失分）
+     */
+    private Boolean isCorrect;
+
+    /**
+     * 涉及知识点列表（用于错题归档与补救推荐）
+     */
+    private List<String> knowledgePoints;
+
     @Data
     public static class ErrorDetail {
 

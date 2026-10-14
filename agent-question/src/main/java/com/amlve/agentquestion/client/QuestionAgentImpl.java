@@ -3,7 +3,7 @@ package com.amlve.agentquestion.client;
 import com.amlve.agentquestion.bean.DifyClient;
 import com.amlve.agentquestionapi.dto.request.QuestionGenerateRequest;
 import com.amlve.agentquestionapi.dto.response.QuestionGenerateResponse;
-import com.amlve.agentquestionapi.service.QuestionAgentClient;
+import com.amlve.agentquestionapi.service.QuestionAgent;
 import com.amlve.common.exception.BusinessException;
 import com.amlve.common.request.Result;
 import com.fasterxml.jackson.databind.DeserializationFeature;
@@ -14,6 +14,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
+import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -27,7 +28,7 @@ import java.util.Map;
 @Service
 @Slf4j
 @RequiredArgsConstructor
-public class QuestionAgentClientImpl implements QuestionAgentClient {
+public class QuestionAgentImpl implements QuestionAgent {
 
     private static final ObjectMapper MAPPER = new ObjectMapper()
             .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
@@ -44,9 +45,26 @@ public class QuestionAgentClientImpl implements QuestionAgentClient {
             log.warn("未配置 dify.question-api-key，出题智能体走 Mock 兜底返回示例题");
             return Result.success(mockGenerate(request));
         }
-        Map<String, Object> inputs = buildInputs(request);
-        String response = difyClient.runWorkflowBlocking(questionApiKey, inputs);
-        return Result.success(parseResponse(response));
+        try {
+            Map<String, Object> inputs = buildInputs(request);
+            String response = difyClient.runWorkflowBlocking(questionApiKey, inputs);
+            return Result.success(parseResponse(response));
+        } catch (Exception e) {
+            log.error("出题智能体调用失败: {}", e.getMessage(), e);
+            return Result.success(failedResponse(e.getMessage()));
+        }
+    }
+
+    /**
+     * 出题失败时的兜底响应（status=failed + errorMsg）
+     */
+    private QuestionGenerateResponse failedResponse(String errorMsg) {
+        return QuestionGenerateResponse.builder()
+                .questions(List.of())
+                .total(0)
+                .status("failed")
+                .errorMsg(errorMsg)
+                .build();
     }
 
     /**
@@ -95,15 +113,22 @@ public class QuestionAgentClientImpl implements QuestionAgentClient {
                             .type(q.path("type").asText(null))
                             .difficulty(q.path("difficulty").asText(null))
                             .knowledgePoint(q.path("knowledgePoint").asText(null))
+                            .knowledgePoints(toStrList(q.path("knowledgePoints")))
                             .content(q.path("content").asText(null))
                             .options(toStrList(q.path("options")))
                             .answer(q.path("answer").asText(null))
                             .analysis(q.path("analysis").asText(null))
-                            .difficultyScore(q.path("difficultyScore").isNumber()
-                                    ? q.path("difficultyScore").asDouble() : null)
+                            .difficultyScore(decimalOrNull(q.path("difficultyScore")))
                             .cognitiveLevel(q.path("cognitiveLevel").asText(null))
                             .requirements(toStrList(q.path("requirements")))
                             .codeFramework(q.path("codeFramework").asText(null))
+                            .hints(toStrList(q.path("hints")))
+                            .testCases(toTestCaseList(q.path("testCases")))
+                            .relatedQuestions(toStrList(q.path("relatedQuestions")))
+                            .abilityDimensions(toStrList(q.path("abilityDimensions")))
+                            .commonMistakes(toStrList(q.path("commonMistakes")))
+                            .solutionOutline(q.path("solutionOutline").asText(null))
+                            .weight(decimalOrNull(q.path("weight")))
                             .build());
                 }
             }
@@ -111,6 +136,7 @@ public class QuestionAgentClientImpl implements QuestionAgentClient {
                     .questions(items)
                     .total(parseInt(source.path("total")))
                     .status(source.path("status").asText(null))
+                    .errorMsg(source.path("errorMsg").asText(null))
                     .build();
         } catch (BusinessException e) {
             throw e;
@@ -124,7 +150,8 @@ public class QuestionAgentClientImpl implements QuestionAgentClient {
                 .type("choice")
                 .difficulty("basic")
                 .knowledgePoint("接口与抽象类")
-                .difficultyScore(1.5)
+                .knowledgePoints(List.of("接口与抽象类"))
+                .difficultyScore(new BigDecimal("1.5"))
                 .cognitiveLevel("理解")
                 .content("示例题目：请简述 Java 中接口与抽象类的区别（当前为固定出题结果）。")
                 .options(List.of("A. 接口可多继承，抽象类单继承", "B. 抽象类可多继承", "C. 接口可含具体方法", "D. 两者完全相同"))
@@ -160,12 +187,47 @@ public class QuestionAgentClientImpl implements QuestionAgentClient {
         }
     }
 
+    private BigDecimal decimalOrNull(JsonNode node) {
+        if (node == null || node.isNull() || node.isMissingNode()) {
+            return null;
+        }
+        if (node.isNumber()) {
+            return node.decimalValue();
+        }
+        try {
+            return new BigDecimal(node.asText());
+        } catch (NumberFormatException e) {
+            return null;
+        }
+    }
+
     private List<String> toStrList(JsonNode node) {
         List<String> result = new ArrayList<>();
         if (node != null && node.isArray()) {
             for (JsonNode n : node) {
-                result.add(n.asText());
+                result.add(n.isTextual() ? n.asText() : n.toString());
             }
+        }
+        return result;
+    }
+
+    private List<QuestionGenerateResponse.TestCase> toTestCaseList(JsonNode node) {
+        List<QuestionGenerateResponse.TestCase> result = new ArrayList<>();
+        if (node == null || !node.isArray()) {
+            return result;
+        }
+        for (JsonNode n : node) {
+            result.add(QuestionGenerateResponse.TestCase.builder()
+                    .caseIndex(n.path("caseIndex").isNumber() ? n.path("caseIndex").asInt() : null)
+                    .input(n.path("input").asText(null))
+                    .expectedOutput(n.path("expectedOutput").asText(null))
+                    .isSample(n.hasNonNull("isSample") ? n.path("isSample").asBoolean() : null)
+                    .caseType(n.path("caseType").asText(null))
+                    .weight(n.path("weight").isNumber() ? n.path("weight").asInt() : null)
+                    .timeLimit(n.path("timeLimit").isNumber() ? n.path("timeLimit").asInt() : null)
+                    .memoryLimit(n.path("memoryLimit").isNumber() ? n.path("memoryLimit").asInt() : null)
+                    .description(n.path("description").asText(null))
+                    .build());
         }
         return result;
     }

@@ -1,19 +1,15 @@
 package com.amlve.exam.controller;
 
-import com.amlve.common.constant.ErrorCodeConstant;
 import com.amlve.common.exception.BusinessException;
 import com.amlve.common.request.PageResult;
 import com.amlve.common.request.Result;
-import com.amlve.common.utils.SecurityUtils;
-import com.amlve.exam.dto.request.QuestionAiGenerateRequest;
 import com.amlve.exam.dto.request.QuestionGenerateRequest;
 import com.amlve.exam.dto.request.QuestionSaveRequest;
 import com.amlve.exam.enumeration.QuestionDifficultyEnum;
-import com.amlve.exam.enumeration.QuestionTypeEnum;
+import com.amlve.common.enums.QuestionTypeEnum;
 import com.amlve.exam.service.ExamQuestionService;
-import com.amlve.exam.service.impl.QuestionAgentImpl;
 import com.amlve.exam.tableEnt.ExamQuestion;
-import com.amlve.systemapi.service.UserService;
+import com.amlve.exam.util.ExamAuthSupport;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
@@ -25,62 +21,57 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
 /**
- * 题库管理接口（题目增删改查、随机抽题、AI 出题）。
+ * 题目管理接口（教师/管理员）：手动新增 / 修改 / 删除 / 管理端列表，以及随机抽题。
  * <p>
  * 类级 {@code @PreAuthorize("isAuthenticated()")} 要求登录；
- * 写操作与查询均限教师/管理员，由 {@link #checkTeacherOrAdmin()} 编程式校验。
+ * 教师/管理员权限由 {@link ExamAuthSupport#requireTeacherOrAdmin()} 编程式校验。
  */
 @RestController
-@RequestMapping("/api/exam/question")
+@RequestMapping("/api/exam/question/admin")
 @RequiredArgsConstructor
 @PreAuthorize("isAuthenticated()")
-public class ExamQuestionController {
+public class ExamQuestionAdminController {
 
     private final ExamQuestionService questionService;
-    private final QuestionAgentImpl questionAgent;
-    private final UserService userService;
+    private final ExamAuthSupport examAuthSupport;
 
-    /** 新增题目（教师/管理员） */
-    @PostMapping
-    public Result<Long> create(@Valid @RequestBody QuestionSaveRequest request) {
-        checkTeacherOrAdmin();
+    /** 手动新增题目 */
+    @PostMapping("/save")
+    public Result<Long> save(@Valid @RequestBody QuestionSaveRequest request) {
+        examAuthSupport.requireTeacherOrAdmin();
         ExamQuestion question = toEntity(request);
         questionService.save(question);
         return Result.success(question.getId());
     }
 
-    /** 更新题目（教师/管理员） */
-    @PutMapping("/{id}")
-    public Result<Void> update(@PathVariable Long id, @Valid @RequestBody QuestionSaveRequest request) {
-        checkTeacherOrAdmin();
+    /** 修改题目 */
+    @PutMapping("/update")
+    public Result<Void> update(@Valid @RequestBody QuestionSaveRequest request) {
+        examAuthSupport.requireTeacherOrAdmin();
+        if (request.getId() == null) {
+            throw new BusinessException("题目ID不能为空");
+        }
         ExamQuestion question = toEntity(request);
-        question.setId(id);
+        question.setId(request.getId());
         questionService.updateById(question);
         return Result.success(null);
     }
 
-    /** 删除题目（教师/管理员） */
-    @DeleteMapping("/{id}")
+    /** 删除题目（逻辑删除） */
+    @DeleteMapping("/delete/{id}")
     public Result<Void> delete(@PathVariable Long id) {
-        checkTeacherOrAdmin();
+        examAuthSupport.requireTeacherOrAdmin();
         questionService.removeById(id);
         return Result.success(null);
     }
 
-    /** 查询单题（教师/管理员） */
-    @GetMapping("/{id}")
-    public Result<ExamQuestion> get(@PathVariable Long id) {
-        checkTeacherOrAdmin();
-        return Result.success(questionService.getById(id));
-    }
-
-    /** 分页查询题目列表（教师/管理员） */
+    /** 分页查询题目列表（管理端） */
     @GetMapping("/list")
     public Result<PageResult<ExamQuestion>> list(@RequestParam(required = false) Long chapterId,
                                                  @RequestParam(required = false) Integer type,
                                                  @RequestParam(defaultValue = "1") Integer page,
                                                  @RequestParam(defaultValue = "10") Integer size) {
-        checkTeacherOrAdmin();
+        examAuthSupport.requireTeacherOrAdmin();
         LambdaQueryWrapper<ExamQuestion> wrapper = Wrappers.<ExamQuestion>lambdaQuery()
                 .eq(chapterId != null, ExamQuestion::getChapterId, chapterId)
                 .eq(type != null, ExamQuestion::getType, QuestionTypeEnum.fromCode(type))
@@ -94,18 +85,18 @@ public class ExamQuestionController {
         return Result.success(result);
     }
 
-    /** 按章节随机抽取题目（教师/管理员） */
-    @PostMapping("/random")
-    public Result<List<ExamQuestion>> generate(@Valid @RequestBody QuestionGenerateRequest request) {
-        checkTeacherOrAdmin();
-        return Result.success(questionService.generate(request));
+    /** 查询单题（管理端） */
+    @GetMapping("/{id}")
+    public Result<ExamQuestion> get(@PathVariable Long id) {
+        examAuthSupport.requireTeacherOrAdmin();
+        return Result.success(questionService.getById(id));
     }
 
-    /** AI 出题：调用出题智能体生成并落库，返回 1 成功 / 0 失败（教师/管理员） */
-    @PostMapping("/generate")
-    public Result<Integer> generateAi(@Valid @RequestBody QuestionAiGenerateRequest request) {
-        checkTeacherOrAdmin();
-        return Result.success(questionAgent.generate(request));
+    /** 按章节随机抽取题目（不调用智能体） */
+    @PostMapping("/random")
+    public Result<List<ExamQuestion>> random(@Valid @RequestBody QuestionGenerateRequest request) {
+        examAuthSupport.requireTeacherOrAdmin();
+        return Result.success(questionService.generate(request));
     }
 
     /** 将保存请求转换为题目实体，options 序列化为 JSON 字符串 */
@@ -115,9 +106,17 @@ public class ExamQuestionController {
         question.setType(QuestionTypeEnum.fromCode(request.getType()));
         question.setOptions(toOptionsJson(request.getOptions()));
         question.setAnswer(request.getAnswer());
+        question.setAnalysis(request.getAnalysis());
         question.setChapterId(request.getChapterId());
         question.setDifficulty(QuestionDifficultyEnum.fromCode(request.getDifficulty()));
         question.setScore(request.getScore() == null ? 5 : request.getScore());
+        question.setRequirements(request.getRequirements());
+        question.setHints(request.getHints());
+        question.setKnowledgePointIds(request.getKnowledgePointIds());
+        question.setSolutionOutline(request.getSolutionOutline());
+        question.setWeight(request.getWeight());
+        question.setJudgeMode(request.getJudgeMode());
+        question.setTestCases(request.getTestCases());
         question.setCodeFramework(request.getCodeFramework());
         question.setCognitiveLevel(request.getCognitiveLevel());
         return question;
@@ -132,14 +131,6 @@ public class ExamQuestionController {
             return new com.fasterxml.jackson.databind.ObjectMapper().writeValueAsString(options);
         } catch (Exception e) {
             return String.join(";", options);
-        }
-    }
-
-    /** 校验当前用户为教师或管理员，否则抛出权限异常 */
-    private void checkTeacherOrAdmin() {
-        Long userId = SecurityUtils.getUserId();
-        if (!userService.isTeacher(userId) && !userService.isAdmin(userId)) {
-            throw new BusinessException(ErrorCodeConstant.ACCESS_DENIED, "权限不足，仅管理员或教师可操作");
         }
     }
 }

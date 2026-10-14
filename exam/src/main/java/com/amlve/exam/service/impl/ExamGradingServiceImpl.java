@@ -1,8 +1,8 @@
 package com.amlve.exam.service.impl;
 
-import com.amlve.agentscoreapi.ScoreAgentClient;
 import com.amlve.agentscoreapi.dto.request.ScoreEvaluateRequest;
 import com.amlve.agentscoreapi.dto.response.ScoreEvaluateResponse;
+import com.amlve.agentscoreapi.service.ScoreClient;
 import com.amlve.common.exception.BusinessException;
 import com.amlve.exam.dto.response.GradingResultResponse;
 import com.amlve.exam.enumeration.ExamGradingTaskStatus;
@@ -10,6 +10,7 @@ import com.amlve.exam.mapper.ExamGradingTaskMapper;
 import com.amlve.exam.mapper.ExamHomeworkSubmitMapper;
 import com.amlve.exam.mapper.ExamQuestionMapper;
 import com.amlve.exam.service.ExamGradingService;
+import com.amlve.exam.service.ExamWrongQuestionService;
 import com.amlve.exam.tableEnt.ExamGradingTask;
 import com.amlve.exam.tableEnt.ExamHomeworkSubmit;
 import com.amlve.exam.tableEnt.ExamQuestion;
@@ -28,7 +29,7 @@ import java.util.stream.Collectors;
 /**
  * 答题批改服务实现。
  * <p>
- * 异步逐题调用评分智能体（{@link ScoreAgentClient}），汇总得分与错误原因写回批改任务。
+ * 异步逐题调用评分智能体（{@link ScoreClient}），汇总得分与错误原因写回批改任务。
  * 批改运行在异步线程，异常无法向外回传，故统一记录日志并把失败信息写入批改任务的 errorMessage，
  * 便于前端/排查时定位。
  */
@@ -40,7 +41,8 @@ public class ExamGradingServiceImpl implements ExamGradingService {
     private final ExamGradingTaskMapper gradingTaskMapper;
     private final ExamHomeworkSubmitMapper submitMapper;
     private final ExamQuestionMapper questionMapper;
-    private final ScoreAgentClient scoreClient;
+    private final ScoreClient scoreClient;
+    private final ExamWrongQuestionService wrongQuestionService;
 
     /**
      * 异步批改指定学生某次作业的全部提交。
@@ -93,11 +95,12 @@ public class ExamGradingServiceImpl implements ExamGradingService {
             try {
                 ScoreEvaluateRequest request = new ScoreEvaluateRequest();
                 request.setStudentAnswer(submit.getAnswerContent());
-                request.setStandardAnswer(question.getAnswer() == null ? "" : question.getAnswer().getAnswer());
+                request.setStandardAnswer(question.getAnswer() == null ? "" : question.getAnswer());
                 request.setQuestionType(question.getType() == null ? null : question.getType().getCode());
                 request.setFullScore(fullScore);
                 request.setQuestionContent(question.getContent());
                 request.setChapterId(question.getChapterId());
+                request.setQuestionId(question.getId());
 
                 ScoreEvaluateResponse response = scoreClient.evaluate(request);
                 score = response.getScore() == null ? 0 : response.getScore();
@@ -116,6 +119,14 @@ public class ExamGradingServiceImpl implements ExamGradingService {
             item.setScore(score);
             item.setErrorReason(reason);
             details.add(item);
+
+            if (score < fullScore) {
+                try {
+                    wrongQuestionService.archive(userId, question.getId(), submit.getAnswerContent(), 1);
+                } catch (Exception e) {
+                    log.warn("错题归档失败: userId={}, questionId={}", userId, question.getId(), e);
+                }
+            }
         }
 
         ExamGradingTask task = gradingTaskMapper.selectOne(Wrappers.<ExamGradingTask>lambdaQuery()
