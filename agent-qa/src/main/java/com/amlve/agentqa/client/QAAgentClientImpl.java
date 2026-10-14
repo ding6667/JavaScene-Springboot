@@ -3,7 +3,9 @@ package com.amlve.agentqa.client;
 import com.amlve.agentqa.bean.DifyClient;
 import com.amlve.agentqa.constant.DifyConstant;
 import com.amlve.agentqaapi.service.QAAgentClient;
+import com.amlve.agentqaapi.dto.response.DifyDocumentVO;
 import com.amlve.agentqaapi.dto.response.DifyRetrieveResponse;
+import com.amlve.agentqaapi.dto.response.QaWorkflowAnswerVO;
 import com.amlve.common.constant.ErrorCodeConstant;
 import com.amlve.common.exception.BusinessException;
 import com.amlve.common.request.Result;
@@ -50,14 +52,30 @@ public class QAAgentClientImpl implements QAAgentClient {
     private static final Pattern THINK_BLOCK = Pattern.compile("(?s)<think>.*?(</think>|$)");
 
     /**
-     * 索引状态轮询间隔（毫秒）：Dify 建档后异步索引，通常数秒至数十秒完成
+     * 索引状态轮询间隔（毫秒）：太短浪费请求数，太长拖慢上传响应
      */
-    private static final long INDEXING_POLL_INTERVAL_MS = 3000L;
+    private static final long INDEXING_POLL_INTERVAL_MS = 2000L;
 
     /**
-     * 索引状态轮询最大次数：约 60 秒，超时视为仍在索引（不判失败，避免误伤慢文档）
+     * 索引最长等待时间（毫秒）：大文件解析较慢，5 分钟仍无结果按失败处理
      */
-    private static final int INDEXING_POLL_MAX_ATTEMPTS = 20;
+    private static final long INDEXING_MAX_WAIT_MS = 5 * 60 * 1000L;
+
+    /**
+     * 索引状态：完成
+     */
+    private static final String INDEXING_COMPLETED = "completed";
+
+    /**
+     * 索引状态：失败
+     */
+    private static final String INDEXING_ERROR = "error";
+
+    /**
+     * 连续多少次都解析不出可用状态就直接判失败清理（说明响应结构与预期不符，
+     * 继续轮询只是白占数据库连接）
+     */
+    private static final int INDEXING_UNKNOWN_STATUS_LIMIT = 5;
 
     private final DatasetWebClient datasetWebClient;
 
@@ -71,14 +89,16 @@ public class QAAgentClientImpl implements QAAgentClient {
     private String qaApiKey;
 
     @Override
-    public Result<String> createDocumentByText(String datasetId, String documentName, String text) {
+    public Result<DifyDocumentVO> createDocumentByText(String datasetId, String documentName, String text) {
         log.info("Dify 创建文本文档: datasetId={}, documentName={}", datasetId, documentName);
         String response = datasetWebClient.createDocumentByText(datasetId, documentName, text);
         String documentId = extractDocumentId(response);
-        // 等待索引完成：索引失败（如嵌入模型不可用）时抛异常，调用方感知失败而非假成功
-        waitForIndexing(datasetId, extractBatch(response), documentId);
-        log.info("Dify 文档创建成功: documentId={}, documentName={}", documentId, documentName);
-        return Result.success(documentId);
+        String batch = extractBatch(response);
+        IndexingOutcome outcome = verifyIndexed(datasetId, batch, documentId);
+        log.info("Dify 文档创建成功: documentId={}, documentName={}, totalSegments={}",
+                documentId, documentName, outcome.totalSegments());
+        return Result.success(new DifyDocumentVO(documentId, batch,
+                outcome.totalSegments(), outcome.completedSegments()));
     }
 
     @Override
@@ -92,8 +112,9 @@ public class QAAgentClientImpl implements QAAgentClient {
     @Override
     public Result<Void> createChapterDocument(String datasetId, String documentName, String chapterContent, Integer chapterId) {
         log.info("Dify 上传章节文档: datasetId={}, documentName={}, chapterId={}", datasetId, documentName, chapterId);
-        // 1. 先创建文档（内部调用 createDocumentByText，失败时其内部已抛业务异常）
-        String documentId = unwrapInternal(createDocumentByText(datasetId, documentName, chapterContent));
+        // 1. 先创建文档（内部调用 createDocumentByText，校验不通过时其内部已清理并抛业务异常）
+        String documentId = unwrapInternal(createDocumentByText(datasetId, documentName, chapterContent))
+                .getDocumentId();
         // 2. 再写入章节元数据（内部调用 updateDocumentMetadata），便于检索时按章节过滤
         Map<String, Object> metadata = new HashMap<>();
         metadata.put(DifyConstant.METADATA_KEY_CHAPTER_ID, chapterId);
@@ -103,18 +124,27 @@ public class QAAgentClientImpl implements QAAgentClient {
     }
 
     @Override
-    public Result<String> createDocumentByFile(String datasetId, File file, String documentName, Map<String, Object> metadata) {
+    public Result<DifyDocumentVO> createDocumentByFile(String datasetId, File file, String documentName, Map<String, Object> metadata) {
         log.info("Dify 上传文件文档: datasetId={}, file={}, documentName={}", datasetId, file.getName(), documentName);
         String response = datasetWebClient.createDocumentByFile(datasetId, file, documentName);
         String documentId = extractDocumentId(response);
+        String batch = extractBatch(response);
         // 元数据可选：传入则写入
         if (metadata != null && !metadata.isEmpty()) {
             updateDocumentMetadata(datasetId, documentId, metadata);
         }
-        // 等待索引完成，失败时抛异常，避免接口返回成功但知识库内是空文档
-        waitForIndexing(datasetId, extractBatch(response), documentId);
-        log.info("Dify 文件文档创建成功: documentId={}, file={}", documentId, file.getName());
-        return Result.success(documentId);
+        IndexingOutcome outcome = verifyIndexed(datasetId, batch, documentId);
+        log.info("Dify 文件文档创建成功: documentId={}, file={}, totalSegments={}",
+                documentId, file.getName(), outcome.totalSegments());
+        return Result.success(new DifyDocumentVO(documentId, batch,
+                outcome.totalSegments(), outcome.completedSegments()));
+    }
+
+    @Override
+    public Result<Void> deleteDocument(String datasetId, String documentId) {
+        log.info("删除知识库文档: datasetId={}, documentId={}", datasetId, documentId);
+        datasetWebClient.deleteDocument(datasetId, documentId);
+        return Result.success(null);
     }
 
     @Override
@@ -128,16 +158,17 @@ public class QAAgentClientImpl implements QAAgentClient {
     }
 
     @Override
-    public Result<String> answer(String chapterId, String userQuery) {
+    public Result<QaWorkflowAnswerVO> answer(String chapterId, String userQuery) {
         log.info("Dify 答疑工作流: chapterId={}, userQuery={}", chapterId, userQuery);
         if (qaApiKey == null || qaApiKey.isBlank()) {
             throw new BusinessException("Dify 工作流 API 密钥未配置（dify.qa-api-key 或 dify.api-key）");
         }
         Map<String, Object> inputs = buildWorkflowInputs(chapterId, userQuery);
         String response = difyClient.runWorkflowBlocking(qaApiKey, inputs);
-        String answerText = extractAnswer(response);
-        log.info("Dify 答疑完成: chapterId={}, 答案长度={}", chapterId, answerText.length());
-        return Result.success(answerText);
+        QaWorkflowAnswerVO result = extractWorkflowAnswer(response);
+        log.info("Dify 答疑完成: chapterId={}, 答案长度={}, tokens={}",
+                chapterId, result.getAnswer().length(), result.getTokensUsed());
+        return Result.success(result);
     }
 
     @Override
@@ -219,13 +250,18 @@ public class QAAgentClientImpl implements QAAgentClient {
     }
 
     /**
-     * 从工作流 blocking 响应中提取答案
+     * 从工作流 blocking 响应中提取答案与执行元数据
      * <p>
-     * 响应结构：{ data: { status, outputs: {...}, error } }。
+     * 响应结构：{ data: { id, status, outputs:{...}, elapsed_time, total_tokens, error } }。
      * outputs 的答案字段名取决于工作流结束节点的输出变量，
      * 优先取常见命名（answer/text/result），未命中时返回原始 outputs JSON 便于联调排查。
+     * <p>
+     * 三个元数据字段是 qa_record 里 dify_message_id / tokens_used / response_time 的来源，
+     * 取不到就落 null 并记 warn（任务书 6.18.1 明确禁止写假数据）：
+     * dify_message_id 取 data.id（工作流执行ID，不是 chat 的 message_id，本应用是 workflow 型），
+     * tokens_used 取 data.total_tokens，response_time 由秒为单位的 elapsed_time 折算毫秒。
      */
-    private String extractAnswer(String response) {
+    private QaWorkflowAnswerVO extractWorkflowAnswer(String response) {
         try {
             JsonNode root = OBJECT_MAPPER.readTree(response);
             JsonNode dataNode = root.path("data");
@@ -238,19 +274,52 @@ public class QAAgentClientImpl implements QAAgentClient {
             if (outputs.isMissingNode() || outputs.isNull()) {
                 throw new BusinessException("Dify 工作流响应缺少 outputs: " + response);
             }
+            String answer = null;
             for (String key : new String[]{"answer", "text", "result"}) {
                 JsonNode value = outputs.path(key);
                 if (!value.isMissingNode() && !value.isNull()) {
-                    return stripReasoning(value.asText());
+                    answer = stripReasoning(value.asText());
+                    break;
                 }
             }
-            log.warn("Dify 工作流 outputs 未含常见答案字段(answer/text/result), 返回原始 outputs: {}", outputs);
-            return outputs.toString();
+            if (answer == null) {
+                log.warn("Dify 工作流 outputs 未含常见答案字段(answer/text/result), 按原始 outputs 返回: {}", outputs);
+                answer = outputs.toString();
+            }
+
+            String executionId = firstNonBlank(dataNode.path("id").asText(null),
+                    root.path("workflow_run_id").asText(null));
+            Integer totalTokens = readInt(dataNode.path("total_tokens"));
+            Double elapsedSeconds = readDouble(dataNode.path("elapsed_time"));
+            Integer elapsedMs = elapsedSeconds == null ? null : (int) Math.round(elapsedSeconds * 1000);
+            if (executionId == null || totalTokens == null) {
+                log.warn("Dify 工作流响应缺少执行标识或 token 统计，qa_record 对应列落 null: "
+                        + "difyMessageId={}, tokensUsed={}", executionId, totalTokens);
+            }
+            return new QaWorkflowAnswerVO(answer, executionId, totalTokens, elapsedMs);
         } catch (BusinessException e) {
             throw e;
         } catch (Exception e) {
             throw new BusinessException("解析 Dify 工作流响应失败: " + e.getMessage(), e);
         }
+    }
+
+    /**
+     * 数值字段读取：缺失或类型不符返回 null，不用 0 冒充"消耗了 0 token"
+     */
+    private Integer readInt(JsonNode node) {
+        return node == null || node.isMissingNode() || node.isNull() || !node.isNumber() ? null : node.asInt();
+    }
+
+    private Double readDouble(JsonNode node) {
+        return node == null || node.isMissingNode() || node.isNull() || !node.isNumber() ? null : node.asDouble();
+    }
+
+    private String firstNonBlank(String first, String second) {
+        if (first != null && !first.isBlank()) {
+            return first;
+        }
+        return second == null || second.isBlank() ? null : second;
     }
 
     /**
@@ -310,72 +379,133 @@ public class QAAgentClientImpl implements QAAgentClient {
     }
 
     /**
-     * 轮询 Dify 文档索引状态直至完成或失败。
+     * 轮询 Dify 索引状态并校验文档是否真正可用，失败时清理异常文档。
      * <p>
-     * Dify 建档接口立即返回（此时文档 queuing / 异步索引中），若嵌入模型不可用等原因
-     * 导致索引失败，文档会停留在 error 状态且无任何分段——接口若此时返回成功，
-     * 调用方拿到的是"假成功"（空文档）。故建档后轮询 indexing-status：
+     * Dify 建档接口立即返回（文档处于 queuing / 异步索引中），此时接口返回成功并不代表
+     * 知识库里真的有内容。九月测试暴露的"上传成功但内容为空"就属于这类假成功，
+     * 因此建档后必须轮询 indexing-status 并按四种结局处理：
      * <ul>
-     *     <li>completed：索引完成，正常返回</li>
-     *     <li>error：抛 BusinessException，由调用方事务回滚（MySQL 不落空文档）</li>
-     *     <li>超时（约 60 秒仍在索引）：不判失败，仅告警——慢文档 ≠ 失败</li>
+     *     <li>completed 且 total_segments &gt; 0：成功，返回分段数</li>
+     *     <li>completed 但 total_segments = 0：空壳，判失败</li>
+     *     <li>error：索引失败（如嵌入模型不可用）</li>
+     *     <li>超时仍未完成：按失败处理，避免调用方无限等待</li>
      * </ul>
+     * 三种失败路径都会先删除 Dify 侧文档再抛业务异常：留下一个空壳文档会让后续检索
+     * 命中无意义结果，且占用知识库配额。抛异常同时让 knowledge 侧事务回滚，
+     * 本地 knowledge_content 不会留下指向空文档的记录。
      *
      * @param datasetId  知识库ID
-     * @param batch      创建响应中的批次号（null 则跳过校验）
-     * @param documentId 文档ID（仅用于日志）
+     * @param batch      创建响应中的批次号（为空即无法确认结果，按失败清理）
+     * @param documentId 文档ID（清理与日志用）
+     * @return 索引完成后的状态结论（含总分段数与已完成分段数）
      */
-    private void waitForIndexing(String datasetId, String batch, String documentId) {
+    private IndexingOutcome verifyIndexed(String datasetId, String batch, String documentId) {
         if (batch == null || batch.isBlank()) {
-            log.warn("缺少 batch，跳过索引状态校验: datasetId={}, documentId={}", datasetId, documentId);
-            return;
+            // 拿不到 batch 就无法确认索引结果，按失败处理并清理：
+            // 若放行，knowledge 侧会写出一条 status=成功 且 total_segments=0 的自相矛盾记录，
+            // 正是任务 2 要根除的"假成功"后门
+            log.error("未取得 batch，无法校验索引结果: datasetId={}, documentId={}", datasetId, documentId);
+            throw cleanupAndFail(datasetId, documentId, "未取得 batch，无法确认索引结果");
         }
-        for (int attempt = 1; attempt <= INDEXING_POLL_MAX_ATTEMPTS; attempt++) {
-            String response = datasetWebClient.getIndexingStatus(datasetId, batch);
-            String status = parseIndexingStatus(response);
-            switch (status) {
-                case "completed" -> {
-                    log.info("Dify 文档索引完成: documentId={}, 轮询次数={}", documentId, attempt);
-                    return;
-                }
-                case "error" -> {
-                    String error = parseIndexingError(response);
-                    log.error("Dify 文档索引失败: documentId={}, error={}", documentId, error);
-                    throw new BusinessException("文档索引失败，知识库未收录该文档: " + error);
-                }
-                default -> log.debug("Dify 文档索引中: documentId={}, status={}, 轮询次数={}",
-                        documentId, status, attempt);
+        long deadline = System.currentTimeMillis() + INDEXING_MAX_WAIT_MS;
+        int unknownStatusRounds = 0;
+        while (true) {
+            if (System.currentTimeMillis() > deadline) {
+                log.error("Dify 文档索引超时未完成: documentId={}, batch={}", documentId, batch);
+                throw cleanupAndFail(datasetId, documentId, "索引超时未完成");
             }
+            IndexingOutcome outcome;
             try {
-                Thread.sleep(INDEXING_POLL_INTERVAL_MS);
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-                throw new BusinessException("索引状态轮询被中断: documentId=" + documentId, e);
+                outcome = fetchIndexingOutcome(datasetId, batch, documentId);
+            } catch (Exception e) {
+                log.error("查询 Dify 索引状态失败: documentId={}, err={}", documentId, e.getMessage());
+                throw cleanupAndFail(datasetId, documentId, "查询索引状态失败: " + e.getMessage());
             }
+
+            if (outcome == null) {
+                // 连续多次拿不到可解析的状态说明响应结构变了，不该白等到超时
+                if (++unknownStatusRounds >= INDEXING_UNKNOWN_STATUS_LIMIT) {
+                    log.error("连续 {} 次无法解析索引状态: documentId={}", unknownStatusRounds, documentId);
+                    throw cleanupAndFail(datasetId, documentId, "索引状态无法识别");
+                }
+                log.debug("索引状态尚未就绪，继续等待: documentId={}", documentId);
+            } else if (INDEXING_COMPLETED.equals(outcome.status())) {
+                if (outcome.totalSegments() <= 0) {
+                    log.error("文档索引完成但分段为 0，视为空壳: documentId={}", documentId);
+                    throw cleanupAndFail(datasetId, documentId, "文档解析为空，未生成任何分段");
+                }
+                log.info("Dify 文档索引成功: documentId={}, totalSegments={}, completedSegments={}",
+                        documentId, outcome.totalSegments(), outcome.completedSegments());
+                return outcome;
+            } else if (INDEXING_ERROR.equals(outcome.status())) {
+                log.error("Dify 文档索引失败: documentId={}, error={}", documentId, outcome.error());
+                throw cleanupAndFail(datasetId, documentId, "索引失败: " + outcome.error());
+            }
+            sleepBeforeNextPoll(datasetId, documentId);
         }
-        log.warn("Dify 文档索引超时未完成（不判失败）: documentId={}, batch={}", documentId, batch);
     }
 
     /**
-     * 解析索引状态响应中 data[0].indexing_status
+     * 删除 Dify 侧异常文档并组装失败异常
      */
-    private String parseIndexingStatus(String response) {
+    private BusinessException cleanupAndFail(String datasetId, String documentId, String reason) {
+        boolean deleted = datasetWebClient.deleteDocument(datasetId, documentId);
+        if (!deleted) {
+            log.warn("异常文档清理失败，需人工核对知识库残留: datasetId={}, documentId={}", datasetId, documentId);
+        }
+        return new BusinessException("文档上传校验失败: " + reason);
+    }
+
+    private void sleepBeforeNextPoll(String datasetId, String documentId) {
         try {
-            return OBJECT_MAPPER.readTree(response).path("data").path(0).path("indexing_status").asText("");
+            Thread.sleep(INDEXING_POLL_INTERVAL_MS);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            // 中断也要清理：网关超时或客户端断开会走到这里，不删就留下活孤儿文档
+            throw cleanupAndFail(datasetId, documentId, "索引状态轮询被中断");
+        }
+    }
+
+    /**
+     * 索引状态结论
+     *
+     * @param status             waiting / parsing / cleaning / splitting / indexing / completed / error
+     * @param totalSegments      生成的分段总数，0 表示空壳
+     * @param completedSegments  已索引完成的分段数
+     * @param error              失败原因，成功时为 null
+     */
+    private record IndexingOutcome(String status, int totalSegments, int completedSegments, String error) {
+    }
+
+    /**
+     * 查询并解析索引状态：在 data 数组里按 documentId 精确匹配，
+     * 不能直接取 data[0]——一个 batch 含多个文档时会把别人的结论套到本文档上，
+     * 导致误判成功或误删正常文档。
+     *
+     * @return 匹配到的状态；数组为空或状态字段缺失时返回 null 表示继续等待
+     */
+    private IndexingOutcome fetchIndexingOutcome(String datasetId, String batch, String documentId) {
+        String response = datasetWebClient.getIndexingStatus(datasetId, batch);
+        try {
+            JsonNode dataNode = OBJECT_MAPPER.readTree(response).path("data");
+            if (!dataNode.isArray()) {
+                return null;
+            }
+            for (JsonNode node : dataNode) {
+                if (!documentId.equals(node.path("id").asText(null))) {
+                    continue;
+                }
+                String status = node.path("indexing_status").asText("");
+                if (status.isEmpty()) {
+                    return null;
+                }
+                String error = node.path("error").asText("");
+                return new IndexingOutcome(status, node.path("total_segments").asInt(0),
+                        node.path("completed_segments").asInt(0), error.isBlank() ? "未知原因" : error);
+            }
+            return null;
         } catch (Exception e) {
             throw new BusinessException("解析 Dify 索引状态响应失败: " + e.getMessage(), e);
-        }
-    }
-
-    /**
-     * 解析索引状态响应中 data[0].error（索引失败原因，如嵌入模型不可用）
-     */
-    private String parseIndexingError(String response) {
-        try {
-            String error = OBJECT_MAPPER.readTree(response).path("data").path(0).path("error").asText("");
-            return error.isBlank() ? "未知原因" : error;
-        } catch (Exception e) {
-            return "未知原因（解析失败: " + e.getMessage() + "）";
         }
     }
 
