@@ -41,7 +41,12 @@ public class CodeDebugRequest {
     private String questionStandardAnswer;
 
     /**
-     * 错误类型：syntax_error / runtime_error / logic_error / none
+     * 题目要求（JSON 字符串，自由练习时为 null）
+     */
+    private String questionRequirements;
+
+    /**
+     * 错误类型：syntax_error / runtime_error / logic_error / timeout / memory_overflow / security_violation / none
      */
     private String errorType;
 
@@ -59,4 +64,19 @@ public class CodeDebugRequest {
      * 成功运行时的输出内容
      */
     private String runResult;
+
+    /**
+     * 测试用例结果（JSON 字符串，形如 {"cases":[…],"passedCount":1,"totalCount":2}）
+     */
+    private String testResult;
+
+    /**
+     * 通过用例数
+     */
+    private String passedCount;
+
+    /**
+     * 总用例数
+     */
+    private String totalCount;
 }

@@ -54,8 +54,7 @@ import java.util.Map;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-public class KnowledgeDatasetServiceImpl implements KnowledgeDatasetService,
-        com.amlve.knowledgeapi.service.KnowledgeService {
+public abstract class KnowledgeDatasetServiceImpl implements KnowledgeDatasetService,com.amlve.knowledgeapi.service.KnowledgeService {
 
     private final Configuration configuration;
     private final QAAgentClient qaAgentClient;
