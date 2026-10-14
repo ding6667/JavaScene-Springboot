@@ -8,9 +8,12 @@ import com.amlve.teach.dto.request.PrepareRequest;
 import com.amlve.teach.dto.response.PrepareResponse;
 import com.amlve.teach.mapper.TeachPrepareRecordMapper;
 import com.amlve.teach.mapper.TeachPptMapper;
+import com.amlve.teach.mapper.TeachPptTemplateMapper;
+import com.amlve.teach.tableEnt.TeachPptTemplate;
 import com.amlve.teach.tableEnt.TeachPrepareRecord;
 import com.amlve.teach.tableEnt.TeachPpt;
 import com.amlve.teach.util.MarkdownToPptxUtil;
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -50,6 +53,9 @@ class TeachPrepareServiceImplTest {
 
     @Mock
     private TeachPptMapper teachPptMapper;
+
+    @Mock
+    private TeachPptTemplateMapper teachPptTemplateMapper;
 
     @InjectMocks
     private TeachPrepareServiceImpl service;
@@ -276,5 +282,138 @@ class TeachPrepareServiceImplTest {
         assertThat(captor.getValue().getStatus()).isEqualTo(0);
         assertThat(captor.getValue().getErrorMsg()).contains("备课智能体调用失败");
         verify(teachPptMapper, never()).insert(any(TeachPpt.class));
+    }
+
+    /** 系统模板（templateId 为空时的默认模板） */
+    private TeachPptTemplate systemTemplate() {
+        TeachPptTemplate template = new TeachPptTemplate();
+        template.setId(10L);
+        template.setName("Java标准教学");
+        template.setThemeCode("java-uncover");
+        template.setStructureMd("# 第X章 骨架\n\n---\n\n# 总结");
+        template.setIsSystem(1);
+        template.setIsActive(1);
+        template.setSortOrder(1);
+        return template;
+    }
+
+    @Test
+    void generate_shouldResolveDefaultTemplate_andInjectTheme_whenTemplateIdNull() {
+        // templateId 未传：取 sort_order 最小的系统模板，骨架随 ppt_config 下发、主题注入转换入参
+        when(teachPptTemplateMapper.selectList(any(LambdaQueryWrapper.class)))
+                .thenReturn(java.util.List.of(systemTemplate()));
+        when(knowledgeChapterApi.getTeachingMaterials(CHAPTER_ID)).thenReturn(Result.success(buildKnowledgeMaterial()));
+        when(prepareAgentClient.generate(any(com.amlve.agentprepareapi.dto.request.PrepareRequest.class), any()))
+                .thenReturn(Result.success(buildAgentResult()));
+        when(markdownToPptxUtil.convertContent(anyString())).thenReturn(PPTX_PATH);
+        mockInsertBackfillId();
+
+        service.generateTeachingMaterials(buildRequest());
+
+        // 模板骨架结构下发智能体
+        ArgumentCaptor<com.amlve.agentprepareapi.dto.request.PrepareRequest> apiCaptor =
+                ArgumentCaptor.forClass(com.amlve.agentprepareapi.dto.request.PrepareRequest.class);
+        verify(prepareAgentClient).generate(apiCaptor.capture(), any());
+        assertThat(apiCaptor.getValue().getPptConfig().getStructure()).contains("# 总结");
+
+        // 转换入参注入 frontmatter + java-uncover 主题样式（<style> 内联，marp2pptx 不支持 --theme-set）
+        ArgumentCaptor<String> mdCaptor = ArgumentCaptor.forClass(String.class);
+        verify(markdownToPptxUtil).convertContent(mdCaptor.capture());
+        assertThat(mdCaptor.getValue()).startsWith("---\nmarp: true")
+                .contains("size: 16:9").contains("<style>").contains("@theme java-uncover").contains("第二页");
+
+        // 落库 md 为智能体返回原始内容（不含 frontmatter）
+        ArgumentCaptor<TeachPrepareRecord> recordCaptor = ArgumentCaptor.forClass(TeachPrepareRecord.class);
+        verify(teachPrepareRecordMapper).insert(recordCaptor.capture());
+        assertThat(recordCaptor.getValue().getPptxMd()).doesNotStartWith("---").contains("第二页");
+    }
+
+    @Test
+    void generate_shouldUseSpecifiedTemplate_whenOwnedTemplateProvided() {
+        // 指定本人自定义模板：校验通过并按模板主题注入（java-dark 样式内联）
+        TeachPptTemplate own = systemTemplate();
+        own.setId(20L);
+        own.setThemeCode("java-dark");
+        own.setIsSystem(0);
+        own.setTeacherId(TEACHER_ID);
+
+        PrepareRequest request = buildRequest();
+        request.setTemplateId(20L);
+        when(teachPptTemplateMapper.selectById(20L)).thenReturn(own);
+        when(knowledgeChapterApi.getTeachingMaterials(CHAPTER_ID)).thenReturn(Result.success(buildKnowledgeMaterial()));
+        when(prepareAgentClient.generate(any(com.amlve.agentprepareapi.dto.request.PrepareRequest.class), any()))
+                .thenReturn(Result.success(buildAgentResult()));
+        when(markdownToPptxUtil.convertContent(anyString())).thenReturn(PPTX_PATH);
+        mockInsertBackfillId();
+
+        service.generateTeachingMaterials(request);
+
+        ArgumentCaptor<String> mdCaptor = ArgumentCaptor.forClass(String.class);
+        verify(markdownToPptxUtil).convertContent(mdCaptor.capture());
+        assertThat(mdCaptor.getValue()).contains("<style>").contains("@theme java-dark");
+    }
+
+    @Test
+    void generate_shouldInsertStyleAfterFrontmatter_whenAgentMdContainsFrontmatter() {
+        // Dify 输出已含 frontmatter：样式块插到闭合线之后、正文之前，不重复注入基础配置
+        when(teachPptTemplateMapper.selectList(any(LambdaQueryWrapper.class)))
+                .thenReturn(java.util.List.of(systemTemplate()));
+        when(knowledgeChapterApi.getTeachingMaterials(CHAPTER_ID)).thenReturn(Result.success(buildKnowledgeMaterial()));
+        com.amlve.agentprepareapi.dto.response.PrepareResponse agentResult = buildAgentResult();
+        agentResult.setPptx("---\nmarp: true\ntheme: gaia\n---\n\n# PPT\n\n---\n\n# 第二页");
+        when(prepareAgentClient.generate(any(com.amlve.agentprepareapi.dto.request.PrepareRequest.class), any()))
+                .thenReturn(Result.success(agentResult));
+        when(markdownToPptxUtil.convertContent(anyString())).thenReturn(PPTX_PATH);
+        mockInsertBackfillId();
+
+        service.generateTeachingMaterials(buildRequest());
+
+        ArgumentCaptor<String> mdCaptor = ArgumentCaptor.forClass(String.class);
+        verify(markdownToPptxUtil).convertContent(mdCaptor.capture());
+        String md = mdCaptor.getValue();
+        String frontmatterHead = "---\nmarp: true\ntheme: gaia\n---";
+        assertThat(md).startsWith(frontmatterHead).contains("<style>").contains("@theme java-uncover");
+        // 顺序：frontmatter 闭合线 → style 块 → 正文
+        int frontmatterEnd = md.indexOf(frontmatterHead) + frontmatterHead.length();
+        int stylePos = md.indexOf("<style>");
+        int bodyPos = md.indexOf("# PPT");
+        assertThat(stylePos).isGreaterThan(frontmatterEnd);
+        assertThat(bodyPos).isGreaterThan(stylePos);
+    }
+
+    @Test
+    void generate_shouldReject_whenTemplateNotAvailable() {
+        // 指定模板不存在：备课失败并落失败记录
+        PrepareRequest request = buildRequest();
+        request.setTemplateId(999L);
+        when(teachPptTemplateMapper.selectById(999L)).thenReturn(null);
+
+        assertThatThrownBy(() -> service.generateTeachingMaterials(request))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("PPT模板不存在或不可用");
+
+        ArgumentCaptor<TeachPrepareRecord> captor = ArgumentCaptor.forClass(TeachPrepareRecord.class);
+        verify(teachPrepareRecordMapper).insert(captor.capture());
+        assertThat(captor.getValue().getStatus()).isEqualTo(0);
+        verify(prepareAgentClient, never()).generate(any(), any());
+    }
+
+    @Test
+    void generate_shouldReject_whenTemplateBelongsToOtherTeacher() {
+        // 指定他人自定义模板：越权拒绝
+        TeachPptTemplate others = systemTemplate();
+        others.setId(20L);
+        others.setIsSystem(0);
+        others.setTeacherId(99L);
+
+        PrepareRequest request = buildRequest();
+        request.setTemplateId(20L);
+        when(teachPptTemplateMapper.selectById(20L)).thenReturn(others);
+
+        assertThatThrownBy(() -> service.generateTeachingMaterials(request))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("PPT模板不存在或不可用");
+
+        verify(prepareAgentClient, never()).generate(any(), any());
     }
 }

@@ -4,6 +4,9 @@ import com.amlve.agentprepare.bean.DifyClient;
 import com.amlve.agentprepareapi.service.PrepareAgentClient;
 import com.amlve.agentprepareapi.dto.request.PrepareRequest;
 import com.amlve.agentprepareapi.dto.request.TeachingMaterialDTO;
+import com.amlve.agentprepareapi.dto.request.PrepareRequest.HomeworkConfig;
+import com.amlve.agentprepareapi.dto.request.PrepareRequest.LessonPlanConfig;
+import com.amlve.agentprepareapi.dto.request.PrepareRequest.PptConfig;
 import com.amlve.agentprepareapi.dto.response.PrepareResponse;
 import com.amlve.common.exception.BusinessException;
 import com.amlve.common.request.Result;
@@ -42,6 +45,11 @@ public class PrepareAgentClientImpl implements PrepareAgentClient {
      */
     @Value("${dify.prepare-api-key}")
     private String prepareApiKey;
+
+    /** 工作流开始节点新增入参键（snake_case，与工作流 v2 契约一致，键名常量收敛） */
+    private static final String KEY_PPT_CONFIG = "ppt_config";
+    private static final String KEY_LESSON_PLAN_CONFIG = "lesson_plan_config";
+    private static final String KEY_HOMEWORK_CONFIG = "homework_config";
 
     @Override
     public Result<PrepareResponse> generate(PrepareRequest request, TeachingMaterialDTO teachingMaterial) {
@@ -99,7 +107,49 @@ public class PrepareAgentClientImpl implements PrepareAgentClient {
         inputs.put("reference", reference);
         // 工作流开始节点要求 user_message 必填，为空传空字符串
         inputs.put("user_message", nullToEmpty(request.getUserMessage()));
+        // 三个生成配置（工作流 v2 新增）：始终传完整对象，config 为 null 时传空键值对，
+        // 由工作流代码节点兜底默认值；null 字段键统一空字符串，避免提取节点缺键异常
+        inputs.put(KEY_PPT_CONFIG, buildPptConfigMap(request.getPptConfig()));
+        inputs.put(KEY_LESSON_PLAN_CONFIG, buildLessonPlanConfigMap(request.getLessonPlanConfig()));
+        inputs.put(KEY_HOMEWORK_CONFIG, buildHomeworkConfigMap(request.getHomeworkConfig()));
         return inputs;
+    }
+
+    /** PPT 配置 → 工作流 ppt_config（键名与工作流代码节点读取键一致） */
+    private Map<String, Object> buildPptConfigMap(PptConfig config) {
+        Map<String, Object> map = new HashMap<>();
+        if (config != null) {
+            map.put("structure", nullToEmpty(config.getStructure()));
+            map.put("pageRange", nullToEmpty(config.getPageRange()));
+            map.put("includeOutline", nullToEmpty(config.getIncludeOutline()));
+            map.put("includeSummary", nullToEmpty(config.getIncludeSummary()));
+            map.put("codeBlockMax", nullToEmpty(config.getCodeBlockMax()));
+        }
+        return map;
+    }
+
+    /** 教案配置 → 工作流 lesson_plan_config */
+    private Map<String, Object> buildLessonPlanConfigMap(LessonPlanConfig config) {
+        Map<String, Object> map = new HashMap<>();
+        if (config != null) {
+            map.put("courseType", nullToEmpty(config.getCourseType()));
+            map.put("duration", nullToEmpty(config.getDuration()));
+            map.put("detailLevel", nullToEmpty(config.getDetailLevel()));
+            map.put("includeBoardDesign", nullToEmpty(config.getIncludeBoardDesign()));
+            map.put("includeExercise", nullToEmpty(config.getIncludeExercise()));
+        }
+        return map;
+    }
+
+    /** 课后习题配置 → 工作流 homework_config */
+    private Map<String, Object> buildHomeworkConfigMap(HomeworkConfig config) {
+        Map<String, Object> map = new HashMap<>();
+        if (config != null) {
+            map.put("questionCount", nullToEmpty(config.getQuestionCount()));
+            map.put("difficultyDistribution", nullToEmpty(config.getDifficultyDistribution()));
+            map.put("questionBank", nullToEmpty(config.getQuestionBank()));
+        }
+        return map;
     }
 
     /**
