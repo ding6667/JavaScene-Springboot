@@ -1,9 +1,13 @@
-package com.amlve.agentscoreapi;
+package com.amlve.agentscoreapi.service;
 
 import com.amlve.agentscoreapi.dto.request.ScoreEvaluateRequest;
 import com.amlve.agentscoreapi.dto.response.ScoreEvaluateResponse;
 
-public interface ScoreAgentClient {
+/**
+ * 评分智能体 API。
+ */
+public interface ScoreClient {
+
     /**
      * 调用 Dify 批改工作流
      */

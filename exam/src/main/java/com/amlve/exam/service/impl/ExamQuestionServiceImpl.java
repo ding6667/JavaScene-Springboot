@@ -2,7 +2,7 @@ package com.amlve.exam.service.impl;
 
 import com.amlve.exam.dto.request.QuestionGenerateRequest;
 import com.amlve.exam.enumeration.QuestionDifficultyEnum;
-import com.amlve.exam.enumeration.QuestionTypeEnum;
+import com.amlve.common.enums.QuestionTypeEnum;
 import com.amlve.exam.mapper.ExamQuestionMapper;
 import com.amlve.exam.service.ExamQuestionService;
 import com.amlve.exam.tableEnt.ExamQuestion;
