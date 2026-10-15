@@ -1,0 +1,82 @@
+/* @theme java-dark */
+
+/* Java暗色演示主题：黑底白字，投影环境高对比 */
+section {
+  padding: 60px;
+  background: #1e1e1e;
+  color: #e8e8e8;
+  font-family: 'Microsoft YaHei', 'PingFang SC', 'Helvetica Neue', sans-serif;
+  font-size: 26px;
+  line-height: 1.6;
+}
+
+h1 {
+  color: #4fc3f7;
+  font-size: 46px;
+  font-weight: bold;
+  border-bottom: 3px solid #4fc3f7;
+  padding-bottom: 16px;
+}
+
+h2 {
+  color: #4fc3f7;
+  font-size: 36px;
+  font-weight: bold;
+}
+
+h3 {
+  color: #81d4fa;
+  font-size: 30px;
+}
+
+ul li, ol li {
+  margin-bottom: 10px;
+}
+
+strong {
+  color: #ffca28;
+}
+
+code {
+  background: #2d2d2d;
+  border-radius: 4px;
+  padding: 2px 8px;
+  color: #ffca28;
+  font-family: Consolas, 'Courier New', monospace;
+}
+
+pre {
+  background: #252526;
+  border: 1px solid #3a3a3a;
+  border-radius: 8px;
+  padding: 20px;
+  font-size: 20px;
+}
+
+pre code {
+  background: none;
+  padding: 0;
+  color: #d4d4d4;
+}
+
+table {
+  font-size: 22px;
+  border-collapse: collapse;
+}
+
+th {
+  background: #4fc3f7;
+  color: #1e1e1e;
+  padding: 10px 16px;
+}
+
+td {
+  border: 1px solid #3a3a3a;
+  padding: 8px 16px;
+}
+
+blockquote {
+  border-left: 5px solid #ffca28;
+  padding-left: 16px;
+  color: #9e9e9e;
+}

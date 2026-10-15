@@ -46,6 +46,29 @@ public class Homework extends BaseEntity {
     /** 状态（1=未发布，2=已发布，3=已截止，4=已归档） */
     private Integer status;
 
+    /** 是否允许迟交：0否 1是 */
+    @TableField("allow_late_submit")
+    private Integer allowLateSubmit;
+
+    /** 年级（class_id 为空时表示全年级作业） */
+    private String grade;
+
+    /** 题目数量（发布时汇总） */
+    @TableField("question_count")
+    private Integer questionCount;
+
+    /** 发布时间 */
+    @TableField("publish_time")
+    private LocalDateTime publishTime;
+
+    /** 关闭时间 */
+    @TableField("close_time")
+    private LocalDateTime closeTime;
+
+    /** 关闭原因 */
+    @TableField("close_reason")
+    private String closeReason;
+
     /** 作业总分 */
     @TableField("total_score")
     private Integer totalScore;
