@@ -16,7 +16,7 @@ import lombok.EqualsAndHashCode;
 @TableName("knowledge_keyword")
 public class KnowledgeKeyword extends BaseEntity {
 
-    @TableId(type = IdType.AUTO)
+    @TableId(type = IdType.ASSIGN_ID)
     private Long id;
 
     /**
@@ -26,9 +26,31 @@ public class KnowledgeKeyword extends BaseEntity {
     private Long chapterId;
 
     /**
+     * 关联知识点ID（新版表结构新增，可为空）
+     */
+    @TableField("knowledge_point_id")
+    private Long knowledgePointId;
+
+    /**
      * 关键词
      */
     private String keyword;
+
+    /**
+     * 关键词释义/说明（新版表结构新增）
+     */
+    private String description;
+
+    /**
+     * 教材页码（新版表结构新增，int 数值序）
+     */
+    private Integer page;
+
+    /**
+     * 同一页内顺序（数字越小越靠前）
+     */
+    @TableField("page_order")
+    private Integer pageOrder;
 
     /**
      * 同义词（逗号分隔）

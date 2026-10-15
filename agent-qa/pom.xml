@@ -52,6 +52,29 @@
             <artifactId>agent-qa-api</artifactId>
             <version>${project.version}</version>
         </dependency>
+        <!-- 问答记录落库（qa_record）与多轮上下文缓存归本模块，见任务书 6.18.7：
+             一张表只允许一个模块持有实体与 Mapper，其它模块经 QaAgent 接口用 -->
+        <dependency>
+            <groupId>com.baomidou</groupId>
+            <artifactId>mybatis-plus-spring-boot3-starter</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.mysql</groupId>
+            <artifactId>mysql-connector-j</artifactId>
+            <scope>runtime</scope>
+        </dependency>
+        <!-- 多轮上下文与会话轮次计数（qa:session: / qa:round: 两组 key） -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-data-redis</artifactId>
+        </dependency>
+        <!-- 教材引用与超纲判定复用 knowledge 的 AI 内容校验口径（KnowledgeChapterApi.verify）；
+             只依赖 knowledge-api 的接口与 DTO，不依赖 knowledge 实现模块 -->
+        <dependency>
+            <groupId>com.amlve</groupId>
+            <artifactId>knowledge-api</artifactId>
+            <version>${project.version}</version>
+        </dependency>
     </dependencies>
 
     <build>

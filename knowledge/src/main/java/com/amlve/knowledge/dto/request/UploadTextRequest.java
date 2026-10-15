@@ -1,6 +1,7 @@
 package com.amlve.knowledge.dto.request;
 
 import com.amlve.knowledge.constant.ErrorMessageConstant;
+import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import lombok.Data;
@@ -35,7 +36,8 @@ public class UploadTextRequest {
     private Integer contentType;
 
     /**
-     * 页码（如 P.123-125，可为空）
+     * 教材页码（新版表结构为 int，按数值序排序）
      */
-    private String pageRef;
+    @Min(value = 0, message = "页码不能为负数")
+    private Integer page;
 }

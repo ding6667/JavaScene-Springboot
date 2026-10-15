@@ -20,6 +20,9 @@ public final class DifyConstant {
     public static final String DOCUMENT_INDEXING_STATUS =
             "/datasets/{datasetId}/documents/{batch}/indexing-status";
 
+    /** 删除知识库文档（清理索引失败或空壳的异常文档） */
+    public static final String DELETE_DOCUMENT = "/datasets/{datasetId}/documents/{documentId}";
+
     /** 从知识库检索分段 */
     public static final String RETRIEVE = "/datasets/{datasetId}/retrieve";
 

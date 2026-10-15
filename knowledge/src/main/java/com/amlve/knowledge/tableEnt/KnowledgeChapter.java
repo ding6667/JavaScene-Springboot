@@ -16,7 +16,7 @@ import lombok.EqualsAndHashCode;
 @TableName("knowledge_chapter")
 public class KnowledgeChapter extends BaseEntity {
 
-    @TableId(type = IdType.AUTO)
+    @TableId(type = IdType.ASSIGN_ID)
     private Long id;
 
     /**
@@ -38,6 +38,12 @@ public class KnowledgeChapter extends BaseEntity {
     private String chapterCode;
 
     /**
+     * 所属大章（新版表结构新增；列名为 code 但类型是 bigint，以表结构为准）
+     */
+    @TableField("top_chapter_code")
+    private Long topChapterCode;
+
+    /**
      * 章节标题
      */
     private String title;
@@ -57,4 +63,9 @@ public class KnowledgeChapter extends BaseEntity {
      * 章节简介
      */
     private String description;
+
+    /**
+     * 章节摘要（text 列，与 description 区分：前者为简介，后者为较长摘要）
+     */
+    private String summary;
 }

@@ -2,7 +2,13 @@ package com.amlve.knowledgeapi.service;
 
 import com.amlve.common.request.Result;
 import com.amlve.knowledgeapi.dto.request.ChapterNamesRequest;
-import com.amlve.knowledgeapi.dto.response.*;
+import com.amlve.knowledgeapi.dto.request.KnowledgeVerifyRequest;
+import com.amlve.knowledgeapi.dto.response.ChapterDTO;
+import com.amlve.knowledgeapi.dto.response.ChapterNameDTO;
+import com.amlve.knowledgeapi.dto.response.ChapterNamesResponse;
+import com.amlve.knowledgeapi.dto.response.KnowledgePointDTO;
+import com.amlve.knowledgeapi.dto.response.KnowledgeVerifyResponse;
+import com.amlve.knowledgeapi.dto.response.TeachingMaterialDTO;
 
 import java.util.List;
 
@@ -37,18 +43,34 @@ public interface KnowledgeChapterApi {
      */
     Result<TeachingMaterialDTO> getTeachingMaterials(Long chapterId);
 
-
-
-    Result<KnowledgeVerifyResponse> verify(KnowledgeVerifyRequest knowledgeVerifyRequest);
-
-    Result<ChapterNameResponse> getChapterNameById(Long chapterId);
-
-
-    Result<ChapterNamesResponse> getChapterNamesById(ChapterNamesRequest chapterIds);
+    /**
+     * AI 内容校验：判断智能体生成内容是否贴合该章教材
+     *
+     * @param request 校验请求（章节ID + 待校验内容）
+     * @return 命中率、是否贴合、教材原文片段与修改建议
+     */
+    Result<KnowledgeVerifyResponse> verify(KnowledgeVerifyRequest request);
 
     /**
-     * 全量章节名称（结果可缓存，TTL ≥ 1 小时）
+     * 查询单个章节名称
+     *
+     * @param chapterId 章节ID
+     * @return 章节名称；章节不存在时 data 为 null，由调用方判断
      */
-    Result<List<ChapterNameResponse>> listAllChapterNames();
+    Result<ChapterNameDTO> getChapterNameById(Long chapterId);
 
+    /**
+     * 批量查询章节名称（去重后最多 100 个）
+     *
+     * @param request 章节ID列表
+     * @return 命中章节列表 + 未命中ID列表（个别未命中不整体报错）
+     */
+    Result<ChapterNamesResponse> getChapterNamesById(ChapterNamesRequest request);
+
+    /**
+     * 全量查询章节名称（章节基本不变，结果可缓存）
+     *
+     * @return 全部未删除章节的名称列表，按章节ID升序
+     */
+    Result<List<ChapterNameDTO>> listAllChapterNames();
 }

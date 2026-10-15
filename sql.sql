@@ -528,3 +528,75 @@ CREATE TABLE `user_config` (
   UNIQUE KEY `uk_user_key` (`user_id`,`config_key`)
 ) ENGINE=InnoDB AUTO_INCREMENT=37 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci
 
+
+-- 26.10.2.1 任务3 新增：知识库上传记录表（唐罗晨阳）
+CREATE TABLE `knowledge_upload_record` (
+    `id` BIGINT NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+    `dataset_id` VARCHAR(64) NOT NULL COMMENT 'Dify知识库ID',
+    `document_id` VARCHAR(64) DEFAULT NULL COMMENT 'Dify文档ID（上传成功后填充）',
+    `batch` VARCHAR(64) DEFAULT NULL COMMENT 'Dify批次标识（用于查询索引状态）',
+    `chapter_id` BIGINT NOT NULL COMMENT '关联章节ID',
+    `chapter_name` VARCHAR(100) DEFAULT NULL COMMENT '章节名称（冗余，便于查询）',
+    `file_name` VARCHAR(255) NOT NULL COMMENT '原始文件名',
+    `file_size` BIGINT DEFAULT 0 COMMENT '文件大小（字节）',
+    `file_type` VARCHAR(20) DEFAULT NULL COMMENT '文件类型：txt/md/pdf/docx',
+    `upload_type` TINYINT NOT NULL DEFAULT 1 COMMENT '上传类型：1=新增，2=更新',
+    `status` TINYINT NOT NULL DEFAULT 0 COMMENT '状态：0=处理中，1=成功，2=失败',
+    `total_segments` INT DEFAULT 0 COMMENT '生成的分段总数',
+    `completed_segments` INT DEFAULT 0 COMMENT '已完成的分段数',
+    `error_msg` VARCHAR(500) DEFAULT NULL COMMENT '失败原因',
+    `upload_by` BIGINT NOT NULL COMMENT '上传人ID（关联 sys_user.id）',
+    `upload_by_name` VARCHAR(50) DEFAULT NULL COMMENT '上传人姓名（冗余）',
+    `upload_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '上传时间',
+    `finish_time` DATETIME DEFAULT NULL COMMENT '处理完成时间',
+    `create_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    `update_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    `deleted` TINYINT NOT NULL DEFAULT 0 COMMENT '逻辑删除',
+    PRIMARY KEY (`id`),
+    KEY `idx_dataset_id` (`dataset_id`),
+    KEY `idx_document_id` (`document_id`),
+    KEY `idx_chapter_id` (`chapter_id`),
+    KEY `idx_upload_by` (`upload_by`),
+    KEY `idx_status` (`status`),
+    KEY `idx_upload_time` (`upload_time`),
+    KEY `idx_deleted` (`deleted`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='知识库上传记录表';
+
+-- ----------------------------
+-- 智能问答记录表（任务5：问答永久层，多轮上下文在 Redis）
+-- 本段结构与本地/群内已存在的 qa_record 完全一致，不作改动，理由与注意事项：
+--   1. 表名取 qa_record（任务书 6.4 建表语句同名；同文其它处写作 study_qa_record 属笔误），
+--      读写归 agent-qa 模块，其它模块经 QaAgent 接口调用，不另建第二份实体；
+--   2. 本表没有 update_time（问答记录只写一次不改），故实体不继承 BaseEntity，
+--      否则 MyBatis-Plus 自动填充会拼出一个不存在的列名直接报错；
+--   3. is_textbook_match / tokens_used / response_time 的库默认值是 1 / 0 / 0，
+--      而"未判定""没取到 token"必须区别于"贴合""0 token"。因此实体在这三列上标
+--      insertStrategy = FieldStrategy.IGNORED 强制把 NULL 写进去，盖住库默认值，
+--      避免默认值伪装成真实统计（对应任务书 6.18.1 的假数据风险）；
+--   4. round_no 没有唯一键，重复计数由服务层兜底：Redis INCR 返回 1 时先按
+--      selectMaxRoundNo(sessionId) 校正（对应任务书 6.18.3 的两选一，此处选"保留 Redis 计数 + DB 兜底"）。
+-- ----------------------------
+CREATE TABLE IF NOT EXISTS `qa_record` (
+    `id` BIGINT NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+    `user_id` BIGINT NOT NULL COMMENT '学生ID',
+    `chapter_id` BIGINT DEFAULT NULL COMMENT '章节ID',
+    `session_id` VARCHAR(64) NOT NULL COMMENT '会话ID（一次完整对话的唯一标识）',
+    `round_no` INT NOT NULL DEFAULT 1 COMMENT '轮次序号（同一session内从1递增）',
+    `question` TEXT NOT NULL COMMENT '学生问题',
+    `answer` TEXT NOT NULL COMMENT 'AI回答',
+    `knowledge_points` VARCHAR(500) DEFAULT NULL COMMENT '关联知识点（逗号分隔）',
+    `reference_text` TEXT COMMENT '教材原文引用',
+    `is_textbook_match` TINYINT DEFAULT 1 COMMENT '是否匹配教材：1=是，0=否（超纲）',
+    `dify_message_id` VARCHAR(64) DEFAULT NULL COMMENT 'Dify消息ID',
+    `tokens_used` INT DEFAULT 0 COMMENT '消耗token数',
+    `response_time` INT DEFAULT 0 COMMENT '响应耗时（毫秒）',
+    `create_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    `deleted` TINYINT NOT NULL DEFAULT 0 COMMENT '逻辑删除',
+    PRIMARY KEY (`id`),
+    KEY `idx_user_id` (`user_id`),
+    KEY `idx_chapter_id` (`chapter_id`),
+    KEY `idx_session_id` (`session_id`),
+    KEY `idx_session_round` (`session_id`, `round_no`),
+    KEY `idx_create_time` (`create_time`),
+    KEY `idx_deleted` (`deleted`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='学生问答记录表';

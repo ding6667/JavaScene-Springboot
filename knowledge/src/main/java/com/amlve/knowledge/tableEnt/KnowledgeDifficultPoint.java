@@ -13,7 +13,7 @@ import lombok.EqualsAndHashCode;
 @TableName("knowledge_difficult_point")
 public class KnowledgeDifficultPoint extends BaseEntity {
 
-    @TableId(type = IdType.AUTO)
+    @TableId(type = IdType.ASSIGN_ID)
     private Long id;
 
     @TableField("chapter_id")

@@ -11,18 +11,27 @@ public class ErrorMessageConstant {
     public static final String DATASET_ID_MISSING = "知识库ID未配置（dify.dataset-id），请联系运维配置";
     public static final String COURSE_ID_EMPTY = "课程ID不能为空";
     public static final String CHAPTER_NOT_FOUND = "章节不存在";
+    public static final String PARENT_CHAPTER_NOT_FOUND = "父章节不存在";
+    public static final String PARENT_CHAPTER_INVALID = "父章节不合法（不能为负数或自身）";
+    public static final String PARENT_CHAPTER_COURSE_MISMATCH = "父章节不属于所选课程";
+    public static final String KNOWLEDGE_CONTENT_NOT_FOUND = "教材原文不存在";
+    public static final String KNOWLEDGE_POINT_NOT_FOUND = "知识点不存在";
+    public static final String CONTENT_ID_EMPTY = "教材原文ID不能为空";
     public static final String CHAPTER_ID_EMPTY = "章节ID不能为空";
     public static final String DOCUMENT_NAME_EMPTY = "文档名称不能为空";
     public static final String CONTENT_EMPTY = "文档内容不能为空";
-    public static final String VERIFY_CONTENT_EMPTY = "校验内容不能为空";
     public static final String UPLOAD_FILE_EMPTY = "上传文件不能为空";
     public static final String UPLOAD_FILE_TYPE_UNSUPPORTED =
             "不支持的文件类型，仅支持: TXT / MARKDOWN / PDF / HTML / DOCX / XLSX / CSV / PPTX / XML / EPUB";
+    public static final String UPLOAD_QUEUE_FULL =
+            "上传任务已达并发上限，请稍后重试（可在上传记录列表查看在途任务）";
     public static final String DOCUMENT_ID_EMPTY = "文档ID不能为空";
     public static final String METADATA_EMPTY = "元数据不能为空";
-    public static final String PERMISSION_DENIED = "无权限执行该操作，仅教师可用";
-    public static final String VERIFY_PASSED = "内容包含教材关键词，校验通过";
-    public static final String VERIFY_NOT_PASSED = "内容未包含任何教材关键词";
+    public static final String PERMISSION_DENIED_TEACHER_OR_ADMIN = "无权限执行该操作，仅教师或管理员可用";
+    public static final String VERIFY_NO_KEYWORD = "该章节未配置关键词，无法校验";
+    public static final String VERIFY_NO_CONTENT = "该章节无教材原文内容，无法校验";
+    public static final String VERIFY_PARAM_INVALID = "章节ID与待校验内容均不能为空";
+    public static final String CHAPTER_NAME_BATCH_EXCEEDED = "单次最多查询 100 个章节，请拆分后重试";
 
     // ===== 知识点权重配置 =====
     public static final String WEIGHT_BATCH_EMPTY = "批量保存的权重配置列表不能为空";
