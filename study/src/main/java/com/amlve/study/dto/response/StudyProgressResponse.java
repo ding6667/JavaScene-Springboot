@@ -18,6 +18,11 @@ public class StudyProgressResponse {
     private Long chapterId;
 
     /**
+     * 章节标题（来自 knowledge-api，非直查表）
+     */
+    private String chapterName;
+
+    /**
      * 本章节学习进度(0-100)
      */
     private Integer progressRate;

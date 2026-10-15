@@ -3,13 +3,40 @@ package com.amlve.study.service.impl;
 import com.amlve.agentcodeapi.dto.request.CodeDebugRequest;
 import com.amlve.agentcodeapi.dto.response.CodeDebugResponse;
 import com.amlve.agentcodeapi.service.CodeAgentClient;
+import com.amlve.common.constant.ErrorCodeConstant;
+import com.amlve.common.enums.CodeErrorTypeEnum;
+import com.amlve.common.enums.JudgeResultEnum;
+import com.amlve.common.enums.RunStatusEnum;
+import com.amlve.common.exception.BusinessException;
+import com.amlve.common.request.PageResult;
+import com.amlve.common.request.Result;
+import com.amlve.examapi.dto.response.QuestionDetailResponse;
+import com.amlve.examapi.service.ExamQuestionApi;
+import com.amlve.knowledgeapi.dto.response.ChapterNameResponse;
+import com.amlve.knowledgeapi.service.KnowledgeChapterApi;
+import com.amlve.study.dto.request.CodeRecordQueryRequest;
 import com.amlve.study.dto.request.CodeRunRequest;
+import com.amlve.study.dto.response.CodeRecordDetailVO;
+import com.amlve.study.dto.response.CodeRecordItemVO;
 import com.amlve.study.dto.response.CodeRunResultResponse;
+import com.amlve.study.dto.response.TestResultVO;
 import com.amlve.study.enumeration.CodeRunStatusEnum;
+import com.amlve.study.judge.AnswerNormalizer;
+import com.amlve.study.judge.CodeJudgeResult;
+import com.amlve.study.judge.TestCase;
 import com.amlve.study.mapper.StudyCodeRunRecordMapper;
 import com.amlve.study.service.CodeRunService;
 import com.amlve.study.tableEnt.StudyCodeRunRecord;
+import com.amlve.studyapi.constant.BehaviorType;
+import com.amlve.studyapi.dto.request.StudyBehaviorReportRequest;
+import com.amlve.studyapi.service.StudyBehaviorApi;
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.fasterxml.jackson.annotation.JsonAutoDetect;
+import com.fasterxml.jackson.annotation.PropertyAccessor;
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -22,9 +49,12 @@ import javax.tools.JavaFileObject;
 import javax.tools.StandardJavaFileManager;
 import javax.tools.ToolProvider;
 import java.io.BufferedReader;
+import java.io.BufferedWriter;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.io.OutputStream;
+import java.io.OutputStreamWriter;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.FileVisitResult;
 import java.nio.file.Files;
@@ -32,8 +62,11 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.SimpleFileVisitor;
 import java.nio.file.attribute.BasicFileAttributes;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
@@ -59,17 +92,14 @@ import java.util.regex.Pattern;
  *   <li>无论成功失败都递归清理临时目录</li>
  * </ol>
  *
- * <p>隔离与限制：
- * <ul>
- *   <li>每次请求独立临时目录，互不干扰</li>
- *   <li>子进程限制堆内存 -Xmx64m、线程栈 -Xss256k</li>
- *   <li>超时强制销毁子进程及其派生进程</li>
- *   <li>不向子进程提供标准输入，避免阻塞在输入读取上</li>
- * </ul>
+ * <p>状态口径（任务书 5.2 定稿）：响应 {@code status} 为力拓式字符串
+ * AC/WA/TLE/MLE/RE/CE/OLE/SV/SE（权威源 judge_status 列）；
+ * 旧 status 列（1-6）经 {@link CodeRunStatusEnum} 兼容映射保留。
  *
- * <p>注意：JDK 21 已废弃 SecurityManager（JDK 24 起移除），因此不再通过
- * {@code -Djava.security.manager} 做进程内沙箱，安全性由静态黑名单扫描 +
- * 独立子进程 + 资源/时间限制共同保证。
+ * <p>AI 调试（任务书 2.1）：14 个入参全部由后端组装——章节名走 knowledge-api，
+ * 题目内容/标准答案/要求走 exam-api，判题字段（test_result/passed_count/total_count）
+ * 由运行与判题结果生成；AI 返回的完整丰富字段（codeQuality/complexity/steps 等）
+ * 一并回填响应并落 JSON 列。
  */
 @Slf4j
 @Service
@@ -93,20 +123,34 @@ public class CodeRunServiceImpl implements CodeRunService {
     @Autowired(required = false)
     private CodeAgentClient codeAgentClient;
 
+    /**
+     * 题目详情接口（exam-api）。用于调试智能体入参的题目内容/标准答案/要求，
+     * 单测环境未装配时跳过补充，AI 入参按可选变量缺失处理。
+     */
+    @Autowired(required = false)
+    private ExamQuestionApi examQuestionApi;
+
+    /**
+     * 章节接口（knowledge-api）。用于调试智能体入参的章节名称。
+     */
+    @Autowired(required = false)
+    private KnowledgeChapterApi knowledgeChapterApi;
+
+    /**
+     * 学习行为上报（异步落库，失败不影响主流程）
+     */
+    @Autowired(required = false)
+    private StudyBehaviorApi behaviorApi;
+
     /** AI 字段序列化（knowledgePoints 列表转 JSON 字符串落库） */
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
-    // ===== 运行状态 =====
-    /** 运行成功 */
-    private static final int STATUS_SUCCESS = 1;
-    /** 编译错误 */
-    private static final int STATUS_COMPILE_ERROR = 2;
-    /** 运行时错误（含超时） */
-    private static final int STATUS_RUNTIME_ERROR = 3;
-    /** 未通过安全检查 */
-    private static final int STATUS_SECURITY_REJECTED = 4;
-    /** 系统内部错误 */
-    private static final int STATUS_INTERNAL_ERROR = 5;
+    /**
+     * 章节名称读取：knowledge-api 的 ChapterNameResponse 未提供 getter，
+     * 通过字段可见的 Jackson 反射读取（不修改 knowledge-api 模块）。
+     */
+    private static final ObjectMapper FIELD_REFLECT_MAPPER = new ObjectMapper()
+            .setVisibility(PropertyAccessor.FIELD, JsonAutoDetect.Visibility.ANY);
 
     // ===== 编译/运行参数 =====
     /** 编译超时时间（毫秒） */
@@ -119,6 +163,14 @@ public class CodeRunServiceImpl implements CodeRunService {
     private static final String MAX_HEAP_FLAG = "-Xmx64m";
     /** 子进程 JVM 线程栈大小 */
     private static final String STACK_SIZE_FLAG = "-Xss256k";
+
+    // ===== 判题（跑测试用例）参数 =====
+    /** 单题最多执行用例数，防止题目配置过多把请求拖死 */
+    private static final int MAX_CASE_COUNT = 10;
+    /** 单用例默认/最小/最大超时（毫秒） */
+    private static final long DEFAULT_CASE_TIMEOUT_MS = 3000L;
+    private static final long MIN_CASE_TIMEOUT_MS = 1000L;
+    private static final long MAX_CASE_TIMEOUT_MS = 10000L;
 
     // ===== 临时工作区根目录 =====
     private static final Path TEMP_ROOT;
@@ -180,10 +232,12 @@ public class CodeRunServiceImpl implements CodeRunService {
     @Override
     public CodeRunResultResponse run(Long userId, CodeRunRequest request) {
         CodeRunResultResponse response = doRun(userId, request);
-        // 出错（编译/运行时错误）时自动调用 AI 调试智能体，回填错误原因与优化建议
+        // 出错（编译/运行时错误/超时）时自动调用 AI 调试智能体，回填错误原因与优化建议
         invokeAiDebug(userId, request, response, false);
         // 每次运行都写入 study_code_run_record（含被拦截/失败的运行），落库异常不影响主流程
         saveRecord(userId, request, response);
+        // 行为埋点（异步落库，为学情分析积累数据）
+        reportBehavior(userId, request, response, BehaviorType.CODE_RUN);
         return response;
     }
 
@@ -193,7 +247,234 @@ public class CodeRunServiceImpl implements CodeRunService {
         // 调试模式：无论成败都调用 AI 调试智能体（成功时 error_type=none 传运行输出）
         invokeAiDebug(userId, request, response, true);
         saveRecord(userId, request, response);
+        reportBehavior(userId, request, response, BehaviorType.CODE_DEBUG);
         return response;
+    }
+
+    @Override
+    public CodeJudgeResult judge(CodeRunRequest codeRunRequest, List<TestCase> cases, Long currentUserId) {
+        long startMs = System.currentTimeMillis();
+        CodeJudgeResult result = new CodeJudgeResult();
+
+        if (cases == null || cases.isEmpty()) {
+            finishJudge(result, RunStatusEnum.SYSTEM_ERROR, null,
+                    "题目未配置测试用例，无法判分", null, List.of(), startMs);
+            return result;
+        }
+        String code = codeRunRequest.getCodeContent();
+
+        // 1. 安全扫描
+        Pattern matched = staticBlacklistCheck(code);
+        if (matched != null) {
+            log.warn("判题代码安全扫描拒绝: userId={}, pattern={}", currentUserId, matched.pattern());
+            finishJudge(result, RunStatusEnum.SECURITY_VIOLATION, null,
+                    "代码中包含禁止使用的 API（" + matched.pattern() + "），请移除后重试", null, List.of(), startMs);
+            return result;
+        }
+
+        // 2. 结构预检
+        String stripped = stripCommentsAndStrings(code);
+        String mainClass = detectMainClass(stripped);
+        if (mainClass == null) {
+            finishJudge(result, RunStatusEnum.COMPILE_ERROR, null,
+                    "未找到类声明，请使用 public class Main 作为主类", null, List.of(), startMs);
+            return result;
+        }
+        if (!MAIN_METHOD_PATTERN.matcher(stripped).find()) {
+            finishJudge(result, RunStatusEnum.COMPILE_ERROR, null,
+                    "未找到程序入口，请定义 public static void main(String[] args) 方法", null, List.of(), startMs);
+            return result;
+        }
+
+        // 3. 独立临时目录
+        Path workDir = TEMP_ROOT.resolve("judge_" + UUID.randomUUID().toString().replace("-", ""));
+        try {
+            Files.createDirectories(workDir);
+        } catch (IOException e) {
+            log.error("创建判题临时目录失败", e);
+            finishJudge(result, RunStatusEnum.SYSTEM_ERROR, null,
+                    "无法创建临时工作目录: " + e.getMessage(), null, List.of(), startMs);
+            return result;
+        }
+
+        try {
+            Path sourceFile = workDir.resolve(mainClass + ".java");
+            Files.writeString(sourceFile, code, StandardCharsets.UTF_8);
+
+            // 4. 编译一次，后续用例复用 class 文件
+            CompileOutcome compile = compile(sourceFile, workDir);
+            if (!compile.success()) {
+                finishJudge(result, RunStatusEnum.COMPILE_ERROR, null, compile.diagnostics(),
+                        compile.errorLine(), List.of(), startMs);
+                attachAi(codeRunRequest, result, currentUserId);
+                return result;
+            }
+
+            // 5. 逐用例运行 + 输出比对
+            List<TestCase> limited = cases.size() > MAX_CASE_COUNT ? cases.subList(0, MAX_CASE_COUNT) : cases;
+            List<CodeJudgeResult.CaseResult> details = new ArrayList<>();
+            RunStatusEnum status = RunStatusEnum.ACCEPTED;
+            String summaryOutput = null;
+            String summaryError = null;
+
+            for (TestCase testCase : limited) {
+                RunOutcome run = execute(workDir, mainClass,
+                        testCase.input(), resolveCaseTimeout(testCase.timeLimitMs()));
+                String actual = run.stdout();
+
+                if (run.status() != RunStatusEnum.ACCEPTED) {
+                    // 运行失败优先级高于答案错误：SE > RE > TLE
+                    status = worseStatus(status, run.status() == RunStatusEnum.SYSTEM_ERROR
+                            ? RunStatusEnum.SYSTEM_ERROR : run.status());
+                    if (summaryError == null) {
+                        summaryOutput = blankToNull(actual);
+                        summaryError = "测试用例 #" + testCase.caseIndex()
+                                + " 运行失败：" + blankToNull(run.stderr());
+                    }
+                    details.add(new CodeJudgeResult.CaseResult(testCase.caseIndex(), false,
+                            testCase.input(), testCase.expectedOutput(),
+                            blankToNull(actual), blankToNull(run.stderr()),
+                            testCase.isSample(), testCase.caseType(), run.status()));
+                    continue;
+                }
+
+                boolean ok = outputMatches(testCase.expectedOutput(), actual);
+                if (ok) {
+                    summaryOutput = blankToNull(actual);
+                } else {
+                    status = worseStatus(status, RunStatusEnum.WRONG_ANSWER);
+                    if (summaryError == null) {
+                        summaryOutput = blankToNull(actual);
+                        summaryError = "测试用例 #" + testCase.caseIndex() + " 未通过：期望「"
+                                + testCase.expectedOutput() + "」，实际「" + actual + "」";
+                    }
+                }
+                details.add(new CodeJudgeResult.CaseResult(testCase.caseIndex(), ok,
+                        testCase.input(), testCase.expectedOutput(),
+                        blankToNull(actual), null,
+                        testCase.isSample(), testCase.caseType(), RunStatusEnum.ACCEPTED));
+            }
+
+            finishJudge(result, status, summaryOutput, summaryError, null, details, startMs);
+            // 刷题提交链路：判题后无论成败都调调试智能体（安全拦截/系统错误除外）
+            attachAi(codeRunRequest, result, currentUserId);
+            return result;
+
+        } catch (IOException e) {
+            log.error("判题 IO 异常: userId={}", currentUserId, e);
+            finishJudge(result, RunStatusEnum.SYSTEM_ERROR, null,
+                    "系统内部错误: " + e.getMessage(), null, List.of(), startMs);
+            return result;
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            finishJudge(result, RunStatusEnum.SYSTEM_ERROR, null,
+                    "系统内部错误: 线程被中断", null, List.of(), startMs);
+            return result;
+        } finally {
+            cleanup(workDir);
+        }
+    }
+
+    /** 汇总状态取更严重的一档：SE > RE > TLE > WA > AC */
+    private RunStatusEnum worseStatus(RunStatusEnum current, RunStatusEnum incoming) {
+        if (current == RunStatusEnum.SYSTEM_ERROR) {
+            return current;
+        }
+        if (incoming == RunStatusEnum.SYSTEM_ERROR) {
+            return incoming;
+        }
+        if (current == RunStatusEnum.RUNTIME_ERROR) {
+            return current;
+        }
+        if (incoming == RunStatusEnum.RUNTIME_ERROR) {
+            return incoming;
+        }
+        if (current == RunStatusEnum.TIME_LIMIT_EXCEEDED) {
+            return current;
+        }
+        if (incoming == RunStatusEnum.TIME_LIMIT_EXCEEDED) {
+            return incoming;
+        }
+        return incoming;
+    }
+
+    /** 输出比对：两侧同时归一化（multiline 严格比对 + compact 兜底「多行挤成一行」） */
+    private boolean outputMatches(String expected, String actual) {
+        String e = AnswerNormalizer.multiline(expected);
+        String a = AnswerNormalizer.multiline(actual);
+        return e.equals(a) || AnswerNormalizer.compact(e).equals(AnswerNormalizer.compact(a));
+    }
+
+    /** 用例超时：题目配置（毫秒）夹到 [1s, 10s]，未配置用默认 3s */
+    private long resolveCaseTimeout(Integer timeLimitMs) {
+        if (timeLimitMs == null || timeLimitMs <= 0) {
+            return DEFAULT_CASE_TIMEOUT_MS;
+        }
+        return Math.min(Math.max(timeLimitMs, MIN_CASE_TIMEOUT_MS), MAX_CASE_TIMEOUT_MS);
+    }
+
+    private void finishJudge(CodeJudgeResult result, RunStatusEnum status, String output, String errorMsg,
+                             Integer errorLine, List<CodeJudgeResult.CaseResult> details, long startMs) {
+        result.setJudgeStatus(status);
+        result.setJudgeResult(details.isEmpty()
+                ? JudgeResultEnum.NOT_JUDGED
+                : (details.stream().allMatch(CodeJudgeResult.CaseResult::passed)
+                        ? JudgeResultEnum.ALL_PASSED : JudgeResultEnum.PARTIAL));
+        result.setOutput(output);
+        result.setErrorMsg(errorMsg);
+        result.setErrorLine(errorLine);
+        result.setCases(List.copyOf(details));
+        result.setTotalCount(details.size());
+        result.setPassedCount((int) details.stream().filter(CodeJudgeResult.CaseResult::passed).count());
+        result.setRunDuration((int) Math.min(System.currentTimeMillis() - startMs, Integer.MAX_VALUE));
+        result.setTestResult(toTestResultVO(result));
+    }
+
+    /** 判题明细转 TestResultVO（落库 test_result 列、透传给 AI 与前端） */
+    private TestResultVO toTestResultVO(CodeJudgeResult result) {
+        TestResultVO vo = new TestResultVO();
+        vo.setPassedCount(result.getPassedCount());
+        vo.setTotalCount(result.getTotalCount());
+        if (result.getCases() != null) {
+            vo.setCases(result.getCases().stream().map(c -> {
+                TestResultVO.CaseVO item = new TestResultVO.CaseVO();
+                item.setCaseIndex(c.caseIndex());
+                item.setInput(c.input());
+                item.setExpectedOutput(c.expectedOutput());
+                item.setActualOutput(c.actualOutput());
+                item.setPassed(c.passed());
+                item.setIsSample(c.isSample());
+                item.setCaseType(c.caseType());
+                item.setError(c.errorMsg());
+                return item;
+            }).toList());
+        }
+        return vo;
+    }
+
+    /** 判题后调用 AI 调试（刷题提交链路约定：无论成败都调，安全拦截/系统错误除外） */
+    private void attachAi(CodeRunRequest codeRunRequest, CodeJudgeResult result, Long currentUserId) {
+        if (codeAgentClient == null) {
+            return;
+        }
+        RunStatusEnum status = result.getJudgeStatus();
+        if (status == RunStatusEnum.SECURITY_VIOLATION || status == RunStatusEnum.SYSTEM_ERROR) {
+            return;
+        }
+        // 运行时错误本地从堆栈定位行号，回填判题结果，并作为 AI 调试参考
+        if (result.getErrorLine() == null) {
+            Integer extracted = extractErrorLineFromStack(result.getErrorMsg());
+            if (extracted != null) {
+                result.setErrorLine(extracted);
+            }
+        }
+        String testResultJson = toJson(result.getTestResult());
+        CodeDebugResponse debugResponse = callAgent(currentUserId, codeRunRequest, new AiContext(
+                status, result.getOutput(), result.getErrorMsg(), result.getErrorLine(),
+                testResultJson, result.getPassedCount(), result.getTotalCount()));
+        if (debugResponse != null) {
+            applyAiToJudgeResult(result, debugResponse);
+        }
     }
 
     // ============ AI 调试智能体 ============
@@ -204,8 +485,8 @@ public class CodeRunServiceImpl implements CodeRunService {
      * <p>触发规则：
      * <ul>
      *   <li>{@code always=true}（调试接口）：编译错误、运行时错误、运行成功都触发</li>
-     *   <li>{@code always=false}（运行接口）：仅编译错误、运行时错误触发</li>
-     *   <li>安全拦截（4）/系统内部错误（5）：本地已给出明确原因，AI 无调试价值，不触发</li>
+     *   <li>{@code always=false}（运行接口）：仅编译错误、运行时错误、超时触发</li>
+     *   <li>安全拦截（SV）/系统错误（SE）：本地已给出明确原因，AI 无调试价值，不触发</li>
      * </ul>
      *
      * <p>智能体未装配（单测环境）或调用失败时仅记录日志，绝不影响编译运行主流程。
@@ -215,71 +496,201 @@ public class CodeRunServiceImpl implements CodeRunService {
         if (codeAgentClient == null) {
             return;
         }
-        CodeRunStatusEnum status = CodeRunStatusEnum.fromCode(response.getStatus());
-        if (status == null || status == CodeRunStatusEnum.SECURITY_REJECTED
-                || status == CodeRunStatusEnum.INTERNAL_ERROR) {
+        RunStatusEnum status = RunStatusEnum.fromCode(response.getStatus());
+        if (status == null || status == RunStatusEnum.SECURITY_VIOLATION
+                || status == RunStatusEnum.SYSTEM_ERROR) {
             return;
         }
-        boolean failed = status == CodeRunStatusEnum.COMPILE_ERROR
-                || status == CodeRunStatusEnum.RUNTIME_ERROR;
+        boolean failed = status == RunStatusEnum.COMPILE_ERROR
+                || status == RunStatusEnum.RUNTIME_ERROR
+                || status == RunStatusEnum.TIME_LIMIT_EXCEEDED;
         if (!always && !failed) {
             return;
         }
-        try {
-            CodeDebugRequest debugRequest = buildDebugRequest(request, response);
-
-            // TODO 需处理 Result 异常情况
-            CodeDebugResponse debugResponse = codeAgentClient.debug(debugRequest).getData();
-            if (debugResponse != null) {
-                response.setErrorReason(debugResponse.getErrorReason());
-                response.setOptimizeSuggest(debugResponse.getOptimizeSuggest());
-                response.setStandardIdea(debugResponse.getStandardIdea());
-                response.setKnowledgePoints(debugResponse.getKnowledgePoints());
-                // 本地未定位到错误行时，参考 AI 返回的行号列表
-                if (response.getErrorLine() == null
-                        && debugResponse.getErrorLineList() != null
-                        && !debugResponse.getErrorLineList().isEmpty()) {
-                    try {
-                        response.setErrorLine(Integer.valueOf(debugResponse.getErrorLineList().get(0)));
-                    } catch (NumberFormatException ignore) {
-                        // AI 返回的行号不可解析时保留空值
-                    }
-                }
+        // 运行时错误本地从堆栈定位行号，回填响应（前端与落库可见），并作为 AI 调试参考
+        if (response.getErrorLine() == null) {
+            Integer extracted = extractErrorLineFromStack(response.getErrorMsg());
+            if (extracted != null) {
+                response.setErrorLine(extracted);
             }
+        }
+        CodeDebugResponse debugResponse = callAgent(userId, request, new AiContext(
+                status, response.getOutput(), response.getErrorMsg(), response.getErrorLine(),
+                null, null, null));
+        if (debugResponse != null) {
+            applyAiToResponse(response, debugResponse);
+        }
+    }
+
+    /** 真正发起 AI 调试调用；任何异常只记日志，绝不影响判题/运行结果 */
+    private CodeDebugResponse callAgent(Long userId, CodeRunRequest request, AiContext ctx) {
+        try {
+            CodeDebugRequest debugRequest = buildDebugRequest(request, ctx);
+            Result<CodeDebugResponse> result = codeAgentClient.debug(debugRequest);
+            if (result != null && result.getCode() == ErrorCodeConstant.SUCCESS) {
+                return result.getData();
+            }
+            log.warn("AI 调试智能体返回失败: userId={}, message={}",
+                    userId, result == null ? "接口返回为空" : result.getMessage());
         } catch (Exception e) {
             log.warn("AI 调试智能体调用失败，不影响运行结果返回: userId={}, error={}", userId, e.getMessage());
+        }
+        return null;
+    }
+
+    /** 运行/调试链路：AI 完整丰富字段一并回填响应（前端展示 + 落库数据源） */
+    private void applyAiToResponse(CodeRunResultResponse response, CodeDebugResponse debugResponse) {
+        response.setErrorLineList(debugResponse.getErrorLineList());
+        response.setErrorReason(debugResponse.getErrorReason());
+        response.setOptimizeSuggest(debugResponse.getOptimizeSuggest());
+        response.setStandardIdea(debugResponse.getStandardIdea());
+        response.setKnowledgePoints(debugResponse.getKnowledgePoints());
+        response.setCodeQuality(debugResponse.getCodeQuality());
+        response.setComplexity(debugResponse.getComplexity());
+        response.setSteps(debugResponse.getSteps());
+        response.setCommonMistakes(debugResponse.getCommonMistakes());
+        response.setImprovements(debugResponse.getImprovements());
+        response.setRelatedKnowledge(debugResponse.getRelatedKnowledge());
+        response.setSimilarQuestions(debugResponse.getSimilarQuestions());
+        response.setEncouragement(debugResponse.getEncouragement());
+        response.setLearningSuggestion(debugResponse.getLearningSuggestion());
+        // 本地未定位到错误行时，参考 AI 返回的行号列表
+        if (response.getErrorLine() == null
+                && debugResponse.getErrorLineList() != null
+                && !debugResponse.getErrorLineList().isEmpty()) {
+            try {
+                response.setErrorLine(Integer.valueOf(debugResponse.getErrorLineList().get(0)));
+            } catch (NumberFormatException ignore) {
+                // AI 返回的行号不可解析时保留空值
+            }
+        }
+    }
+
+    /** 判题链路：AI 完整丰富字段回填判题结果（随 run_record 落库） */
+    private void applyAiToJudgeResult(CodeJudgeResult result, CodeDebugResponse debugResponse) {
+        result.setErrorLineList(debugResponse.getErrorLineList());
+        result.setErrorReason(debugResponse.getErrorReason());
+        result.setOptimizeSuggest(debugResponse.getOptimizeSuggest());
+        result.setStandardIdea(debugResponse.getStandardIdea());
+        result.setKnowledgePoints(debugResponse.getKnowledgePoints());
+        result.setCodeQuality(debugResponse.getCodeQuality());
+        result.setComplexity(debugResponse.getComplexity());
+        result.setSteps(debugResponse.getSteps());
+        result.setCommonMistakes(debugResponse.getCommonMistakes());
+        result.setImprovements(debugResponse.getImprovements());
+        result.setRelatedKnowledge(debugResponse.getRelatedKnowledge());
+        result.setSimilarQuestions(debugResponse.getSimilarQuestions());
+        result.setEncouragement(debugResponse.getEncouragement());
+        result.setLearningSuggestion(debugResponse.getLearningSuggestion());
+        if (result.getErrorLine() == null
+                && debugResponse.getErrorLineList() != null
+                && !debugResponse.getErrorLineList().isEmpty()) {
+            try {
+                result.setErrorLine(Integer.valueOf(debugResponse.getErrorLineList().get(0)));
+            } catch (NumberFormatException ignore) {
+                // AI 返回的行号不可解析时保留空值
+            }
         }
     }
 
     /**
-     * 把运行请求 + 运行结果组装为调试智能体请求。
+     * 把运行请求 + 运行/判题结果组装为调试智能体请求（任务书 2.1 的 14 个入参）。
      *
-     * <p>章节名称、题目内容/标准答案需等题库模块就绪后补充，目前不传（Dify 端为可选变量）。
+     * <p>章节名称走 knowledge-api，题目内容/标准答案/要求走 exam-api，
+     * 接口未装配或查询失败时按可选变量缺失处理，不影响 AI 主流程。
      */
-    private CodeDebugRequest buildDebugRequest(CodeRunRequest request, CodeRunResultResponse response) {
-        CodeRunStatusEnum status = CodeRunStatusEnum.fromCode(response.getStatus());
-        String errorType = switch (status) {
-            case COMPILE_ERROR -> "syntax_error";
-            case RUNTIME_ERROR -> "runtime_error";
-            default -> "none";
-        };
-        Integer errorLine = response.getErrorLine();
+    private CodeDebugRequest buildDebugRequest(CodeRunRequest request, AiContext ctx) {
+        CodeErrorTypeEnum errorType = resolveErrorType(ctx.status());
+        Integer errorLine = ctx.errorLine();
         if (errorLine == null) {
-            // 运行时错误本地从堆栈定位行号，回传 AI 的同时回填响应（前端与落库可见）
-            errorLine = extractErrorLineFromStack(response.getErrorMsg());
-            if (errorLine != null) {
-                response.setErrorLine(errorLine);
-            }
+            // 运行时错误本地从堆栈定位行号，回传 AI 的同时回填（前端与落库可见）
+            errorLine = extractErrorLineFromStack(ctx.errorMsg());
         }
-        return CodeDebugRequest.builder()
+        CodeDebugRequest.CodeDebugRequestBuilder builder = CodeDebugRequest.builder()
                 .code(request.getCodeContent())
                 .chapterId(toStr(request.getChapterId()))
                 .questionId(toStr(request.getQuestionId()))
-                .errorType(errorType)
-                .errorMsg(response.getErrorMsg())
+                .errorType(errorType == null ? CodeErrorTypeEnum.NONE.getDifyValue() : errorType.getDifyValue())
+                .errorMsg(ctx.errorMsg())
                 .errorLine(errorLine == null ? null : String.valueOf(errorLine))
-                .runResult(response.getOutput())
-                .build();
+                .runResult(ctx.output());
+        if (ctx.testResultJson() != null) {
+            builder.testResult(ctx.testResultJson())
+                    .passedCount(String.valueOf(ctx.passedCount()))
+                    .totalCount(String.valueOf(ctx.totalCount()));
+        }
+        enrichChapterName(builder, request.getChapterId());
+        enrichQuestion(builder, request.getQuestionId());
+        return builder.build();
+    }
+
+    /** 运行状态 → Dify 错误类型 */
+    private CodeErrorTypeEnum resolveErrorType(RunStatusEnum status) {
+        if (status == null) {
+            return CodeErrorTypeEnum.NONE;
+        }
+        return switch (status) {
+            case COMPILE_ERROR -> CodeErrorTypeEnum.SYNTAX_ERROR;
+            case RUNTIME_ERROR -> CodeErrorTypeEnum.RUNTIME_ERROR;
+            case TIME_LIMIT_EXCEEDED -> CodeErrorTypeEnum.TIMEOUT;
+            case MEMORY_LIMIT_EXCEEDED -> CodeErrorTypeEnum.MEMORY_OVERFLOW;
+            case WRONG_ANSWER -> CodeErrorTypeEnum.LOGIC_ERROR;
+            case SECURITY_VIOLATION -> CodeErrorTypeEnum.SECURITY_VIOLATION;
+            default -> CodeErrorTypeEnum.NONE;
+        };
+    }
+
+    /** 章节名称补充（knowledge-api，查询失败仅记日志） */
+    private void enrichChapterName(CodeDebugRequest.CodeDebugRequestBuilder builder, Long chapterId) {
+        if (knowledgeChapterApi == null || chapterId == null) {
+            return;
+        }
+        try {
+            Result<ChapterNameResponse> result = knowledgeChapterApi.getChapterNameById(chapterId);
+            if (result != null && result.getCode() == ErrorCodeConstant.SUCCESS && result.getData() != null) {
+                String name = readChapterName(result.getData());
+                if (name != null && !name.isBlank()) {
+                    builder.chapterName(name);
+                }
+            }
+        } catch (Exception e) {
+            log.warn("查询章节名称失败（AI 入参按缺失处理）: chapterId={}, error={}", chapterId, e.getMessage());
+        }
+    }
+
+    /** ChapterNameResponse 未提供 getter，用字段可见的 Jackson 反射读取章节名 */
+    private String readChapterName(ChapterNameResponse response) {
+        try {
+            JsonNode node = FIELD_REFLECT_MAPPER.convertValue(response, JsonNode.class);
+            String fullName = node.path("chapterName").asText(null);
+            if (fullName != null && !fullName.isBlank()) {
+                return fullName;
+            }
+            return node.path("shortName").asText(null);
+        } catch (Exception e) {
+            log.warn("解析章节名称响应失败: {}", e.getMessage());
+            return null;
+        }
+    }
+
+    /** 题目内容/标准答案/要求补充（exam-api，查询失败仅记日志） */
+    private void enrichQuestion(CodeDebugRequest.CodeDebugRequestBuilder builder, Long questionId) {
+        if (examQuestionApi == null || questionId == null) {
+            return;
+        }
+        try {
+            Result<QuestionDetailResponse> result = examQuestionApi.getQuestionDetail(questionId);
+            if (result != null && result.getCode() == ErrorCodeConstant.SUCCESS && result.getData() != null) {
+                QuestionDetailResponse question = result.getData();
+                builder.questionContent(question.getContent())
+                        .questionStandardAnswer(question.getAnswer());
+                if (question.getRequirements() != null && !question.getRequirements().isEmpty()) {
+                    builder.questionRequirements(OBJECT_MAPPER.writeValueAsString(question.getRequirements()));
+                }
+            }
+        } catch (Exception e) {
+            log.warn("查询题目详情失败（AI 入参按缺失处理）: questionId={}, error={}", questionId, e.getMessage());
+        }
     }
 
     /**
@@ -314,7 +725,7 @@ public class CodeRunServiceImpl implements CodeRunService {
         Pattern matched = staticBlacklistCheck(code);
         if (matched != null) {
             log.warn("代码安全扫描拒绝: userId={}, pattern={}", userId, matched.pattern());
-            return build(STATUS_SECURITY_REJECTED, null,
+            return build(RunStatusEnum.SECURITY_VIOLATION, null,
                     "代码中包含禁止使用的 API（" + matched.pattern() + "），请移除后重试", null, startMs);
         }
 
@@ -322,11 +733,11 @@ public class CodeRunServiceImpl implements CodeRunService {
         String stripped = stripCommentsAndStrings(code);
         String mainClass = detectMainClass(stripped);
         if (mainClass == null) {
-            return build(STATUS_COMPILE_ERROR, null,
+            return build(RunStatusEnum.COMPILE_ERROR, null,
                     "未找到类声明，请使用 public class Main 作为主类", null, startMs);
         }
         if (!MAIN_METHOD_PATTERN.matcher(stripped).find()) {
-            return build(STATUS_COMPILE_ERROR, null,
+            return build(RunStatusEnum.COMPILE_ERROR, null,
                     "未找到程序入口，请定义 public static void main(String[] args) 方法", null, startMs);
         }
 
@@ -336,7 +747,7 @@ public class CodeRunServiceImpl implements CodeRunService {
             Files.createDirectories(workDir);
         } catch (IOException e) {
             log.error("创建代码运行临时目录失败", e);
-            return build(STATUS_INTERNAL_ERROR, null, "无法创建临时工作目录: " + e.getMessage(), null, startMs);
+            return build(RunStatusEnum.SYSTEM_ERROR, null, "无法创建临时工作目录: " + e.getMessage(), null, startMs);
         }
 
         try {
@@ -348,7 +759,7 @@ public class CodeRunServiceImpl implements CodeRunService {
             CompileOutcome compile = compile(sourceFile, workDir);
             if (!compile.success()) {
                 log.info("编译失败: userId={}, errorLine={}", userId, compile.errorLine());
-                return build(STATUS_COMPILE_ERROR, null, compile.diagnostics(), compile.errorLine(), startMs);
+                return build(RunStatusEnum.COMPILE_ERROR, null, compile.diagnostics(), compile.errorLine(), startMs);
             }
 
             // 6. 运行（独立 JVM 进程）
@@ -363,10 +774,10 @@ public class CodeRunServiceImpl implements CodeRunService {
 
         } catch (IOException e) {
             log.error("代码运行 IO 异常: userId={}", userId, e);
-            return build(STATUS_INTERNAL_ERROR, null, "系统内部错误: " + e.getMessage(), null, startMs);
+            return build(RunStatusEnum.SYSTEM_ERROR, null, "系统内部错误: " + e.getMessage(), null, startMs);
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
-            return build(STATUS_INTERNAL_ERROR, null, "系统内部错误: 线程被中断", null, startMs);
+            return build(RunStatusEnum.SYSTEM_ERROR, null, "系统内部错误: 线程被中断", null, startMs);
         } finally {
             cleanup(workDir);
         }
@@ -557,6 +968,11 @@ public class CodeRunServiceImpl implements CodeRunService {
      * 启动独立 JVM 进程运行主类：限制资源、限制时间、截断输出、超时强杀。
      */
     private RunOutcome execute(Path workDir, String mainClass) throws IOException, InterruptedException {
+        return execute(workDir, mainClass, null, RUN_TIMEOUT_MS);
+    }
+
+    private RunOutcome execute(Path workDir, String mainClass, String stdin, long timeoutMs)
+            throws IOException, InterruptedException {
         List<String> command = List.of(
                 javaExecutable(),
                 MAX_HEAP_FLAG, STACK_SIZE_FLAG,
@@ -571,15 +987,20 @@ public class CodeRunServiceImpl implements CodeRunService {
         try {
             process = processBuilder.start();
         } catch (IOException e) {
-            return new RunOutcome(STATUS_INTERNAL_ERROR, "", "无法启动 java 进程: " + e.getMessage());
+            return new RunOutcome(RunStatusEnum.SYSTEM_ERROR, "", "无法启动 java 进程: " + e.getMessage());
         }
 
         try {
-            // 不提供标准输入：关闭子进程 stdin，避免 Scanner 等永久阻塞
-            try {
-                process.getOutputStream().close();
-            } catch (IOException ignore) {
-                // 关闭失败不影响运行
+            // stdin：判题时写入用例输入；自由运行时关闭，避免 Scanner 等永久阻塞
+            Future<?> stdinTask = null;
+            if (stdin != null && !stdin.isBlank()) {
+                stdinTask = STREAM_POOL.submit(() -> writeStdin(process.getOutputStream(), stdin));
+            } else {
+                try {
+                    process.getOutputStream().close();
+                } catch (IOException ignore) {
+                    // 关闭失败不影响运行
+                }
             }
 
             StringBuffer stdout = new StringBuffer();
@@ -587,33 +1008,54 @@ public class CodeRunServiceImpl implements CodeRunService {
             Future<?> stdoutTask = STREAM_POOL.submit(() -> readStream(process.getInputStream(), stdout, "标准输出"));
             Future<?> stderrTask = STREAM_POOL.submit(() -> readStream(process.getErrorStream(), stderr, "标准错误"));
 
-            boolean finished = process.waitFor(RUN_TIMEOUT_MS, TimeUnit.MILLISECONDS);
+            boolean finished = process.waitFor(timeoutMs, TimeUnit.MILLISECONDS);
             if (!finished) {
                 process.descendants().forEach(ProcessHandle::destroyForcibly);
                 process.destroyForcibly();
                 process.waitFor(2, TimeUnit.SECONDS);
+                cancel(stdinTask);
                 stdoutTask.cancel(true);
                 stderrTask.cancel(true);
-                return new RunOutcome(STATUS_RUNTIME_ERROR, stdout.toString(),
-                        "运行超时（>" + RUN_TIMEOUT_MS / 1000 + "s），已强制终止");
+                return new RunOutcome(RunStatusEnum.TIME_LIMIT_EXCEEDED, stdout.toString(),
+                        "运行超时（>" + timeoutMs / 1000 + "s），已强制终止");
             }
 
+            cancel(stdinTask);
             awaitStream(stdoutTask);
             awaitStream(stderrTask);
 
             int exitCode = process.exitValue();
             if (exitCode == 0) {
-                return new RunOutcome(STATUS_SUCCESS, stdout.toString(), stderr.toString());
+                return new RunOutcome(RunStatusEnum.ACCEPTED, stdout.toString(), stderr.toString());
             }
             String error = stderr.toString().isBlank()
                     ? "程序异常退出，退出码=" + exitCode
                     : stderr.toString();
-            return new RunOutcome(STATUS_RUNTIME_ERROR, stdout.toString(), error);
+            return new RunOutcome(RunStatusEnum.RUNTIME_ERROR, stdout.toString(), error);
 
         } finally {
             if (process.isAlive()) {
                 process.destroyForcibly();
             }
+        }
+    }
+
+    /** 向子进程写 stdin；写完立即 flush + close，进程提前退出时写入失败属正常 */
+    private void writeStdin(OutputStream out, String input) {
+        try (BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(out, StandardCharsets.UTF_8))) {
+            writer.write(input);
+            if (!input.endsWith("\n")) {
+                writer.write("\n");
+            }
+            writer.flush();
+        } catch (IOException ignore) {
+            // 子进程已结束，忽略
+        }
+    }
+
+    private void cancel(Future<?> task) {
+        if (task != null) {
+            task.cancel(true);
         }
     }
 
@@ -698,12 +1140,125 @@ public class CodeRunServiceImpl implements CodeRunService {
         }
     }
 
+    // ============ 运行记录查询（任务书 3.5 / 3.6） ============
+
+    @Override
+    public PageResult<CodeRecordItemVO> pageRecords(Long userId, CodeRecordQueryRequest request) {
+        requireMapper();
+        int pageNum = request.getPageNum() == null ? 1 : request.getPageNum();
+        int pageSize = request.getPageSize() == null ? 10 : request.getPageSize();
+        Page<StudyCodeRunRecord> page = new Page<>(pageNum, pageSize);
+        page = codeRunRecordMapper.selectPage(page,
+                new LambdaQueryWrapper<StudyCodeRunRecord>()
+                        .eq(StudyCodeRunRecord::getUserId, userId)
+                        .eq(request.getChapterId() != null, StudyCodeRunRecord::getChapterId, request.getChapterId())
+                        .eq(request.getQuestionId() != null, StudyCodeRunRecord::getQuestionId, request.getQuestionId())
+                        .orderByDesc(StudyCodeRunRecord::getId));
+
+        PageResult<CodeRecordItemVO> result = new PageResult<>();
+        result.setTotal(page.getTotal());
+        result.setCurrent(page.getCurrent());
+        result.setSize(page.getSize());
+        result.setRecords(page.getRecords().stream().map(this::toItemVO).toList());
+        return result;
+    }
+
+    @Override
+    public CodeRecordDetailVO getRecordDetail(Long userId, Long recordId) {
+        requireMapper();
+        StudyCodeRunRecord record = codeRunRecordMapper.selectById(recordId);
+        if (record == null) {
+            throw new BusinessException(ErrorCodeConstant.NOT_FOUND, "运行记录不存在: " + recordId);
+        }
+        // 只能查本人记录，越权访问返回 403
+        if (!userId.equals(record.getUserId())) {
+            throw new BusinessException(ErrorCodeConstant.ACCESS_DENIED, "无权查看他人的运行记录");
+        }
+        return toDetailVO(record);
+    }
+
+    private void requireMapper() {
+        if (codeRunRecordMapper == null) {
+            throw new BusinessException("运行记录存储未装配");
+        }
+    }
+
+    private CodeRecordItemVO toItemVO(StudyCodeRunRecord record) {
+        CodeRecordItemVO vo = new CodeRecordItemVO();
+        vo.setId(record.getId());
+        vo.setChapterId(record.getChapterId());
+        vo.setQuestionId(record.getQuestionId());
+        if (record.getJudgeStatus() != null) {
+            vo.setStatus(record.getJudgeStatus().getCode());
+            vo.setStatusDesc(record.getJudgeStatus().getDesc());
+        }
+        vo.setJudgeResult(record.getJudgeResult() == null ? null : record.getJudgeResult().getCode());
+        vo.setPassedCount(record.getPassedCount());
+        vo.setTotalCount(record.getTotalCount());
+        vo.setRunDuration(record.getRunDuration());
+        vo.setErrorLine(record.getErrorLine());
+        vo.setKnowledgePoints(record.getKnowledgePoints());
+        vo.setCreateTime(record.getCreateTime());
+        return vo;
+    }
+
+    private CodeRecordDetailVO toDetailVO(StudyCodeRunRecord record) {
+        CodeRecordDetailVO vo = new CodeRecordDetailVO();
+        vo.setId(record.getId());
+        vo.setChapterId(record.getChapterId());
+        vo.setQuestionId(record.getQuestionId());
+        vo.setCodeContent(record.getCodeContent());
+        vo.setRunResult(record.getRunResult());
+        vo.setErrorMsg(record.getErrorMsg());
+        vo.setErrorLine(record.getErrorLine());
+        if (record.getJudgeStatus() != null) {
+            vo.setStatus(record.getJudgeStatus().getCode());
+            vo.setStatusDesc(record.getJudgeStatus().getDesc());
+        }
+        vo.setJudgeResult(record.getJudgeResult() == null ? null : record.getJudgeResult().getCode());
+        vo.setTestResult(record.getTestResult());
+        vo.setPassedCount(record.getPassedCount());
+        vo.setTotalCount(record.getTotalCount());
+        vo.setRunDuration(record.getRunDuration());
+        vo.setMemoryUsed(record.getMemoryUsed());
+        vo.setErrorLineList(record.getErrorLineList());
+        vo.setErrorReason(record.getErrorReason());
+        vo.setOptimizeSuggest(record.getOptimizeSuggest());
+        vo.setStandardIdea(record.getStandardIdea());
+        vo.setKnowledgePoints(fromKnowledgePointsJson(record.getKnowledgePoints()));
+        vo.setCodeQuality(record.getCodeQuality());
+        vo.setComplexity(record.getComplexity());
+        vo.setSteps(record.getSteps());
+        vo.setCommonMistakes(record.getCommonMistakes());
+        vo.setImprovements(record.getImprovements());
+        vo.setRelatedKnowledge(record.getRelatedKnowledge());
+        vo.setSimilarQuestions(record.getSimilarQuestions());
+        vo.setEncouragement(record.getEncouragement());
+        vo.setLearningSuggestion(record.getLearningSuggestion());
+        vo.setCreateTime(record.getCreateTime());
+        return vo;
+    }
+
+    /** knowledge_points 列（JSON 数组字符串）解析回列表；解析失败返回 null */
+    private List<String> fromKnowledgePointsJson(String json) {
+        if (json == null || json.isBlank()) {
+            return null;
+        }
+        try {
+            return OBJECT_MAPPER.readValue(json, new TypeReference<List<String>>() {});
+        } catch (Exception e) {
+            log.warn("知识点 JSON 解析失败: {}", json);
+            return null;
+        }
+    }
+
     // ============ 工具方法 ============
 
-    private CodeRunResultResponse build(int status, String output, String errorMsg,
-                                       Integer errorLine, long startMs) {
+    private CodeRunResultResponse build(RunStatusEnum status, String output, String errorMsg,
+                                        Integer errorLine, long startMs) {
         CodeRunResultResponse response = new CodeRunResultResponse();
-        response.setStatus(status);
+        response.setStatus(status.getCode());
+        response.setStatusDesc(status.getDesc());
         response.setOutput(output);
         response.setErrorMsg(errorMsg);
         response.setErrorLine(errorLine);
@@ -716,10 +1271,8 @@ public class CodeRunServiceImpl implements CodeRunService {
     }
 
     /**
-     * 把本次运行结果写入 study_code_run_record，并把主键回填到响应体的 runId。
-     *
-     * <p>AI 调试字段（errorReason/optimizeSuggest/standardIdea/knowledgePoints）
-     * 由 {@link #invokeAiDebug} 在落库前回填到响应，此处一并落库。
+     * 把本次运行结果写入 study_code_run_record（含全部 AI 丰富字段与判题字段），
+     * 并把主键回填到响应体的 runId。
      *
      * <p>落库失败只记录日志，绝不向上抛出，避免影响学生看到编译运行结果。
      */
@@ -733,19 +1286,56 @@ public class CodeRunServiceImpl implements CodeRunService {
             entity.setChapterId(request.getChapterId());
             entity.setQuestionId(request.getQuestionId());
             entity.setCodeContent(request.getCodeContent());
-            entity.setStatus(response.getStatus());
+            entity.setJudgeStatus(RunStatusEnum.fromCode(response.getStatus()));
+            entity.setJudgeResult(JudgeResultEnum.NOT_JUDGED);
+            entity.setPassedCount(0);
+            entity.setTotalCount(0);
+            entity.setMemoryUsed(0);
             entity.setRunResult(response.getOutput());
             entity.setErrorMsg(response.getErrorMsg());
             entity.setErrorLine(response.getErrorLine());
             entity.setRunDuration(response.getRunDuration());
+            entity.setErrorLineList(response.getErrorLineList());
             entity.setErrorReason(response.getErrorReason());
             entity.setOptimizeSuggest(response.getOptimizeSuggest());
             entity.setStandardIdea(response.getStandardIdea());
             entity.setKnowledgePoints(toJsonArray(response.getKnowledgePoints()));
+            entity.setCodeQuality(response.getCodeQuality());
+            entity.setComplexity(response.getComplexity());
+            entity.setSteps(response.getSteps());
+            entity.setCommonMistakes(response.getCommonMistakes());
+            entity.setImprovements(response.getImprovements());
+            entity.setRelatedKnowledge(response.getRelatedKnowledge());
+            entity.setSimilarQuestions(response.getSimilarQuestions());
+            entity.setEncouragement(response.getEncouragement());
+            entity.setLearningSuggestion(response.getLearningSuggestion());
             codeRunRecordMapper.insert(entity);
             response.setRunId(entity.getId());
         } catch (Exception e) {
             log.error("写入代码运行记录失败: userId={}", userId, e);
+        }
+    }
+
+    /** 运行/调试行为埋点（CODE_RUN / CODE_DEBUG），异步落库失败不影响主流程 */
+    private void reportBehavior(Long userId, CodeRunRequest request,
+                                CodeRunResultResponse response, BehaviorType type) {
+        if (behaviorApi == null) {
+            return;
+        }
+        try {
+            StudyBehaviorReportRequest report = new StudyBehaviorReportRequest();
+            report.setUserId(userId);
+            report.setBehaviorType(type);
+            report.setChapterId(request.getChapterId());
+            report.setQuestionId(request.getQuestionId());
+            report.setDuration(response.getRunDuration() == null ? null : response.getRunDuration() / 1000);
+            Map<String, Object> detail = new LinkedHashMap<>();
+            detail.put("status", response.getStatus());
+            detail.put("runDurationMs", response.getRunDuration());
+            report.setDetail(detail);
+            behaviorApi.report(report);
+        } catch (Exception e) {
+            log.warn("{} 行为上报失败（不影响主流程）: {}", type.getCode(), e.getMessage());
         }
     }
 
@@ -758,6 +1348,19 @@ public class CodeRunServiceImpl implements CodeRunService {
             return OBJECT_MAPPER.writeValueAsString(list);
         } catch (JsonProcessingException e) {
             log.warn("知识点列表序列化失败: {}", list, e);
+            return null;
+        }
+    }
+
+    /** 对象序列化为 JSON 字符串；失败返回 null */
+    private String toJson(Object value) {
+        if (value == null) {
+            return null;
+        }
+        try {
+            return OBJECT_MAPPER.writeValueAsString(value);
+        } catch (JsonProcessingException e) {
+            log.warn("JSON 序列化失败: {}", e.getMessage());
             return null;
         }
     }
@@ -778,6 +1381,11 @@ public class CodeRunServiceImpl implements CodeRunService {
     }
 
     /** 运行结果 */
-    private record RunOutcome(int status, String stdout, String stderr) {
+    private record RunOutcome(RunStatusEnum status, String stdout, String stderr) {
+    }
+
+    /** AI 调试上下文：运行/判题结果中与调试入参相关的字段 */
+    private record AiContext(RunStatusEnum status, String output, String errorMsg, Integer errorLine,
+                             String testResultJson, Integer passedCount, Integer totalCount) {
     }
 }

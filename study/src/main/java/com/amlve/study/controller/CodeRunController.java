@@ -1,28 +1,37 @@
 package com.amlve.study.controller;
 
+import com.amlve.common.request.PageResult;
 import com.amlve.common.request.Result;
 import com.amlve.common.utils.SecurityUtils;
+import com.amlve.study.dto.request.CodeRecordQueryRequest;
 import com.amlve.study.dto.request.CodeRunRequest;
+import com.amlve.study.dto.response.CodeRecordDetailVO;
+import com.amlve.study.dto.response.CodeRecordItemVO;
 import com.amlve.study.dto.response.CodeRunResultResponse;
 import com.amlve.study.service.CodeRunService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.validation.annotation.Validated;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * 学生代码编译运行（学习场景下编译运行 Java 代码）
+ * 学生代码编译运行与运行记录（学习场景下编译运行 Java 代码）
  * <p>
- * 端点：POST /api/study/code/run、POST /api/study/code/debug
- * 鉴权：仅学生可调用（userId 从 Token 解析）
+ * 端点：POST /api/study/code/run、POST /api/study/code/debug、
+ * GET /api/study/code/record/list、GET /api/study/code/record/detail
+ * 鉴权：仅学生可调用（userId 从 Token 解析，禁止查他人数据）
  * 约束：需要一个类作为主类（默认 {@code public class Main}），并包含
  * {@code public static void main(String[] args)} 方法
  */
 @Slf4j
+@Validated
 @RestController
 @RequestMapping("/api/study/code")
 @RequiredArgsConstructor
@@ -53,5 +62,24 @@ public class CodeRunController {
         log.info("学生调试代码: userId={}, chapterId={}, questionId={}",
                 userId, request.getChapterId(), request.getQuestionId());
         return Result.success(codeRunService.debugRun(userId, request));
+    }
+
+    /**
+     * 本人代码运行记录分页查询（列表不含代码大字段，可按 chapterId / questionId 筛选）。
+     */
+    @GetMapping("/record/list")
+    public Result<PageResult<CodeRecordItemVO>> listRecords(@Valid CodeRecordQueryRequest request) {
+        Long userId = SecurityUtils.getUserId();
+        return Result.success(codeRunService.pageRecords(userId, request));
+    }
+
+    /**
+     * 单条运行记录详情（完整记录，含代码、用例明细与 AI 调试字段）；
+     * 只能查本人记录，越权访问返回 403。
+     */
+    @GetMapping("/record/detail")
+    public Result<CodeRecordDetailVO> recordDetail(@RequestParam Long recordId) {
+        Long userId = SecurityUtils.getUserId();
+        return Result.success(codeRunService.getRecordDetail(userId, recordId));
     }
 }
