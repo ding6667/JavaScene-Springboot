@@ -26,6 +26,12 @@ import java.util.Map;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
+/**
+ * 作业提交服务实现。
+ * <p>
+ * 学生按题提交答案，逐题写入提交记录并创建/重置批改任务；
+ * 事务提交后触发异步批改。
+ */
 @Slf4j
 @Service
 @RequiredArgsConstructor
@@ -36,7 +42,12 @@ public class ExamHomeworkServiceImpl implements ExamHomeworkService {
     private final ExamGradingTaskMapper gradingTaskMapper;
     private final ExamGradingService gradingService;
 
-
+    /**
+     * 学生提交作业答案，并在事务提交后触发异步批改。
+     *
+     * @param request 作业提交请求
+     * @throws BusinessException 题目不存在或落库失败时抛出
+     */
     @Override
     @Transactional
     public void submit(HomeworkSubmitRequest request) {
@@ -47,6 +58,9 @@ public class ExamHomeworkServiceImpl implements ExamHomeworkService {
                 .map(HomeworkSubmitRequest.AnswerItem::getQuestionId)
                 .distinct()
                 .toList();
+        if (questionIds.isEmpty()) {
+            throw new BusinessException("答案列表不能为空");
+        }
         Map<Long, ExamQuestion> questionMap = questionMapper.selectBatchIds(questionIds).stream()
                 .collect(Collectors.toMap(ExamQuestion::getId, Function.identity()));
 
@@ -66,7 +80,9 @@ public class ExamHomeworkServiceImpl implements ExamHomeworkService {
             if (existing != null) {
                 existing.setAnswerContent(item.getAnswerContent());
                 existing.setSubmitTime(now);
-                submitMapper.updateById(existing);
+                if (submitMapper.updateById(existing) == 0) {
+                    throw new BusinessException("更新提交记录失败: questionId=" + item.getQuestionId());
+                }
             } else {
                 ExamHomeworkSubmit submit = new ExamHomeworkSubmit();
                 submit.setHomeworkId(homeworkId);
@@ -74,7 +90,9 @@ public class ExamHomeworkServiceImpl implements ExamHomeworkService {
                 submit.setQuestionId(item.getQuestionId());
                 submit.setAnswerContent(item.getAnswerContent());
                 submit.setSubmitTime(now);
-                submitMapper.insert(submit);
+                if (submitMapper.insert(submit) == 0) {
+                    throw new BusinessException("保存提交记录失败: questionId=" + item.getQuestionId());
+                }
             }
         }
 
@@ -87,14 +105,18 @@ public class ExamHomeworkServiceImpl implements ExamHomeworkService {
             task.setUserId(userId);
             task.setTotalScore(totalScore);
             task.setStatus(ExamGradingTaskStatus.PENDING);
-            gradingTaskMapper.insert(task);
+            if (gradingTaskMapper.insert(task) == 0) {
+                throw new BusinessException("创建批改任务失败");
+            }
         } else {
             task.setTotalScore(totalScore);
             task.setStudentScore(null);
             task.setScoreDetail(null);
             task.setErrorMessage(null);
             task.setStatus(ExamGradingTaskStatus.PENDING);
-            gradingTaskMapper.updateById(task);
+            if (gradingTaskMapper.updateById(task) == 0) {
+                throw new BusinessException("重置批改任务失败");
+            }
         }
 
         TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {

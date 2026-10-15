@@ -1,7 +1,7 @@
 package com.amlve.systemapi.service;
 
 import com.amlve.common.request.Result;
-import com.amlve.systemapi.dto.api.StandardConfigDTO;
+import com.amlve.systemapi.dto.api.StandardConfigResponse;
 
 /**
  * 评分标准配置对外服务接口（供其他模块调用，如 exam 批阅）
@@ -16,7 +16,7 @@ public interface StandardService {
      * @param name 标准名称
      * @return 评分标准配置，不存在时返回 null
      */
-    Result<StandardConfigDTO> selectByName(String name);
+    Result<StandardConfigResponse> selectByName(String name);
 
     /**
      * 按ID查询评分标准
@@ -24,5 +24,5 @@ public interface StandardService {
      * @param id 标准ID
      * @return 评分标准配置，不存在时返回 null
      */
-    Result<StandardConfigDTO> selectById(Long id);
+    Result<StandardConfigResponse> selectById(Long id);
 }

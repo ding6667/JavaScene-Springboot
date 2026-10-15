@@ -1,11 +1,12 @@
 package com.amlve.teach.service.impl;
 
+import com.amlve.common.constant.ErrorCodeConstant;
+import com.amlve.common.request.Result;
 import com.amlve.common.security.UserIdAuthenticationToken;
 import com.amlve.teach.dto.request.HomeworkPublishRequest;
-import com.amlve.teach.dto.response.HomeworkResponse;
 import com.amlve.teach.mapper.HomeworkMapper;
 import com.amlve.teach.tableEnt.Homework;
-import com.amlve.teachapi.dto.HomeworkDTO;
+import com.amlve.teachapi.dto.response.HomeworkResponse;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -96,10 +97,10 @@ class TeachServiceImplTest {
         homework.setCreateTime(LocalDateTime.of(2026, 9, 7, 10, 0));
         when(homeworkMapper.selectList(any())).thenReturn(List.of(homework));
 
-        List<HomeworkResponse> result = teachService.listMyHomework();
+        List<com.amlve.teach.dto.response.HomeworkResponse> result = teachService.listMyHomework();
 
         assertThat(result).hasSize(1);
-        HomeworkResponse response = result.get(0);
+        com.amlve.teach.dto.response.HomeworkResponse response = result.get(0);
         assertThat(response.getId()).isEqualTo(100L);
         assertThat(response.getTitle()).isEqualTo("第一次Java作业");
         assertThat(response.getChapterId()).isEqualTo(1L);
@@ -113,7 +114,7 @@ class TeachServiceImplTest {
         homework.setTeacherId(TEACHER_ID);
         when(homeworkMapper.selectById(100L)).thenReturn(homework);
 
-        HomeworkDTO dto = teachService.getHomeworkById(100L);
+        HomeworkDTO dto = teachService.getHomeworkById(100L).getData();
 
         assertThat(dto).isNotNull();
         assertThat(dto.getId()).isEqualTo(100L);
@@ -121,10 +122,13 @@ class TeachServiceImplTest {
     }
 
     @Test
-    void getHomeworkById_shouldReturnNull_whenNotExists() {
+    void getHomeworkById_shouldReturnNotFound_whenNotExists() {
         when(homeworkMapper.selectById(999L)).thenReturn(null);
 
-        assertThat(teachService.getHomeworkById(999L)).isNull();
+        // 作业不存在：返回 NOT_FOUND 错误码而非 null，调用方通过 code 判断
+        Result<HomeworkDTO> result = teachService.getHomeworkById(999L);
+        assertThat(result.getCode()).isEqualTo(ErrorCodeConstant.NOT_FOUND);
+        assertThat(result.getData()).isNull();
     }
 
     @Test
@@ -135,7 +139,7 @@ class TeachServiceImplTest {
         homework.setTeacherId(TEACHER_ID);
         when(homeworkMapper.selectList(any())).thenReturn(List.of(homework));
 
-        List<HomeworkDTO> dtoList = teachService.listHomeworkByTeacherId(TEACHER_ID);
+        List<HomeworkDTO> dtoList = teachService.listHomeworkByTeacherId(TEACHER_ID).getData();
 
         assertThat(dtoList).hasSize(1);
         assertThat(dtoList.get(0).getId()).isEqualTo(100L);

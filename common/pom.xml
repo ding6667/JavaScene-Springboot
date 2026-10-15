@@ -71,6 +71,10 @@
             <artifactId>mybatis-plus-annotation</artifactId>
             <version>3.5.17</version>  <!-- 版本和你项目里其他MP依赖保持一致 -->
         </dependency>
+        <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-annotations</artifactId>
+        </dependency>
     </dependencies>
 
     <build>

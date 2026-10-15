@@ -38,6 +38,10 @@ public class ExamQuestion extends BaseEntity {
 
     private Integer score;
 
+    private String codeFramework;
+
+    private String cognitiveLevel;
+
     /**
      * 标准答案与解析
      */

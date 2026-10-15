@@ -7,7 +7,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 @Data
-public class StandardConfigDTO {
+public class StandardConfigResponse {
     private Long id;
     private String standardName;
     private List<RubricItem> standardContent;

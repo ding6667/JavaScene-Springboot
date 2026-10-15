@@ -93,6 +93,7 @@ public class QuestionAgentClientImpl implements QuestionAgentClient {
                 for (JsonNode q : questionsNode) {
                     items.add(QuestionGenerateResponse.QuestionItem.builder()
                             .type(q.path("type").asText(null))
+                            .difficulty(q.path("difficulty").asText(null))
                             .knowledgePoint(q.path("knowledgePoint").asText(null))
                             .content(q.path("content").asText(null))
                             .options(toStrList(q.path("options")))
@@ -121,6 +122,7 @@ public class QuestionAgentClientImpl implements QuestionAgentClient {
     private QuestionGenerateResponse mockGenerate(QuestionGenerateRequest request) {
         QuestionGenerateResponse.QuestionItem item = QuestionGenerateResponse.QuestionItem.builder()
                 .type("choice")
+                .difficulty("basic")
                 .knowledgePoint("接口与抽象类")
                 .difficultyScore(1.5)
                 .cognitiveLevel("理解")
