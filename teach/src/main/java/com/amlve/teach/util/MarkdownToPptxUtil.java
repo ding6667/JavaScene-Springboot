@@ -80,7 +80,16 @@ public class MarkdownToPptxUtil {
     }
 
     /**
-     * 执行 marp2pptx 命令，将 md 文件转换为 pptx（30 秒超时）
+     * 组装 marp2pptx 转换命令（子命令式 CLI：marp2pptx convert <md> -o <pptx>，
+     * 缺失 convert 子命令会打印帮助并以码 1 退出，转换必然失败）。
+     * 独立成方法便于单测断言命令结构。
+     */
+    java.util.List<String> buildCommand(String mdFilePath, String pptxPath) {
+        return java.util.List.of(marpCommand, "convert", mdFilePath, "-o", pptxPath);
+    }
+
+    /**
+     * 执行 marp2pptx 命令，将 md 文件转换为 pptx（超时秒数由 prepare.marp-timeout-seconds 配置，默认 180）
      *
      * @param mdFilePath 输入 Markdown 文件绝对路径
      * @param pptxPath   输出 PPTX 文件绝对路径
@@ -97,8 +106,7 @@ public class MarkdownToPptxUtil {
             return null;
         }
 
-        // marp2pptx 为子命令式 CLI：marp2pptx convert <md> -o <pptx>
-        ProcessBuilder pb = new ProcessBuilder(marpCommand,  mdFilePath, "-o", pptxPath);
+        ProcessBuilder pb = new ProcessBuilder(buildCommand(mdFilePath, pptxPath));
         pb.redirectErrorStream(true);
 
         long startTime = System.currentTimeMillis();

@@ -113,7 +113,7 @@ class PrepareAgentClientImplTest {
         when(difyClient.runWorkflowBlocking(anyString(), anyMap()))
                 .thenReturn(successResponse("## 教案内容", "# PPT --- # 第二页"));
 
-        PrepareResponse response = client.generate(buildRequest(), buildMaterial());
+        PrepareResponse response = client.generate(buildRequest(), buildMaterial()).getData();
 
         assertThat(response.getLessonPlan()).isEqualTo("## 教案内容");
         assertThat(response.getPptx()).contains("第二页");
@@ -130,7 +130,7 @@ class PrepareAgentClientImplTest {
                 + "\"homework\":\"hw\",\"lab\":\"lab\"}}}";
         when(difyClient.runWorkflowBlocking(anyString(), anyMap())).thenReturn(flatResponse);
 
-        PrepareResponse response = client.generate(buildRequest(), buildMaterial());
+        PrepareResponse response = client.generate(buildRequest(), buildMaterial()).getData();
 
         assertThat(response.getLessonPlan()).isEqualTo("plan");
         assertThat(response.getPptx()).isEqualTo("ppt");
@@ -154,7 +154,7 @@ class PrepareAgentClientImplTest {
         when(difyClient.runWorkflowBlocking(anyString(), anyMap()))
                 .thenReturn(successResponse("plan", "ppt"));
 
-        PrepareResponse response = client.generate(request, buildMaterial());
+        PrepareResponse response = client.generate(request, buildMaterial()).getData();
 
         assertThat(response.getHomework()).isNull();
         assertThat(response.getLessonPlan()).isEqualTo("plan");
@@ -167,7 +167,7 @@ class PrepareAgentClientImplTest {
         PrepareRequest request = new PrepareRequest();
         request.setChapterId(3L);
 
-        PrepareResponse response = client.generate(request, buildMaterial());
+        PrepareResponse response = client.generate(request, buildMaterial()).getData();
 
         assertThat(response.getLessonPlan()).contains("第3章");
         assertThat(response.getPptx()).contains("---");
@@ -180,7 +180,7 @@ class PrepareAgentClientImplTest {
         when(difyClient.runWorkflowBlocking(anyString(), anyMap()))
                 .thenReturn(successResponse("plan", "ppt"));
 
-        PrepareResponse response = client.generate(buildRequest(), null);
+        PrepareResponse response = client.generate(buildRequest(), null).getData();
 
         assertThat(response.getLessonPlan()).isEqualTo("plan");
         @SuppressWarnings("unchecked")
@@ -188,5 +188,72 @@ class PrepareAgentClientImplTest {
         verify(difyClient).runWorkflowBlocking(anyString(), captor.capture());
         Map<String, Object> reference = (Map<String, Object>) captor.getValue().get("reference");
         assertThat(reference.get("chapter_summary")).isEqualTo("");
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void generate_shouldBuildThreeConfigMaps_whenConfigsProvided() {
+        // 三 config 齐传：组装为 ppt_config / lesson_plan_config / homework_config，键与工作流读取键一致
+        PrepareRequest request = buildRequest();
+        PrepareRequest.PptConfig pptConfig = new PrepareRequest.PptConfig();
+        pptConfig.setStructure("# 骨架");
+        pptConfig.setPageRange("8-12");
+        pptConfig.setIncludeOutline("1");
+        pptConfig.setIncludeSummary("0");
+        pptConfig.setCodeBlockMax("2");
+        request.setPptConfig(pptConfig);
+        PrepareRequest.LessonPlanConfig lessonPlanConfig = new PrepareRequest.LessonPlanConfig();
+        lessonPlanConfig.setCourseType("new");
+        lessonPlanConfig.setDuration("90");
+        lessonPlanConfig.setDetailLevel("detailed");
+        request.setLessonPlanConfig(lessonPlanConfig);
+        PrepareRequest.HomeworkConfig homeworkConfig = new PrepareRequest.HomeworkConfig();
+        homeworkConfig.setQuestionCount("5");
+        homeworkConfig.setDifficultyDistribution("2,2,1");
+        homeworkConfig.setQuestionBank("[]");
+        request.setHomeworkConfig(homeworkConfig);
+        when(difyClient.runWorkflowBlocking(anyString(), anyMap()))
+                .thenReturn(successResponse("plan", "ppt"));
+
+        client.generate(request, buildMaterial());
+
+        ArgumentCaptor<Map<String, Object>> captor = ArgumentCaptor.forClass(Map.class);
+        verify(difyClient).runWorkflowBlocking(anyString(), captor.capture());
+        Map<String, Object> inputs = captor.getValue();
+        assertThat(inputs).containsKeys("ppt_config", "lesson_plan_config", "homework_config");
+
+        Map<String, Object> pptConfigMap = (Map<String, Object>) inputs.get("ppt_config");
+        assertThat(pptConfigMap.get("structure")).isEqualTo("# 骨架");
+        assertThat(pptConfigMap.get("pageRange")).isEqualTo("8-12");
+        assertThat(pptConfigMap.get("includeOutline")).isEqualTo("1");
+        assertThat(pptConfigMap.get("includeSummary")).isEqualTo("0");
+        assertThat(pptConfigMap.get("codeBlockMax")).isEqualTo("2");
+
+        Map<String, Object> lessonPlanConfigMap = (Map<String, Object>) inputs.get("lesson_plan_config");
+        assertThat(lessonPlanConfigMap.get("courseType")).isEqualTo("new");
+        assertThat(lessonPlanConfigMap.get("duration")).isEqualTo("90");
+        assertThat(lessonPlanConfigMap.get("detailLevel")).isEqualTo("detailed");
+
+        Map<String, Object> homeworkConfigMap = (Map<String, Object>) inputs.get("homework_config");
+        assertThat(homeworkConfigMap.get("questionCount")).isEqualTo("5");
+        assertThat(homeworkConfigMap.get("difficultyDistribution")).isEqualTo("2,2,1");
+        assertThat(homeworkConfigMap.get("questionBank")).isEqualTo("[]");
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void generate_shouldPassEmptyConfigMaps_whenConfigsNull() {
+        // 三 config 均为 null：键仍存在且为空 map，由工作流代码节点兜底默认值
+        when(difyClient.runWorkflowBlocking(anyString(), anyMap()))
+                .thenReturn(successResponse("plan", "ppt"));
+
+        client.generate(buildRequest(), buildMaterial());
+
+        ArgumentCaptor<Map<String, Object>> captor = ArgumentCaptor.forClass(Map.class);
+        verify(difyClient).runWorkflowBlocking(anyString(), captor.capture());
+        Map<String, Object> inputs = captor.getValue();
+        assertThat((Map<String, Object>) inputs.get("ppt_config")).isEmpty();
+        assertThat((Map<String, Object>) inputs.get("lesson_plan_config")).isEmpty();
+        assertThat((Map<String, Object>) inputs.get("homework_config")).isEmpty();
     }
 }

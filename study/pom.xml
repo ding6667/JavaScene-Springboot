@@ -51,6 +51,12 @@
             <artifactId>agent-code-api</artifactId>
             <version>${project.version}</version>
         </dependency>
+        <!-- 跨模块调用评分智能体（agent-score-api）：主观题（简答 / 程序改错）判分 -->
+        <dependency>
+            <groupId>com.amlve</groupId>
+            <artifactId>agent-score-api</artifactId>
+            <version>${project.version}</version>
+        </dependency>
 
         <dependency>
             <groupId>com.baomidou</groupId>
@@ -77,6 +83,18 @@
             <groupId>org.mapstruct</groupId>
             <artifactId>mapstruct-processor</artifactId>
             <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.jetbrains</groupId>
+            <artifactId>annotations</artifactId>
+            <version>13.0</version>
+            <scope>compile</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.amlve</groupId>
+            <artifactId>exam-api</artifactId>
+            <version>0.0.1-SNAPSHOT</version>
+            <scope>compile</scope>
         </dependency>
     </dependencies>
 

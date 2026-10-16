@@ -113,4 +113,69 @@ class HomeworkControllerTest {
         mockMvc.perform(get("/api/teach/homework/list"))
                 .andExpect(status().isForbidden());
     }
+
+    @Test
+    @WithMockUser(roles = "TEACHER")
+    void detail_shouldSucceed_whenTeacherRole() throws Exception {
+        com.amlve.teach.dto.response.HomeworkDetailResponse detail = new com.amlve.teach.dto.response.HomeworkDetailResponse();
+        detail.setId(100L);
+        detail.setStatusName("已发布");
+        when(teachService.getMyHomeworkDetail(100L)).thenReturn(detail);
+
+        mockMvc.perform(get("/api/teach/homework/detail").param("homeworkId", "100"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(200))
+                .andExpect(jsonPath("$.data.id").value(100))
+                .andExpect(jsonPath("$.data.statusName").value("已发布"));
+    }
+
+    @Test
+    @WithMockUser(roles = "STUDENT")
+    void detail_shouldReject403_whenStudentRole() throws Exception {
+        mockMvc.perform(get("/api/teach/homework/detail").param("homeworkId", "100"))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    @WithMockUser(roles = "TEACHER")
+    void detail_shouldReject400_whenHomeworkIdMissing() throws Exception {
+        // homeworkId 属于必传请求参数，缺失触发参数解析失败
+        mockMvc.perform(get("/api/teach/homework/detail"))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    @WithMockUser(roles = "TEACHER")
+    void close_shouldSucceed_whenTeacherRole() throws Exception {
+        mockMvc.perform(post("/api/teach/homework/close")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"homeworkId\": 100, \"closeReason\": \"教学调整\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(200));
+
+        verify(teachService).closeHomework(any());
+    }
+
+    @Test
+    @WithMockUser(roles = "STUDENT")
+    void close_shouldReject403_whenStudentRole() throws Exception {
+        mockMvc.perform(post("/api/teach/homework/close")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"homeworkId\": 100}"))
+                .andExpect(status().isForbidden());
+
+        verify(teachService, never()).closeHomework(any());
+    }
+
+    @Test
+    @WithMockUser(roles = "TEACHER")
+    void close_shouldReject400_whenHomeworkIdMissing() throws Exception {
+        // homeworkId 缺失，触发 @NotNull 校验
+        mockMvc.perform(post("/api/teach/homework/close")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"closeReason\": \"教学调整\"}"))
+                .andExpect(status().isBadRequest());
+
+        verify(teachService, never()).closeHomework(any());
+    }
 }

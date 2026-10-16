@@ -64,6 +64,6 @@ public class KnowledgeResponse {
         /**
          * 页码（来自文档元数据）
          */
-        private String page;
+        private Integer page;
     }
 }

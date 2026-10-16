@@ -4,6 +4,7 @@ import com.amlve.agentprepare.bean.DifyClient;
 import com.amlve.agentprepare.client.PrepareAgentClientImpl;
 import com.amlve.common.exception.BusinessException;
 import com.amlve.common.request.Result;
+import com.amlve.common.utils.FileFormatUtil;
 import com.amlve.knowledgeapi.dto.response.TeachingMaterialDTO;
 import com.amlve.knowledgeapi.service.KnowledgeChapterApi;
 import com.amlve.teach.dto.request.PrepareRequest;
@@ -78,6 +79,13 @@ class TeachPrepareAgentIntegrationTest {
 
     @MockBean
     private KnowledgeChapterApi knowledgeChapterApi;
+
+    /**
+     * Word 导出工具（com.amlve.common 包，不在 SlimApp 扫描范围）。
+     * 集成测试只覆盖备课生成链路，导出能力 Mock 掉即可满足 Bean 装配。
+     */
+    @MockBean
+    private FileFormatUtil fileFormatUtil;
 
     @Resource
     private TeachPrepareService teachPrepareService;

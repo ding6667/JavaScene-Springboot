@@ -18,10 +18,6 @@ public final class KnowledgeConstant {
     /** 元数据键：页码 */
     public static final String METADATA_PAGE = "page";
 
-    // ===== AI 校验兜底关键词（knowledge_keyword 表无数据时使用，后续可替换） =====
-
-    public static final String FALLBACK_KEYWORDS = "面向对象,类,对象,继承,封装,多态,接口,方法,属性,构造器";
-
     // ===== 知识库文件上传（Dify 支持的文档类型，与官方白名单一致） =====
 
     /**

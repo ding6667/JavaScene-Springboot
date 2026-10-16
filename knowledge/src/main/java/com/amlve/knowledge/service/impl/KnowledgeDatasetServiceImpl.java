@@ -1,11 +1,11 @@
 package com.amlve.knowledge.service.impl;
 
 import com.amlve.agentqaapi.service.QAAgentClient;
+import com.amlve.agentqaapi.dto.response.DifyDocumentVO;
 import com.amlve.agentqaapi.dto.response.DifyRetrieveResponse;
 import com.amlve.common.constant.ErrorCodeConstant;
 import com.amlve.common.exception.BusinessException;
 import com.amlve.common.request.Result;
-import com.amlve.common.utils.SecurityUtils;
 import com.amlve.knowledge.Configuration;
 import com.amlve.knowledge.constant.ErrorMessageConstant;
 import com.amlve.knowledge.constant.KnowledgeConstant;
@@ -14,23 +14,22 @@ import com.amlve.knowledge.dto.request.UpdateMetadataRequest;
 import com.amlve.knowledge.dto.request.UploadTextRequest;
 import com.amlve.knowledge.dto.response.KnowledgeResponse;
 import com.amlve.knowledge.dto.response.UploadResponse;
-import com.amlve.knowledge.dto.response.VerifyResponse;
 import com.amlve.knowledge.mapper.KnowledgeChapterMapper;
 import com.amlve.knowledge.mapper.KnowledgeContentMapper;
-import com.amlve.knowledge.mapper.KnowledgeKeywordMapper;
 import com.amlve.knowledge.mapper.KnowledgePointMapper;
 import com.amlve.knowledge.service.KnowledgeDatasetService;
+import com.amlve.knowledge.service.KnowledgeUploadRecordService;
 import com.amlve.knowledge.service.KnowledgeWeightConfigService;
+import com.amlve.knowledge.enumeration.UploadTypeEnum;
 import com.amlve.knowledge.tableEnt.KnowledgeChapter;
 import com.amlve.knowledge.tableEnt.KnowledgeContent;
-import com.amlve.knowledge.tableEnt.KnowledgeKeyword;
+import com.amlve.knowledge.tableEnt.KnowledgeUploadRecord;
 import com.amlve.knowledgeapi.dto.response.WeightConfigVO;
-import com.amlve.systemapi.service.UserService;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.core.task.TaskExecutor;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.ObjectUtils;
 import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
@@ -39,11 +38,12 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.RejectedExecutionException;
 
 /**
  * 知识库数据集服务实现
@@ -54,18 +54,21 @@ import java.util.Map;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-public class KnowledgeDatasetServiceImpl implements KnowledgeDatasetService,
-        com.amlve.knowledgeapi.service.KnowledgeService {
+public abstract class KnowledgeDatasetServiceImpl implements KnowledgeDatasetService,com.amlve.knowledgeapi.service.KnowledgeService {
 
     private final Configuration configuration;
     private final QAAgentClient qaAgentClient;
     private final KnowledgeChapterMapper chapterMapper;
     private final KnowledgeContentMapper contentMapper;
-    private final KnowledgeKeywordMapper keywordMapper;
     private final KnowledgePointMapper knowledgePointMapper;
     private final KnowledgeConverter knowledgeConverter;
-    private final UserService userService;
     private final KnowledgeWeightConfigService weightConfigService;
+    private final KnowledgeUploadRecordService uploadRecordService;
+    /**
+     * 上传任务线程池（{@code KnowledgeAsyncConfig#UPLOAD_EXECUTOR}）。
+     * 字段名与 Bean 名一致：容器里若再出现第二个 TaskExecutor，Spring 按参数名匹配到这个。
+     */
+    private final TaskExecutor knowledgeUploadExecutor;
 
     @Override
     public KnowledgeResponse query(String keywords) {
@@ -79,51 +82,102 @@ public class KnowledgeDatasetServiceImpl implements KnowledgeDatasetService,
         return response;
     }
 
+    /**
+     * 文本文档上传（异步受理，对应任务书 3.11"长耗时占线程"）。
+     * <p>
+     * 请求线程内只做三件事：校验章节/知识库配置、建立"处理中"留痕、把建档任务投入后台线程，
+     * 然后立刻返回 recordId。Dify 建档后的索引轮询最长 5 分钟，放在请求线程里会同时占住
+     * Tomcat 工作线程和数据库连接（HikariCP 默认 10 连接，约 10 个并发上传就能把池打满）。
+     * <p>
+     * 刻意不加 @Transactional：本方法只有一次 insert（留痕），单语句天然原子；后台流程同理，
+     * 且远程等待绝不能被圈进事务。
+     */
     @Override
-    @Transactional(rollbackFor = Exception.class)
     public UploadResponse uploadText(UploadTextRequest request) {
         KnowledgeChapter chapter = requireChapter(request.getChapterId());
-        log.info("上传文本文档: chapterId={}, documentName={}", request.getChapterId(), request.getDocumentName());
+        String datasetId = requireDatasetId();
 
-        // 1. Dify 创建文本文档（返回 documentId；createChapterDocument 冗余写元数据流程，故不用）
-        String documentId = unwrap(qaAgentClient.createDocumentByText(
-                requireDatasetId(), request.getDocumentName(), request.getContent()),
-                ErrorMessageConstant.KNOWLEDGE_SERVICE_UNAVAILABLE);
+        // 留痕放在可校验参数就绪之后：start 自身失败也不能顶掉上传主流程
+        KnowledgeUploadRecord record = uploadRecordService.start(datasetId, chapter.getId(), chapter.getTitle(),
+                request.getDocumentName(),
+                (long) request.getContent().getBytes(StandardCharsets.UTF_8).length,
+                textFileType(request.getDocumentName()), UploadTypeEnum.CREATE.getCode());
+        log.info("文本文档上传已受理: recordId={}, chapterId={}, documentName={}",
+                record.getId(), request.getChapterId(), request.getDocumentName());
 
-        // 2. 写入元数据：chapter_id / chapter_name / page（partial_update 追加）
-        Map<String, Object> metadata = new HashMap<>();
-        metadata.put(KnowledgeConstant.METADATA_CHAPTER_ID, chapter.getId().intValue());
-        metadata.put(KnowledgeConstant.METADATA_CHAPTER_NAME, chapter.getTitle());
-        if (StringUtils.hasText(request.getPageRef())) {
-            metadata.put(KnowledgeConstant.METADATA_PAGE, request.getPageRef());
-        }
-        unwrap(qaAgentClient.updateDocumentMetadata(requireDatasetId(), documentId, metadata),
-                ErrorMessageConstant.KNOWLEDGE_SERVICE_UNAVAILABLE);
-
-        // 3. 落库 knowledge_content，保存 dify_document_id（事务内，失败自动回滚数据库）
-        saveKnowledgeContent(request.getChapterId(), request.getContent(),
-                request.getContentType(), request.getPageRef(), documentId);
-
-        log.info("文本文档上传完成: documentId={}, chapterId={}", documentId, request.getChapterId());
-        return new UploadResponse(documentId);
+        submitUpload(record, () -> completeTextUpload(datasetId, chapter, request, record));
+        return UploadResponse.accepted(record.getId());
     }
 
+    /**
+     * 后台完成文本文档建档：建档 → 写元数据 → 落库 → 回写留痕终态。
+     * <p>
+     * 失败不再向外抛异常（没有调用方接），一律以留痕记录的 status=2 + errorMsg 呈现，
+     * 前端从 {@code /upload/list} 读失败原因。
+     */
+    private void completeTextUpload(String datasetId, KnowledgeChapter chapter,
+                                    UploadTextRequest request, KnowledgeUploadRecord record) {
+        DifyDocumentVO document = null;
+        try {
+            // 1. Dify 创建文本文档（内部已轮询索引并做空壳/失败清理）
+            document = unwrap(qaAgentClient.createDocumentByText(
+                    datasetId, request.getDocumentName(), request.getContent()),
+                    ErrorMessageConstant.KNOWLEDGE_SERVICE_UNAVAILABLE);
+
+            // 2. 写入元数据：chapter_id / chapter_name / page（partial_update 追加）
+            Map<String, Object> metadata = new HashMap<>();
+            // 章节ID按 Long 原样传：主键已改雪花算法，intValue() 会静默溢出成乱值
+            metadata.put(KnowledgeConstant.METADATA_CHAPTER_ID, chapter.getId());
+            metadata.put(KnowledgeConstant.METADATA_CHAPTER_NAME, chapter.getTitle());
+            if (request.getPage() != null) {
+                // Dify 侧 page 元数据字段已建为字符串类型，这里按字符串传值避免类型不匹配
+                metadata.put(KnowledgeConstant.METADATA_PAGE, String.valueOf(request.getPage()));
+            }
+            unwrap(qaAgentClient.updateDocumentMetadata(datasetId, document.getDocumentId(), metadata),
+                    ErrorMessageConstant.KNOWLEDGE_SERVICE_UNAVAILABLE);
+
+            // 3. 落库 knowledge_content，保存 dify_document_id
+            boolean existed = saveKnowledgeContent(chapter.getId(), request.getContent(),
+                    request.getContentType(), request.getPage(), document.getDocumentId());
+
+            uploadRecordService.markSuccess(record, document,
+                    existed ? UploadTypeEnum.UPDATE.getCode() : UploadTypeEnum.CREATE.getCode());
+            log.info("文本文档上传完成: recordId={}, documentId={}, chapterId={}, totalSegments={}",
+                    record.getId(), document.getDocumentId(), request.getChapterId(), document.getTotalSegments());
+        } catch (Exception e) {
+            cleanupDifyDocument(datasetId, document, e);
+            uploadRecordService.markFailed(record,
+                    document == null ? null : document.getDocumentId(),
+                    document == null ? null : document.getBatch(), e.getMessage());
+            log.error("文本文档上传失败: recordId={}, chapterId={}, documentName={}",
+                    record.getId(), request.getChapterId(), request.getDocumentName(), e);
+        }
+    }
+
+    /**
+     * 文件文档上传（异步受理，口径同 {@link #uploadText}）。
+     * <p>
+     * 暂存落盘必须留在请求线程：{@code MultipartFile} 的底层临时文件随请求结束被容器删除，
+     * 异步线程再去读只会拿到"文件不存在"。
+     */
     @Override
-    @Transactional(rollbackFor = Exception.class)
     public UploadResponse uploadFile(Long chapterId, MultipartFile file) {
         KnowledgeChapter chapter = requireChapter(chapterId);
         if (file == null || file.isEmpty()) {
             throw new BusinessException(ErrorMessageConstant.UPLOAD_FILE_EMPTY);
         }
         requireSupportedFileType(file.getOriginalFilename());
-        log.info("上传文件文档: chapterId={}, fileName={}", chapterId, file.getOriginalFilename());
+        String datasetId = requireDatasetId();
 
-        // 原始文件名可能含路径或 Windows 非法字符（\ / : * ?），清洗后作为暂存文件名
-        String safeName = ObjectUtils.getDisplayString(file.getOriginalFilename())
-                .replaceAll("[\\\\/:*?\"<>|]", "_").trim();
-        if (safeName.isEmpty()) {
-            safeName = "document";
-        }
+        // 原始文件名可能含路径或 Windows 非法字符（\ / : * ?），清洗后作为暂存文件名；
+        // getOriginalFilename() 可能为 null，ObjectUtils 会给出字符串 "null"，必须显式兜底
+        String rawName = file.getOriginalFilename();
+        String cleanedName = StringUtils.hasText(rawName)
+                ? rawName.replaceAll("[\\\\/:*?\"<>|]", "_").trim() : "";
+        String safeName = cleanedName.isEmpty() ? "document.txt" : cleanedName;
+        KnowledgeUploadRecord record = uploadRecordService.start(datasetId, chapter.getId(), chapter.getTitle(),
+                safeName, file.getSize(), extensionOf(safeName), UploadTypeEnum.CREATE.getCode());
+
         // 必须放进独立子目录并保留原始文件名：Dify 的 create-by-file 以"上传文件名"作知识库文档名
         // （data 里的 name 字段会被忽略），若用 File.createTempFile 加随机前缀，
         // 文档名就会变成 dify_upload_123456_讲义.txt 这种带随机数的脏名字，且每次上传都不重名
@@ -133,21 +187,116 @@ public class KnowledgeDatasetServiceImpl implements KnowledgeDatasetService,
             tempDir = Files.createTempDirectory("dify_upload_");
             tempFile = tempDir.resolve(safeName).toFile();
             file.transferTo(tempFile);
-            Map<String, Object> metadata = Map.of(
-                    KnowledgeConstant.METADATA_CHAPTER_ID, chapterId.intValue(),
-                    KnowledgeConstant.METADATA_CHAPTER_NAME, chapter.getTitle());
-            String documentId = unwrap(qaAgentClient.createDocumentByFile(requireDatasetId(), tempFile,
-                    safeName, metadata), ErrorMessageConstant.KNOWLEDGE_SERVICE_UNAVAILABLE);
-
-            saveKnowledgeContent(chapterId, null, null, null, documentId);
-            log.info("文件文档上传完成: documentId={}, documentName={}", documentId, safeName);
-            return new UploadResponse(documentId);
         } catch (IOException e) {
-            throw new BusinessException("文件暂存失败: " + e.getMessage(), e);
-        } finally {
             deleteQuietly(tempFile);
             deleteQuietly(tempDir == null ? null : tempDir.toFile());
+            uploadRecordService.markFailed(record, null, null, "文件暂存失败: " + e.getMessage());
+            throw new BusinessException("文件暂存失败: " + e.getMessage(), e);
         }
+
+        // lambda 只能捕获 effectively final 变量，把已落盘的路径固定下来交给后台线程
+        File stagedFile = tempFile;
+        Path stagedDir = tempDir;
+        boolean submitted = false;
+        try {
+            submitUpload(record, () -> completeFileUpload(datasetId, chapter, stagedFile, stagedDir, safeName, record));
+            submitted = true;
+        } finally {
+            // 未入队（队列满被拒）时暂存文件没人删，请求线程直接清理，否则临时目录会越攒越多
+            if (!submitted) {
+                deleteQuietly(stagedFile);
+                deleteQuietly(stagedDir.toFile());
+            }
+        }
+        log.info("文件文档上传已受理: recordId={}, chapterId={}, fileName={}",
+                record.getId(), chapterId, safeName);
+        return UploadResponse.accepted(record.getId());
+    }
+
+    /**
+     * 后台完成文件建档，结束时清理暂存文件
+     */
+    private void completeFileUpload(String datasetId, KnowledgeChapter chapter, File tempFile, Path tempDir,
+                                    String safeName, KnowledgeUploadRecord record) {
+        DifyDocumentVO document = null;
+        try {
+            Map<String, Object> metadata = Map.of(
+                    KnowledgeConstant.METADATA_CHAPTER_ID, chapter.getId(),
+                    KnowledgeConstant.METADATA_CHAPTER_NAME, chapter.getTitle());
+            document = unwrap(qaAgentClient.createDocumentByFile(datasetId, tempFile,
+                    safeName, metadata), ErrorMessageConstant.KNOWLEDGE_SERVICE_UNAVAILABLE);
+
+            boolean existed = saveKnowledgeContent(chapter.getId(), null, null, null, document.getDocumentId());
+            uploadRecordService.markSuccess(record, document,
+                    existed ? UploadTypeEnum.UPDATE.getCode() : UploadTypeEnum.CREATE.getCode());
+            log.info("文件文档上传完成: recordId={}, documentId={}, documentName={}, totalSegments={}",
+                    record.getId(), document.getDocumentId(), safeName, document.getTotalSegments());
+        } catch (Exception e) {
+            cleanupDifyDocument(datasetId, document, e);
+            uploadRecordService.markFailed(record,
+                    document == null ? null : document.getDocumentId(),
+                    document == null ? null : document.getBatch(), e.getMessage());
+            log.error("文件文档上传失败: recordId={}, fileName={}", record.getId(), safeName, e);
+        } finally {
+            deleteQuietly(tempFile);
+            deleteQuietly(tempDir.toFile());
+        }
+    }
+
+    /**
+     * 投递后台建档任务。
+     * <p>
+     * 队列被拒时把留痕直接写成失败并回业务异常：记录必须有终态，否则
+     * {@code /upload/list} 里永远挂着一条"处理中"，前端只能干等。
+     */
+    private void submitUpload(KnowledgeUploadRecord record, Runnable task) {
+        try {
+            knowledgeUploadExecutor.execute(task);
+        } catch (RejectedExecutionException e) {
+            log.warn("上传任务队列已满，拒绝受理: recordId={}", record.getId());
+            uploadRecordService.markFailed(record, null, null, ErrorMessageConstant.UPLOAD_QUEUE_FULL);
+            throw new BusinessException(ErrorMessageConstant.UPLOAD_QUEUE_FULL);
+        }
+    }
+
+    /**
+     * 建档成功但后续步骤（写元数据 / 落库）失败时，删除 Dify 侧文档。
+     * <p>
+     * 不删就会留下一个已建索引、但没有本地映射的"活孤儿文档"，它会持续污染检索结果。
+     * 索引阶段自身的失败已由 agent-qa 内部清理，这里只兜后续步骤。
+     */
+    private void cleanupDifyDocument(String datasetId, DifyDocumentVO document, Exception cause) {
+        if (document == null || !StringUtils.hasText(document.getDocumentId())) {
+            return;
+        }
+        try {
+            qaAgentClient.deleteDocument(datasetId, document.getDocumentId());
+            log.info("已清理建档后失败的残留文档: documentId={}", document.getDocumentId());
+        } catch (Exception e) {
+            log.error("残留文档清理失败，需人工核对知识库: documentId={}, 原始失败={}",
+                    document.getDocumentId(), cause.getMessage(), e);
+        }
+    }
+
+    /**
+     * 文本通道的"文件类型"：文档名通常没有扩展名，此时按内容形态记 txt，
+     * 避免该列恒为 NULL 变成没有信息量的死列
+     */
+    private String textFileType(String documentName) {
+        String extension = extensionOf(documentName);
+        return extension != null ? extension : "txt";
+    }
+
+    /**
+     * 取文件名扩展名（小写，不含点）；无扩展名返回 null
+     */
+    private String extensionOf(String fileName) {
+        if (!StringUtils.hasText(fileName)) {
+            return null;
+        }
+        int dotIndex = fileName.lastIndexOf('.');
+        return dotIndex >= 0 && dotIndex < fileName.length() - 1
+                ? fileName.substring(dotIndex + 1).toLowerCase() : null;
     }
 
     /**
@@ -164,24 +313,6 @@ public class KnowledgeDatasetServiceImpl implements KnowledgeDatasetService,
         log.info("更新文档元数据: documentId={}, metadata={}", request.getDocumentId(), request.getMetadata());
         return unwrap(qaAgentClient.updateDocumentMetadata(requireDatasetId(),
                 request.getDocumentId(), request.getMetadata()), ErrorMessageConstant.KNOWLEDGE_SERVICE_UNAVAILABLE);
-    }
-
-    @Override
-    public VerifyResponse verifyContent(String content) {
-        if (!StringUtils.hasText(content)) {
-            throw new BusinessException(ErrorMessageConstant.VERIFY_CONTENT_EMPTY);
-        }
-        List<String> keywordList = loadKeywords();
-        List<String> matched = new ArrayList<>();
-        for (String keyword : keywordList) {
-            if (content.contains(keyword)) {
-                matched.add(keyword);
-            }
-        }
-        boolean passed = !matched.isEmpty();
-        log.info("AI 内容校验: passed={}, matched={}", passed, matched);
-        return new VerifyResponse(passed, matched,
-                passed ? ErrorMessageConstant.VERIFY_PASSED : ErrorMessageConstant.VERIFY_NOT_PASSED);
     }
 
     // ===== 对外接口实现（knowledge-api）=====
@@ -242,7 +373,7 @@ public class KnowledgeDatasetServiceImpl implements KnowledgeDatasetService,
                                         .last("LIMIT 1"));
                         if (content != null) {
                             item.setChapterId(content.getChapterId());
-                            item.setPage(content.getPageRef());
+                            item.setPage(content.getPage());
                         }
                     }
                     items.add(item);
@@ -267,9 +398,11 @@ public class KnowledgeDatasetServiceImpl implements KnowledgeDatasetService,
      * 字段覆盖规则：章节归属以本次上传为准（教师把文档挪到别的章节即生效）；
      * 正文、类型、页码仅在本次传入非 null 时覆盖——文件上传通道拿不到文本，
      * 不能把此前文本通道写入的正文抹成空。
+     *
+     * @return true 表示命中已有记录（本次为更新），false 表示新增
      */
-    private void saveKnowledgeContent(Long chapterId, String content, Integer contentType,
-                                      String pageRef, String documentId) {
+    private boolean saveKnowledgeContent(Long chapterId, String content, Integer contentType,
+                                         Integer page, String documentId) {
         KnowledgeContent exist = contentMapper.selectOne(Wrappers.lambdaQuery(KnowledgeContent.class)
                 .eq(KnowledgeContent::getDifyDocumentId, documentId)
                 .orderByDesc(KnowledgeContent::getId)
@@ -277,12 +410,14 @@ public class KnowledgeDatasetServiceImpl implements KnowledgeDatasetService,
         if (exist == null) {
             KnowledgeContent knowledgeContent = new KnowledgeContent();
             knowledgeContent.setChapterId(chapterId);
-            knowledgeContent.setContent(content);
+            // 表结构要求 content 非空；文件通道拿不到正文（原文只存在 Dify 侧），
+            // 这里落空串作为"文档→章节"的映射占位，不伪造教材内容
+            knowledgeContent.setContent(content != null ? content : "");
             knowledgeContent.setContentType(contentType);
-            knowledgeContent.setPageRef(pageRef);
+            knowledgeContent.setPage(page);
             knowledgeContent.setDifyDocumentId(documentId);
             contentMapper.insert(knowledgeContent);
-            return;
+            return false;
         }
         exist.setChapterId(chapterId);
         if (content != null) {
@@ -291,11 +426,12 @@ public class KnowledgeDatasetServiceImpl implements KnowledgeDatasetService,
         if (contentType != null) {
             exist.setContentType(contentType);
         }
-        if (pageRef != null) {
-            exist.setPageRef(pageRef);
+        if (page != null) {
+            exist.setPage(page);
         }
         contentMapper.updateById(exist);
         log.info("同名文档已存在，更新原记录: contentId={}, documentId={}", exist.getId(), documentId);
+        return true;
     }
 
     /**
@@ -347,41 +483,11 @@ public class KnowledgeDatasetServiceImpl implements KnowledgeDatasetService,
         return chapter;
     }
 
-    /**
-     * 写操作（上传/改元数据）仅限教师：JWT 令牌无角色信息，通过 system-api 编程式校验
-     */
-    private void requireTeacher() {
-        Long userId = SecurityUtils.getUserId();
-        if (!userService.isTeacher(userId)) {
-            log.warn("权限不足: userId={} 尝试执行知识库写操作", userId);
-            throw new BusinessException(ErrorMessageConstant.PERMISSION_DENIED);
-        }
-    }
-
     private String requireDatasetId() {
         String datasetId = configuration.getDifyDatasetId();
         if (!StringUtils.hasText(datasetId)) {
             throw new BusinessException(ErrorMessageConstant.DATASET_ID_MISSING);
         }
         return datasetId;
-    }
-
-    /**
-     * 加载校验关键词：优先取 knowledge_keyword 表，表为空时使用兜底关键词
-     */
-    private List<String> loadKeywords() {
-        List<KnowledgeKeyword> keywordList = keywordMapper.selectList(null);
-        if (keywordList.isEmpty()) {
-            log.info("knowledge_keyword 表无数据，使用兜底关键词");
-            return Arrays.asList(KnowledgeConstant.FALLBACK_KEYWORDS.split(","));
-        }
-        List<String> result = new ArrayList<>();
-        for (KnowledgeKeyword keyword : keywordList) {
-            result.add(keyword.getKeyword());
-            if (StringUtils.hasText(keyword.getSynonyms())) {
-                result.addAll(Arrays.asList(keyword.getSynonyms().split(",")));
-            }
-        }
-        return result;
     }
 }

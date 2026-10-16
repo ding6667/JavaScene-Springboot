@@ -7,10 +7,9 @@ import java.util.List;
 import java.util.Map;
 
 public interface StudyPracticeService {
-
     /**
      * 批量查学生题目状态
-     * 【exam 调】拼装刷题列表时，批量拿 done / correct / attemptCount / lastAnswer / favorited
+     * 【exam 调】拼装刷题列表时批量拿 done / correct / attemptCount / lastAnswer / favorited
      */
     Result<Map<Long, PracticeStatusResponse>> getQuestionStatusBatch(Long userId, List<Long> questionIds);
 

@@ -20,7 +20,9 @@ public enum CodeRunStatusEnum {
     /** 未通过安全检查（命中黑名单 API） */
     SECURITY_REJECTED(4, "未通过安全检查"),
     /** 系统内部错误 */
-    INTERNAL_ERROR(5, "系统内部错误");
+    INTERNAL_ERROR(5, "系统内部错误"),
+    /** 答案错误（编译运行成功但输出与期望不符） */
+    WRONG_ANSWER(6, "答案错误");
 
     @EnumValue
     private final Integer code;

@@ -1,11 +1,15 @@
 package com.amlve.knowledge.controller;
 
+import com.amlve.common.request.PageResult;
 import com.amlve.common.request.Result;
 import com.amlve.knowledge.dto.request.UpdateMetadataRequest;
+import com.amlve.knowledge.dto.request.UploadRecordQueryRequest;
 import com.amlve.knowledge.dto.request.UploadTextRequest;
 import com.amlve.knowledge.dto.response.KnowledgeResponse;
+import com.amlve.knowledge.dto.response.KnowledgeUploadRecordVO;
 import com.amlve.knowledge.dto.response.UploadResponse;
 import com.amlve.knowledge.service.KnowledgeDatasetService;
+import com.amlve.knowledge.service.KnowledgeUploadRecordService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -45,6 +49,7 @@ public class KnowledgeDatasetController {
     });
 
     private final KnowledgeDatasetService knowledgeDatasetService;
+    private final KnowledgeUploadRecordService uploadRecordService;
 
     /**
      * 知识点检索（Dify 混合检索）
@@ -95,22 +100,43 @@ public class KnowledgeDatasetController {
     }
 
     /**
-     * 上传文本文档（运维用，仅教师）
+     * 分页查询知识库上传记录（对应任务 3 留痕追溯）
+     * <p>
+     * GET /api/knowledge/dataset/upload/list?chapterId=5&status=2&pageNum=1&pageSize=10
+     * <p>
+     * 管理员可查全部并按上传人筛选；教师只能查自己的记录（服务端强制覆盖 uploadBy）。
+     * <p>
+     * 上传接口已改为异步受理，本列表就是异步结果的唯一出口：前端凭返回的 recordId
+     * 轮询此处，status 由 0（处理中）变成 1/2 时读 totalSegments 或 errorMsg。
+     */
+    @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
+    @GetMapping("/upload/list")
+    public Result<PageResult<KnowledgeUploadRecordVO>> listUploadRecords(UploadRecordQueryRequest request) {
+        return Result.success(uploadRecordService.listRecords(request));
+    }
+
+    /**
+     * 上传文本文档（教材录入，限教师与管理员）
      * <p>
      * POST /api/knowledge/dataset/upload/text
+     * <p>
+     * 异步受理：返回 recordId 与 status=0（处理中），Dify 建档与索引轮询在后台线程完成，
+     * 最终成败凭 recordId 到 /upload/list 查询。接口不再占用请求线程等待最长 5 分钟的索引。
      */
-    @PreAuthorize("hasRole('TEACHER')")
+    @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
     @PostMapping("/upload/text")
     public Result<UploadResponse> uploadText(@Valid @RequestBody UploadTextRequest request) {
         return Result.success(knowledgeDatasetService.uploadText(request));
     }
 
     /**
-     * 上传文件文档（运维用，仅教师；文件类型需在 Dify 支持白名单内）
+     * 上传文件文档（教材录入，限教师与管理员；文件类型需在 Dify 支持白名单内）
      * <p>
      * POST /api/knowledge/dataset/upload/file?chapterId=3，form-data: file
+     * <p>
+     * 异步受理，口径同 {@link #uploadText}。
      */
-    @PreAuthorize("hasRole('TEACHER')")
+    @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
     @PostMapping("/upload/file")
     public Result<UploadResponse> uploadFile(@RequestParam Long chapterId,
                                              @RequestParam("file") MultipartFile file) {
@@ -122,7 +148,7 @@ public class KnowledgeDatasetController {
      * <p>
      * POST /api/knowledge/dataset/metadata/update
      */
-    @PreAuthorize("hasRole('TEACHER')")
+    @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
     @PostMapping("/metadata/update")
     public Result<String> updateMetadata(@Valid @RequestBody UpdateMetadataRequest request) {
         return Result.success(knowledgeDatasetService.updateMetadata(request));

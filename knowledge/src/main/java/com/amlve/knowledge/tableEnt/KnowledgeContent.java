@@ -16,7 +16,7 @@ import lombok.EqualsAndHashCode;
 @TableName("knowledge_content")
 public class KnowledgeContent extends BaseEntity {
 
-    @TableId(type = IdType.AUTO)
+    @TableId(type = IdType.ASSIGN_ID)
     private Long id;
 
     /**
@@ -43,13 +43,18 @@ public class KnowledgeContent extends BaseEntity {
     private Integer contentType;
 
     /**
-     * 页码
+     * 教材页码（新版表结构由 page_ref varchar 改为 page int，排序按数值序而非字典序）
      */
-    @TableField("page_ref")
-    private String pageRef;
+    private Integer page;
 
     /**
-     * Dify知识库文档ID
+     * 同一页内顺序（数字越小越靠前），与 page 联合决定取素材顺序
+     */
+    @TableField("page_order")
+    private Integer pageOrder;
+
+    /**
+     * Dify知识库文档ID（先入库后同步 Dify，故允许为空）
      */
     @TableField("dify_document_id")
     private String difyDocumentId;

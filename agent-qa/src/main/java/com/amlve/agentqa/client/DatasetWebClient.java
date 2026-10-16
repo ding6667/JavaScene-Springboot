@@ -208,6 +208,35 @@ public class DatasetWebClient {
     }
 
     /**
+     * 删除知识库文档
+     * DELETE /datasets/{dataset_id}/documents/{document_id}
+     * <p>
+     * 404（文档本就不存在）视为删除成功并返回 true，不抛异常——清理动作反过来
+     * 打断主流程会让"上传失败"变成"清理失败"，掩盖真实原因。
+     *
+     * @param datasetId  知识库ID
+     * @param documentId 文档ID
+     * @return true=已删除或本就无需删除；false=删除请求异常，由调用方记日志
+     */
+    public boolean deleteDocument(String datasetId, String documentId) {
+        try {
+            difyWebClient.delete()
+                    .uri(DifyConstant.DELETE_DOCUMENT, datasetId, documentId)
+                    .retrieve()
+                    .onStatus(status -> status.value() == 404, response -> Mono.empty())
+                    .onStatus(HttpStatusCode::isError, this::toError)
+                    .bodyToMono(String.class)
+                    .block();
+            log.info("已删除 Dify 文档: datasetId={}, documentId={}", datasetId, documentId);
+            return true;
+        } catch (Exception e) {
+            log.error("删除 Dify 文档失败: datasetId={}, documentId={}, error={}",
+                    datasetId, documentId, e.getMessage());
+            return false;
+        }
+    }
+
+    /**
      * 统一的 JSON GET 请求，带错误处理
      */
     private String getJson(String uriTemplate, Object... uriVariables) {
