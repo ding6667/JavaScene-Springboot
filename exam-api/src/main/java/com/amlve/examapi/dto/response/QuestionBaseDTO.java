@@ -7,7 +7,7 @@ import java.util.List;
  * 题目基本信息（内部模块用，不含答案）
  */
 @Data
-public class QuestionBaseResponse {
+public class QuestionBaseDTO {
 
     private Long id;
     private String content;

@@ -1,65 +1,61 @@
 package com.amlve.agentscoreapi.dto.request;
 
-
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Data;
-
-import java.util.List;
-
+import lombok.NoArgsConstructor;
 
 /**
- * Dify 批改请求 DTO
+ * 作业批改请求（传给 Dify 的入参）
  */
 @Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
 public class ScoreEvaluateRequest {
-
-    /**
-     * 学生答案
-     */
-    @NotBlank(message = "学生答案不能为空")
-    private String studentAnswer;
-
-    /**
-     * 标准答案
-     */
-    @NotBlank(message = "标准答案不能为空")
-    private String standardAnswer;
-
-    /**
-     * 题型（1=选择，2=填空，3=判断，4=程序阅读，5=编程题）
-     */
-    @NotNull(message = "题型不能为空")
-    private Integer questionType;
-
-    /**
-     * 题目满分
-     */
-    @NotNull(message = "满分值不能为空")
-    private Integer fullScore;
-
-    /**
-     * 题目内容（可选，供AI参考）
-     */
-    private String questionContent;
-
-    /**
-     * 章节ID（可选，用于知识库检索）
-     */
-    private Long chapterId;
 
     /**
      * 题目ID
      */
-    private Long questionId;
+    private String questionId;
 
     /**
-     * 章节名称（可选，供AI参考）
+     * 题型：1=选择，2=填空，3=判断，4=程序阅读，5=编程题，6=简答题
+     */
+    private String questionType;
+
+    /**
+     * 题目内容
+     */
+    private String questionContent;
+
+    /**
+     * 标准答案
+     */
+    private String standardAnswer;
+
+    /**
+     * 学生作答
+     */
+    private String studentAnswer;
+
+    /**
+     * 本题满分
+     */
+    private String fullScore;
+
+    /**
+     * 章节ID
+     */
+    private String chapterId;
+
+    /**
+     * 章节名称（供 LLM 参考）
      */
     private String chapterName;
 
     /**
-     * 知识点名称列表（可选，用于精准补救）
+     * 本题考查的知识点（逗号分隔，供 LLM 参考评分维度）
      */
-    private List<String> knowledgePoints;
+    private String knowledgePoints;
 }

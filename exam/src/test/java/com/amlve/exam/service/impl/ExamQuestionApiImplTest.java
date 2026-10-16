@@ -5,8 +5,8 @@ import com.amlve.exam.enumeration.QuestionDifficultyEnum;
 import com.amlve.common.enums.QuestionTypeEnum;
 import com.amlve.exam.mapper.ExamQuestionMapper;
 import com.amlve.exam.tableEnt.ExamQuestion;
-import com.amlve.examapi.dto.response.QuestionBaseResponse;
-import com.amlve.examapi.dto.response.QuestionDetailResponse;
+import com.amlve.examapi.dto.response.QuestionBaseDTO;
+import com.amlve.examapi.dto.response.QuestionDetailDTO;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -48,7 +48,7 @@ class ExamQuestionApiImplTest {
         question.setJudgeMode(1);
         when(questionMapper.selectById(1L)).thenReturn(question);
 
-        Result<QuestionDetailResponse> result = examQuestionApi.getQuestionDetail(1L);
+        Result<QuestionDetailDTO> result = examQuestionApi.getQuestionDetail(1L);
 
         assertThat(result.getData()).isNotNull();
         assertThat(result.getData().getId()).isEqualTo(1L);
@@ -63,14 +63,14 @@ class ExamQuestionApiImplTest {
     void getQuestionDetail_notFound_returnsNullData() {
         when(questionMapper.selectById(9L)).thenReturn(null);
 
-        Result<QuestionDetailResponse> result = examQuestionApi.getQuestionDetail(9L);
+        Result<QuestionDetailDTO> result = examQuestionApi.getQuestionDetail(9L);
 
         assertThat(result.getData()).isNull();
     }
 
     @Test
     void getQuestionsByIds_emptyInput_returnsEmptyWithoutQuery() {
-        Result<List<QuestionBaseResponse>> result = examQuestionApi.getQuestionsByIds(List.of());
+        Result<List<QuestionBaseDTO>> result = examQuestionApi.getQuestionsByIds(List.of());
 
         assertThat(result.getData()).isEmpty();
         verifyNoInteractions(questionMapper);
@@ -109,8 +109,8 @@ class ExamQuestionApiImplTest {
     }
 
     @Test
-    void getQuestionsForPrepare_nullChapter_returnsEmpty() {
-        Result<List<QuestionBaseResponse>> result = examQuestionApi.getQuestionsForPrepare(null);
+    void getQuestionsByChapter_nullChapter_returnsEmpty() {
+        Result<List<QuestionBaseDTO>> result = examQuestionApi.getQuestionsByChapter(null);
 
         assertThat(result.getData()).isEmpty();
         verifyNoInteractions(questionMapper);

@@ -6,8 +6,8 @@ import com.amlve.exam.enumeration.QuestionDifficultyEnum;
 import com.amlve.common.enums.QuestionTypeEnum;
 import com.amlve.exam.mapper.ExamQuestionMapper;
 import com.amlve.exam.tableEnt.ExamQuestion;
-import com.amlve.examapi.dto.response.QuestionBaseResponse;
-import com.amlve.examapi.dto.response.QuestionDetailResponse;
+import com.amlve.examapi.dto.response.QuestionBaseDTO;
+import com.amlve.examapi.dto.response.QuestionDetailDTO;
 import com.amlve.examapi.service.ExamQuestionApi;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.fasterxml.jackson.core.type.TypeReference;
@@ -35,7 +35,7 @@ public class ExamQuestionApiImpl implements ExamQuestionApi {
     private final ExamQuestionMapper questionMapper;
 
     @Override
-    public Result<QuestionDetailResponse> getQuestionDetail(Long questionId) {
+    public Result<QuestionDetailDTO> getQuestionDetail(Long questionId) {
         ExamQuestion question = questionMapper.selectById(questionId);
         if (question == null) {
             return Result.error(ErrorCodeConstant.NOT_FOUND, "题目不存在: " + questionId);
@@ -44,7 +44,7 @@ public class ExamQuestionApiImpl implements ExamQuestionApi {
     }
 
     @Override
-    public Result<List<QuestionBaseResponse>> getQuestionsByIds(List<Long> questionIds) {
+    public Result<List<QuestionBaseDTO>> getQuestionsByIds(List<Long> questionIds) {
         if (questionIds == null || questionIds.isEmpty()) {
             return Result.success(List.of());
         }
@@ -75,7 +75,7 @@ public class ExamQuestionApiImpl implements ExamQuestionApi {
     }
 
     @Override
-    public Result<List<QuestionBaseResponse>> getQuestionsForPrepare(Long chapterId) {
+    public Result<List<QuestionBaseDTO>> getQuestionsByChapter(Long chapterId) {
         if (chapterId == null) {
             return Result.success(List.of());
         }
@@ -84,8 +84,8 @@ public class ExamQuestionApiImpl implements ExamQuestionApi {
         return Result.success(questions.stream().map(this::toBase).toList());
     }
 
-    private QuestionBaseResponse toBase(ExamQuestion question) {
-        QuestionBaseResponse response = new QuestionBaseResponse();
+    private QuestionBaseDTO toBase(ExamQuestion question) {
+        QuestionBaseDTO response = new QuestionBaseDTO();
         response.setId(question.getId());
         response.setContent(question.getContent());
         response.setType(typeCode(question.getType()));
@@ -99,8 +99,8 @@ public class ExamQuestionApiImpl implements ExamQuestionApi {
         return response;
     }
 
-    private QuestionDetailResponse toDetail(ExamQuestion question) {
-        QuestionDetailResponse response = new QuestionDetailResponse();
+    private QuestionDetailDTO toDetail(ExamQuestion question) {
+        QuestionDetailDTO response = new QuestionDetailDTO();
         response.setId(question.getId());
         response.setContent(question.getContent());
         response.setType(typeCode(question.getType()));
@@ -117,12 +117,12 @@ public class ExamQuestionApiImpl implements ExamQuestionApi {
         return response;
     }
 
-    private List<QuestionDetailResponse.TestCaseItem> toTestCaseItems(List<ExamQuestion.TestCase> testCases) {
+    private List<QuestionDetailDTO.TestCaseDTO> toTestCaseItems(List<ExamQuestion.TestCase> testCases) {
         if (testCases == null || testCases.isEmpty()) {
             return List.of();
         }
         return testCases.stream().map(tc -> {
-            QuestionDetailResponse.TestCaseItem item = new QuestionDetailResponse.TestCaseItem();
+            QuestionDetailDTO.TestCaseDTO item = new QuestionDetailDTO.TestCaseDTO();
             item.setCaseIndex(tc.getCaseIndex());
             item.setInput(tc.getInput());
             item.setExpectedOutput(tc.getExpectedOutput());
