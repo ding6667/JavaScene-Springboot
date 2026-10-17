@@ -1,34 +1,39 @@
 package com.amlve.agentscoreapi.enumeration;
 
-
-import lombok.Getter;
-
 /**
- * 错误类型枚举
+ * 批改错误类型枚举
  */
-@Getter
 public enum ErrorTypeEnum {
 
-    SYNTAX("语法错误", "代码语法不符合Java规范"),
-    LOGIC("逻辑错误", "代码逻辑有误，结果不正确"),
-    CONCEPT("概念混淆", "对Java概念理解有误"),
-    FORMAT("格式错误", "代码格式不规范"),
-    MISSING("遗漏", "缺失必要代码或步骤"),
-    OTHER("其他", "其他类型错误");
+    SYNTAX_ERROR("语法错误"),
+    LOGIC_ERROR("逻辑错误"),
+    CONCEPT_ERROR("概念错误"),
+    FORMAT_ERROR("格式错误"),
+    MISSING("遗漏"),
+    OTHER("其他");
 
-    private final String name;
-    private final String description;
+    private final String desc;
 
-    ErrorTypeEnum(String name, String description) {
-        this.name = name;
-        this.description = description;
+    ErrorTypeEnum(String desc) {
+        this.desc = desc;
     }
 
-    public String getName() {
-        return name;
+    public String getDesc() {
+        return desc;
     }
 
-    public String getDescription() {
-        return description;
+    /**
+     * 判断给定的 errorType 是否合法
+     */
+    public static boolean isValid(String type) {
+        if (type == null) {
+            return false;
+        }
+        for (ErrorTypeEnum value : values()) {
+            if (value.name().equals(type)) {
+                return true;
+            }
+        }
+        return false;
     }
 }

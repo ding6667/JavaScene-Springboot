@@ -96,11 +96,11 @@ public class ExamGradingServiceImpl implements ExamGradingService {
                 ScoreEvaluateRequest request = new ScoreEvaluateRequest();
                 request.setStudentAnswer(submit.getAnswerContent());
                 request.setStandardAnswer(question.getAnswer() == null ? "" : question.getAnswer());
-                request.setQuestionType(question.getType() == null ? null : question.getType().getCode());
-                request.setFullScore(fullScore);
+                request.setQuestionType(question.getType() == null ? null : String.valueOf(question.getType().getCode()));
+                request.setFullScore(String.valueOf(fullScore));
                 request.setQuestionContent(question.getContent());
-                request.setChapterId(question.getChapterId());
-                request.setQuestionId(question.getId());
+                request.setChapterId(question.getChapterId() == null ? null : String.valueOf(question.getChapterId()));
+                request.setQuestionId(question.getId() == null ? null : String.valueOf(question.getId()));
 
                 ScoreEvaluateResponse response = scoreClient.evaluate(request);
                 score = response.getScore() == null ? 0 : response.getScore();
@@ -195,14 +195,14 @@ public class ExamGradingServiceImpl implements ExamGradingService {
         if (response.getAnalysis() != null && !response.getAnalysis().isEmpty()) {
             sb.append(response.getAnalysis());
         }
-        if (response.getErrorDetails() != null) {
-            for (ScoreEvaluateResponse.ErrorDetail detail : response.getErrorDetails()) {
+        if (response.getErrorDetail() != null && response.getErrorDetail().getErrors() != null) {
+            for (ScoreEvaluateResponse.ErrorItem item : response.getErrorDetail().getErrors()) {
                 if (sb.length() > 0) {
                     sb.append("; ");
                 }
-                sb.append(detail.getErrorType());
-                if (detail.getErrorDescription() != null && !detail.getErrorDescription().isEmpty()) {
-                    sb.append(": ").append(detail.getErrorDescription());
+                sb.append(item.getErrorType());
+                if (item.getErrorDescription() != null && !item.getErrorDescription().isEmpty()) {
+                    sb.append(": ").append(item.getErrorDescription());
                 }
             }
         }

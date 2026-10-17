@@ -1,55 +1,74 @@
 package com.amlve.agentscoreapi.dto.response;
 
-
+import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Data;
+
 import java.util.List;
 
 /**
- * Dify 批改响应 DTO
+ * 作业批改响应（Dify 返回的出参）
  */
 @Data
 public class ScoreEvaluateResponse {
 
     /**
-     * 得分
+     * 得分（0 ~ fullScore）
      */
     private Integer score;
 
     /**
-     * 错误明细列表
+     * 是否正确：1=满分，0=未满分
      */
-    private List<ErrorDetail> errorDetails;
+    @JsonProperty("is_correct")
+    private Integer isCorrect;
 
     /**
-     * 总体评价
+     * 错误明细（结构化对象）
+     */
+    @JsonProperty("error_detail")
+    private ErrorDetail errorDetail;
+
+    /**
+     * 关联知识点（逗号分隔）
+     */
+    @JsonProperty("knowledge_points")
+    private String knowledgePoints;
+
+    /**
+     * 批改解析（Markdown）
      */
     private String analysis;
 
     /**
-     * 知识点补救建议
+     * 补救建议（满分时为空字符串）
      */
     private String suggestion;
 
     /**
-     * 是否完全正确（true=满分/正确，false=有失分）
+     * 错误明细容器
      */
-    private Boolean isCorrect;
-
-    /**
-     * 涉及知识点列表（用于错题归档与补救推荐）
-     */
-    private List<String> knowledgePoints;
-
     @Data
     public static class ErrorDetail {
 
         /**
-         * 错误位置（行号/题号）
+         * 错误列表（满分时为空数组）
+         */
+        private List<ErrorItem> errors;
+    }
+
+    /**
+     * 单条错误
+     */
+    @Data
+    public static class ErrorItem {
+
+        /**
+         * 错误位置（如"withdraw方法"、"第5行"）
          */
         private String location;
 
         /**
-         * 错误类型（语法错误、逻辑错误、概念混淆、格式错误）
+         * 错误类型：SYNTAX_ERROR / LOGIC_ERROR / CONCEPT_ERROR / FORMAT_ERROR / MISSING / OTHER
          */
         private String errorType;
 
