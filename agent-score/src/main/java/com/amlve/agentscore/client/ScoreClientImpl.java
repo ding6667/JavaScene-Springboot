@@ -14,7 +14,6 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -44,8 +43,8 @@ public class ScoreClientImpl implements ScoreClient {
         if (request == null) {
             throw new IllegalArgumentException("评分请求不能为空");
         }
-        if (request.getFullScore() == null || request.getFullScore() <= 0) {
-            throw new IllegalArgumentException("题目满分必须大于 0");
+        if (request.getFullScore() == null || request.getFullScore().isBlank()) {
+            throw new IllegalArgumentException("题目满分不能为空");
         }
         if (scoreApiKey == null || scoreApiKey.isBlank()) {
             log.warn("未配置 dify.score-api-key，评分智能体走 Mock 兜底");
@@ -58,12 +57,15 @@ public class ScoreClientImpl implements ScoreClient {
 
     private Map<String, Object> buildInputs(ScoreEvaluateRequest request) {
         Map<String, Object> inputs = new HashMap<>();
-        inputs.put("question_type", request.getQuestionType() == null ? "" : String.valueOf(request.getQuestionType()));
+        inputs.put("question_id", nullToEmpty(request.getQuestionId()));
+        inputs.put("question_type", nullToEmpty(request.getQuestionType()));
         inputs.put("question_content", nullToEmpty(request.getQuestionContent()));
         inputs.put("standard_answer", nullToEmpty(request.getStandardAnswer()));
         inputs.put("student_answer", nullToEmpty(request.getStudentAnswer()));
-        inputs.put("full_score", request.getFullScore() == null ? "" : String.valueOf(request.getFullScore()));
-        inputs.put("chapter_id", request.getChapterId() == null ? "" : String.valueOf(request.getChapterId()));
+        inputs.put("full_score", nullToEmpty(request.getFullScore()));
+        inputs.put("chapter_id", nullToEmpty(request.getChapterId()));
+        inputs.put("chapter_name", nullToEmpty(request.getChapterName()));
+        inputs.put("knowledge_points", nullToEmpty(request.getKnowledgePoints()));
         return inputs;
     }
 
@@ -81,9 +83,14 @@ public class ScoreClientImpl implements ScoreClient {
 
             ScoreEvaluateResponse result = new ScoreEvaluateResponse();
             result.setScore(source.path("score").isNumber() ? source.path("score").asInt() : null);
+            result.setIsCorrect(source.path("is_correct").isNumber() ? source.path("is_correct").asInt() : null);
             result.setAnalysis(source.path("analysis").asText(null));
             result.setSuggestion(source.path("suggestion").asText(null));
-            result.setErrorDetails(parseErrors(source));
+            result.setKnowledgePoints(source.path("knowledge_points").asText(null));
+
+            ScoreEvaluateResponse.ErrorDetail errorDetail = new ScoreEvaluateResponse.ErrorDetail();
+            errorDetail.setErrors(parseErrors(source));
+            result.setErrorDetail(errorDetail);
             return result;
         } catch (BusinessException e) {
             throw e;
@@ -92,40 +99,49 @@ public class ScoreClientImpl implements ScoreClient {
         }
     }
 
-    private List<ScoreEvaluateResponse.ErrorDetail> parseErrors(JsonNode source) {
+    private List<ScoreEvaluateResponse.ErrorItem> parseErrors(JsonNode source) {
         JsonNode errorsNode = source.path("error_detail").path("errors");
-        if (!errorsNode.isArray()) {
-            errorsNode = source.path("errorDetails");
-        }
-        List<ScoreEvaluateResponse.ErrorDetail> details = new ArrayList<>();
+        List<ScoreEvaluateResponse.ErrorItem> items = new ArrayList<>();
         if (errorsNode.isArray()) {
             for (JsonNode n : errorsNode) {
-                ScoreEvaluateResponse.ErrorDetail detail = new ScoreEvaluateResponse.ErrorDetail();
-                detail.setLocation(n.path("location").asText(null));
-                detail.setErrorType(n.path("errorType").asText(null));
-                detail.setErrorDescription(n.path("errorDescription").asText(null));
-                detail.setReason(n.path("reason").asText(null));
-                detail.setSuggestion(n.path("suggestion").asText(null));
-                details.add(detail);
+                ScoreEvaluateResponse.ErrorItem item = new ScoreEvaluateResponse.ErrorItem();
+                item.setLocation(n.path("location").asText(null));
+                item.setErrorType(n.path("errorType").asText(null));
+                item.setErrorDescription(n.path("errorDescription").asText(null));
+                item.setReason(n.path("reason").asText(null));
+                item.setSuggestion(n.path("suggestion").asText(null));
+                items.add(item);
             }
         }
-        return details;
+        return items;
     }
 
     private ScoreEvaluateResponse mockResponse(ScoreEvaluateRequest request) {
         ScoreEvaluateResponse response = new ScoreEvaluateResponse();
-        response.setScore(Math.min(MOCK_SCORE, request.getFullScore()));
+        response.setScore(Math.min(MOCK_SCORE, parseFullScore(request.getFullScore())));
+        response.setIsCorrect(0);
         response.setAnalysis("答案基本正确，当前使用固定批改结果。");
         response.setSuggestion("请结合标准答案复习相关知识点。");
 
-        ScoreEvaluateResponse.ErrorDetail detail = new ScoreEvaluateResponse.ErrorDetail();
-        detail.setLocation("整体");
-        detail.setErrorType("待完善");
-        detail.setErrorDescription("当前为固定批改结果，暂未进行真实答案分析。");
-        detail.setReason("评分智能体尚未接入真实批改服务。");
-        detail.setSuggestion("后续接入真实评分模型后获取详细错误原因。");
-        response.setErrorDetails(Collections.singletonList(detail));
+        ScoreEvaluateResponse.ErrorItem item = new ScoreEvaluateResponse.ErrorItem();
+        item.setLocation("整体");
+        item.setErrorType("待完善");
+        item.setErrorDescription("当前为固定批改结果，暂未进行真实答案分析。");
+        item.setReason("评分智能体尚未接入真实批改服务。");
+        item.setSuggestion("后续接入真实评分模型后获取详细错误原因。");
+
+        ScoreEvaluateResponse.ErrorDetail errorDetail = new ScoreEvaluateResponse.ErrorDetail();
+        errorDetail.setErrors(List.of(item));
+        response.setErrorDetail(errorDetail);
         return response;
+    }
+
+    private int parseFullScore(String fullScore) {
+        try {
+            return Integer.parseInt(fullScore);
+        } catch (Exception e) {
+            return MOCK_SCORE;
+        }
     }
 
     private String nullToEmpty(String value) {
