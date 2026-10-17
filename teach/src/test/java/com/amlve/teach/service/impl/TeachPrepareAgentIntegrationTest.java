@@ -80,6 +80,10 @@ class TeachPrepareAgentIntegrationTest {
     @MockBean
     private KnowledgeChapterApi knowledgeChapterApi;
 
+    /** 发布闭环依赖的题库接口：集成上下文无 exam 模块实现，Mock 满足 Bean 装配 */
+    @MockBean
+    private com.amlve.examapi.service.ExamQuestionApi examQuestionApi;
+
     /**
      * Word 导出工具（com.amlve.common 包，不在 SlimApp 扫描范围）。
      * 集成测试只覆盖备课生成链路，导出能力 Mock 掉即可满足 Bean 装配。

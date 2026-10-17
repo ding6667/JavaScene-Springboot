@@ -50,6 +50,12 @@
             <artifactId>knowledge-api</artifactId>
             <version>${project.version}</version>
         </dependency>
+        <!-- 作业发布题目校验与快照：跨模块调用 exam-api 接口 -->
+        <dependency>
+            <groupId>com.amlve</groupId>
+            <artifactId>exam-api</artifactId>
+            <version>${project.version}</version>
+        </dependency>
         <dependency>
             <groupId>com.amlve</groupId>
             <artifactId>study-api</artifactId>

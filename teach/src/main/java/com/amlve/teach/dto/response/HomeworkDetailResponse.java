@@ -7,7 +7,7 @@ import java.util.List;
 
 /**
  * 教师端作业详情响应：作业元信息 + 题目完整快照（含答案与解析，仅教师可见）。
- * 提交人数等统计字段待 teach_homework 补 submitted_count 列后提供。
+ * 提交数量统计来自 teach_homework.submitted_count 列（提交回调自增）。
  */
 @Data
 public class HomeworkDetailResponse {
@@ -23,6 +23,9 @@ public class HomeworkDetailResponse {
     private String statusName;
     private Integer totalScore;
     private Integer questionCount;
+
+    /** 提交数量（学生提交回调自增） */
+    private Integer submittedCount;
     private Integer allowLateSubmit;
     private LocalDateTime deadline;
     private LocalDateTime publishTime;

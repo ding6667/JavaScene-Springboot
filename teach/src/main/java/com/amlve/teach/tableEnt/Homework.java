@@ -57,6 +57,10 @@ public class Homework extends BaseEntity {
     @TableField("question_count")
     private Integer questionCount;
 
+    /** 提交数量（学生提交回调时自增，列允许 NULL 由 IFNULL 兜底） */
+    @TableField("submitted_count")
+    private Integer submittedCount;
+
     /** 发布时间 */
     @TableField("publish_time")
     private LocalDateTime publishTime;

@@ -1,13 +1,16 @@
 package com.amlve.teach.dto.request;
 
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import lombok.Data;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 /**
  * 教师发布作业的请求参数（前端提交用）。
@@ -44,4 +47,10 @@ public class HomeworkPublishRequest {
     /** 作业总分，默认 0 */
     @Min(value = 0, message = "作业总分不能为负数")
     private Integer totalScore = 0;
+
+    /** 选择的题目列表（发布时校验存在性并写入题目快照） */
+    @NotEmpty(message = "作业题目不能为空")
+    @Size(max = 100, message = "单次作业最多100道题")
+    @Valid
+    private List<HomeworkQuestionItem> questions;
 }

@@ -1,8 +1,11 @@
 package com.amlve.teach.service.impl;
 
 import com.amlve.common.exception.BusinessException;
+import com.amlve.common.request.Result;
 import com.amlve.common.utils.FileFormatUtil;
 import com.amlve.common.utils.SecurityUtils;
+import com.amlve.knowledgeapi.dto.response.ChapterNameDTO;
+import com.amlve.knowledgeapi.service.KnowledgeChapterApi;
 import com.amlve.teach.dto.response.LessonPlanExportData;
 import com.amlve.teach.dto.response.PrepareRecordDetailResponse;
 import com.amlve.teach.dto.response.PrepareRecordListResponse;
@@ -41,6 +44,9 @@ public class TeachPrepareRecordServiceImpl implements TeachPrepareRecordService 
 
     @Resource
     private FileFormatUtil fileFormatUtil;
+
+    @Resource
+    private KnowledgeChapterApi knowledgeChapterApi;
 
     /** 生成文件存储根目录（与 PPT 转换输出目录保持一致） */
     @Value("${temp.commonFile}")
@@ -120,10 +126,38 @@ public class TeachPrepareRecordServiceImpl implements TeachPrepareRecordService 
         }
 
         LessonPlanExportData data = new LessonPlanExportData();
-        data.setFileName("备课教案_" + recordId + ".docx");
+        data.setFileName(buildLessonPlanFileName(record));
         data.setContent(wordBytes);
         log.info("教案导出成功: recordId={}, teacherId={}, bytes={}", recordId, record.getTeacherId(), wordBytes.length);
         return data;
+    }
+
+    /**
+     * 教案导出文件名：{章节名}_教案.docx（章节名取 knowledge-api 短名），
+     * 章节查询失败或名为空时降级为 备课教案_{recordId}.docx；非法文件名字符统一替换为下划线
+     */
+    private String buildLessonPlanFileName(TeachPrepareRecord record) {
+        String fallback = "备课教案_" + record.getId() + ".docx";
+        try {
+            Result<ChapterNameDTO> result = knowledgeChapterApi.getChapterNameById(record.getChapterId());
+            if (result == null || result.getCode() != 200 || result.getData() == null) {
+                return fallback;
+            }
+            String name = result.getData().getShortName();
+            if (!StringUtils.hasText(name)) {
+                name = result.getData().getChapterName();
+            }
+            if (!StringUtils.hasText(name)) {
+                return fallback;
+            }
+            // 文件名非法字符替换，防止落盘/下载失败
+            String safe = name.replaceAll("[\\\\/:*?\"<>|\\s]", "_").trim();
+            return safe + "_教案.docx";
+        } catch (Exception e) {
+            // 章节名查询异常：降级保底文件名，不阻塞导出
+            log.warn("教案文件名章节查询异常，降级保底: recordId={}, err={}", record.getId(), e.getMessage());
+            return fallback;
+        }
     }
 
     /**

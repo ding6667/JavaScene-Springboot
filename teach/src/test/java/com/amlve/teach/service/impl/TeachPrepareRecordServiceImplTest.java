@@ -1,7 +1,10 @@
 package com.amlve.teach.service.impl;
 
 import com.amlve.common.exception.BusinessException;
+import com.amlve.common.request.Result;
 import com.amlve.common.utils.FileFormatUtil;
+import com.amlve.knowledgeapi.dto.response.ChapterNameDTO;
+import com.amlve.knowledgeapi.service.KnowledgeChapterApi;
 import com.amlve.teach.dto.response.LessonPlanExportData;
 import com.amlve.teach.dto.response.PrepareRecordDetailResponse;
 import com.amlve.teach.dto.response.PrepareRecordListResponse;
@@ -40,6 +43,9 @@ class TeachPrepareRecordServiceImplTest {
 
     @Mock
     private FileFormatUtil fileFormatUtil;
+
+    @Mock
+    private KnowledgeChapterApi knowledgeChapterApi;
 
     @InjectMocks
     private TeachPrepareRecordServiceImpl service;
@@ -178,6 +184,27 @@ class TeachPrepareRecordServiceImplTest {
         LessonPlanExportData data = service.exportLessonPlan(RECORD_ID);
 
         assertThat(data.getContent()).isSameAs(wordBytes);
+        // 章节名查询未打桩返回 null：降级保底 备课教案_{recordId}.docx
         assertThat(data.getFileName()).isEqualTo("备课教案_" + RECORD_ID + ".docx");
+    }
+
+    @Test
+    void exportLessonPlan_shouldUseChapterShortNameInFileName() {
+        // 章节名命中：导出文件名为 {章节短名}_教案.docx，满足验收标准
+        TeachPrepareRecord record = ownedRecord();
+        when(teachPrepareRecordMapper.selectById(RECORD_ID)).thenReturn(record);
+        when(fileFormatUtil.generateWord(record.getLessonPlan())).thenReturn(new byte[]{1});
+        ReflectionTestUtils.setField(service, "commonFileDir", tempDir.toString());
+        ChapterNameDTO chapterName = new ChapterNameDTO();
+        chapterName.setChapterId(record.getChapterId());
+        chapterName.setChapterName("第 2 章 Java 编程基础");
+        chapterName.setShortName("Java 编程基础");
+        when(knowledgeChapterApi.getChapterNameById(record.getChapterId()))
+                .thenReturn(Result.success(chapterName));
+
+        LessonPlanExportData data = service.exportLessonPlan(RECORD_ID);
+
+        // 章节名中的空格属非法文件名字符，替换为下划线
+        assertThat(data.getFileName()).isEqualTo("Java_编程基础_教案.docx");
     }
 }
