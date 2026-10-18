@@ -10,9 +10,8 @@ import com.amlve.common.enums.QuestionTypeEnum;
 import com.amlve.exam.service.ExamQuestionService;
 import com.amlve.exam.tableEnt.ExamQuestion;
 import com.amlve.exam.util.ExamAuthSupport;
-import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
-import com.baomidou.mybatisplus.core.toolkit.Wrappers;
-import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.amlve.examapi.dto.request.QuestionAdminQueryRequest;
+import com.amlve.examapi.dto.response.QuestionAdminVO;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -67,22 +66,9 @@ public class ExamQuestionAdminController {
 
     /** 分页查询题目列表（管理端） */
     @GetMapping("/list")
-    public Result<PageResult<ExamQuestion>> list(@RequestParam(required = false) Long chapterId,
-                                                 @RequestParam(required = false) Integer type,
-                                                 @RequestParam(defaultValue = "1") Integer page,
-                                                 @RequestParam(defaultValue = "10") Integer size) {
+    public Result<PageResult<QuestionAdminVO>> list(QuestionAdminQueryRequest request) {
         examAuthSupport.requireTeacherOrAdmin();
-        LambdaQueryWrapper<ExamQuestion> wrapper = Wrappers.<ExamQuestion>lambdaQuery()
-                .eq(chapterId != null, ExamQuestion::getChapterId, chapterId)
-                .eq(type != null, ExamQuestion::getType, QuestionTypeEnum.fromCode(type))
-                .orderByDesc(ExamQuestion::getCreateTime);
-        Page<ExamQuestion> pageData = questionService.page(new Page<>(page, size), wrapper);
-        PageResult<ExamQuestion> result = new PageResult<>();
-        result.setRecords(pageData.getRecords());
-        result.setTotal(pageData.getTotal());
-        result.setCurrent(pageData.getCurrent());
-        result.setSize(pageData.getSize());
-        return Result.success(result);
+        return Result.success(questionService.listForAdmin(request));
     }
 
     /** 查询单题（管理端） */
@@ -119,6 +105,10 @@ public class ExamQuestionAdminController {
         question.setTestCases(request.getTestCases());
         question.setCodeFramework(request.getCodeFramework());
         question.setCognitiveLevel(request.getCognitiveLevel());
+        question.setRelatedQuestionIds(request.getRelatedQuestionIds());
+        question.setDifficultyScore(request.getDifficultyScore());
+        question.setAbilityDimensions(request.getAbilityDimensions());
+        question.setCommonMistakes(request.getCommonMistakes());
         return question;
     }
 
