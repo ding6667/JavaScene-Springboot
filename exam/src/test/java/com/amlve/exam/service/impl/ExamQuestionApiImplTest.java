@@ -1,3 +1,4 @@
+
 package com.amlve.exam.service.impl;
 
 import com.amlve.common.request.Result;
@@ -6,7 +7,7 @@ import com.amlve.common.enums.QuestionTypeEnum;
 import com.amlve.exam.mapper.ExamQuestionMapper;
 import com.amlve.exam.tableEnt.ExamQuestion;
 import com.amlve.examapi.dto.response.QuestionBaseDTO;
-import com.amlve.examapi.dto.response.QuestionDetailDTO;
+import com.amlve.examapi.dto.response.QuestionDetailResponse;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -48,7 +49,7 @@ class ExamQuestionApiImplTest {
         question.setJudgeMode(1);
         when(questionMapper.selectById(1L)).thenReturn(question);
 
-        Result<QuestionDetailDTO> result = examQuestionApi.getQuestionDetail(1L);
+        Result<QuestionDetailResponse> result = examQuestionApi.getQuestionDetail(1L);
 
         assertThat(result.getData()).isNotNull();
         assertThat(result.getData().getId()).isEqualTo(1L);
@@ -63,7 +64,7 @@ class ExamQuestionApiImplTest {
     void getQuestionDetail_notFound_returnsNullData() {
         when(questionMapper.selectById(9L)).thenReturn(null);
 
-        Result<QuestionDetailDTO> result = examQuestionApi.getQuestionDetail(9L);
+        Result<QuestionDetailResponse> result = examQuestionApi.getQuestionDetail(9L);
 
         assertThat(result.getData()).isNull();
     }

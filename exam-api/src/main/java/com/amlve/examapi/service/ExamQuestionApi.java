@@ -2,7 +2,7 @@ package com.amlve.examapi.service;
 
 import com.amlve.common.request.Result;
 import com.amlve.examapi.dto.response.QuestionBaseDTO;
-import com.amlve.examapi.dto.response.QuestionDetailDTO;
+import com.amlve.examapi.dto.response.QuestionDetailResponse;
 
 import java.util.List;
 
@@ -15,7 +15,7 @@ public interface ExamQuestionApi {
      * 查题目完整详情（含答案、测试用例）
      * 仅供内部模块调用，不暴露给前端
      */
-    Result<QuestionDetailDTO> getQuestionDetail(Long questionId);
+    Result<QuestionDetailResponse> getQuestionDetail(Long questionId);
 
     /**
      * 批量查题目基本信息（不含答案）
