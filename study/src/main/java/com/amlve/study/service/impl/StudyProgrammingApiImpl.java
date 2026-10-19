@@ -1,6 +1,6 @@
 package com.amlve.study.service.impl;
 
-import com.amlve.agentscoreapi.ScoreAgentClient;
+import com.amlve.agentscoreapi.service.ScoreAgentClient;
 import com.amlve.agentscoreapi.dto.request.ScoreEvaluateRequest;
 import com.amlve.agentscoreapi.dto.response.ScoreEvaluateResponse;
 import com.amlve.common.enums.JudgeModeEnum;
@@ -16,7 +16,7 @@ import com.amlve.study.service.CodeRunService;
 import com.amlve.study.tableEnt.StudyCodeRunRecord;
 import com.amlve.studyapi.dto.resquest.ProgrammingJudgeRequest;
 import com.amlve.studyapi.dto.response.ProgrammingJudgeResponse;
-import com.amlve.studyapi.service.StudyProgrammingApi;
+import com.amlve.studyapi.service.StudyProgramming;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -35,7 +35,7 @@ import java.util.Objects;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-public class StudyProgrammingApiImpl implements StudyProgrammingApi {
+public class StudyProgrammingApiImpl implements StudyProgramming {
 
     private final ExamQuestionApi examQuestionApi;
     private final CodeRunService codeRunService;
