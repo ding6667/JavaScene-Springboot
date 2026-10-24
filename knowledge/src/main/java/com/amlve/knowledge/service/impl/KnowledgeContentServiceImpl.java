@@ -106,7 +106,10 @@ public class KnowledgeContentServiceImpl implements KnowledgeContentService, Kno
         String documentName = "教材原文-" + entity.getId();
         try {
             Map<String, Object> metadata = new HashMap<>();
-            metadata.put(KnowledgeConstant.METADATA_CHAPTER_ID, chapter.getId().intValue());
+            // 章节ID按 Long 原样传：主键已改雪花算法（19 位），intValue() 会静默溢出成乱值，
+            // 而 Dify 工作流正是按 chapter_id 元数据过滤检索范围的——传错等于该章素材永远检索不到，
+            // 且不会报错。与 KnowledgeDatasetServiceImpl 的上传通道保持同一口径
+            metadata.put(KnowledgeConstant.METADATA_CHAPTER_ID, chapter.getId());
             metadata.put(KnowledgeConstant.METADATA_CHAPTER_NAME, chapter.getTitle());
             if (entity.getPage() != null) {
                 metadata.put(KnowledgeConstant.METADATA_PAGE, String.valueOf(entity.getPage()));
