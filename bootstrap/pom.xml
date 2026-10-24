@@ -49,11 +49,6 @@
         </dependency>
         <dependency>
             <groupId>com.amlve</groupId>
-            <artifactId>file</artifactId>
-            <version>${project.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>com.amlve</groupId>
             <artifactId>exam</artifactId>
             <version>${project.version}</version>
         </dependency>

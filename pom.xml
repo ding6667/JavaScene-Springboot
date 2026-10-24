@@ -23,14 +23,12 @@
     </developers>
     <modules>
         <module>common</module>
-        <module>file</module>
         <module>system</module>
         <module>exam</module>
         <module>bootstrap</module>
         <module>exam-api</module>
         <module>dialogue</module>
         <module>dialogue-api</module>
-        <module>file-api</module>
         <module>system-api</module>
         <module>knowledge</module>
         <module>knowledge-api</module>
