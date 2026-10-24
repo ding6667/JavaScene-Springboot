@@ -7,7 +7,7 @@ import java.util.List;
  * 题目完整详情（内部模块用，含答案）
  */
 @Data
-public class QuestionDetailDTO {
+public class QuestionDetailResponse {
 
     private Long id;
     private String content;
@@ -20,11 +20,11 @@ public class QuestionDetailDTO {
     private Integer score;
     private String codeFramework;
     private List<String> requirements;
-    private List<TestCaseDTO> testCases;
+    private List<TestCaseItem> testCases;
     private Integer judgeMode;
 
     @Data
-    public static class TestCaseDTO {
+    public static class TestCaseItem {
         private Integer caseIndex;
         private String input;
         private String expectedOutput;
