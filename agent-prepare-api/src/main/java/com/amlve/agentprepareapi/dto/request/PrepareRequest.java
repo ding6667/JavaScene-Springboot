@@ -49,6 +49,8 @@ public class PrepareRequest {
      */
     private PptConfig pptConfig;
 
+    /** PPT 视觉风格令牌（JSON 字符串，来自模板 designTokens；空串表示用默认风格） */
+    private String styleTokens;
     /**
      * 教案生成配置（课型/时长/详细度等）
      */
