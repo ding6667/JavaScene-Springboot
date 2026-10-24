@@ -8,7 +8,7 @@ import com.amlve.exam.tableEnt.ExamQuestion;
 import com.amlve.examapi.dto.request.PracticeQueryRequest;
 import com.amlve.examapi.dto.response.PracticeDetailVO;
 import com.amlve.examapi.dto.response.PracticeItemVO;
-import com.amlve.studyapi.service.StudyPracticeService;
+import com.amlve.studyapi.service.StudyPracticeApi;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -37,7 +37,7 @@ class ExamQuestionPracticeServiceImplTest {
     private ExamQuestionMapper questionMapper;
 
     @Mock
-    private ObjectProvider<StudyPracticeService> studyPracticeServiceProvider;
+    private ObjectProvider<StudyPracticeApi> studyPracticeServiceProvider;
 
     @InjectMocks
     private ExamQuestionPracticeServiceImpl practiceService;

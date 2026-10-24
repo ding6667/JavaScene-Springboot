@@ -13,8 +13,8 @@ import com.amlve.exam.tableEnt.ExamQuestion;
 import com.amlve.examapi.dto.request.PracticeQueryRequest;
 import com.amlve.examapi.dto.response.PracticeDetailVO;
 import com.amlve.examapi.dto.response.PracticeItemVO;
-import com.amlve.studyapi.dto.response.PracticeStatusResponse;
-import com.amlve.studyapi.service.StudyPracticeService;
+import com.amlve.studyapi.dto.response.PracticeStatusDTO;
+import com.amlve.studyapi.service.StudyPracticeApi;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
@@ -45,7 +45,7 @@ public class ExamQuestionPracticeServiceImpl implements ExamQuestionPracticeServ
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
     private final ExamQuestionMapper questionMapper;
-    private final ObjectProvider<StudyPracticeService> studyPracticeServiceProvider;
+    private final ObjectProvider<StudyPracticeApi> studyPracticeServiceProvider;
 
     @Override
     public PageResult<PracticeItemVO> listPractice(Long userId, PracticeQueryRequest request) {
@@ -60,11 +60,11 @@ public class ExamQuestionPracticeServiceImpl implements ExamQuestionPracticeServ
         Page<ExamQuestion> pageData = questionMapper.selectPage(new Page<>(pageNum, pageSize), wrapper);
         List<ExamQuestion> records = pageData.getRecords();
 
-        Map<Long, PracticeStatusResponse> statusMap = loadStatusBatch(userId, records);
+        Map<Long, PracticeStatusDTO> statusMap = loadStatusBatch(userId, records);
 
         List<PracticeItemVO> items = new ArrayList<>();
         for (ExamQuestion question : records) {
-            PracticeStatusResponse status = statusMap.get(question.getId());
+            PracticeStatusDTO status = statusMap.get(question.getId());
             if (Boolean.TRUE.equals(request.getOnlyUndone())
                     && status != null && Boolean.TRUE.equals(status.getDone())) {
                 continue;
@@ -99,7 +99,7 @@ public class ExamQuestionPracticeServiceImpl implements ExamQuestionPracticeServ
         vo.setSampleTestCases(toSampleCases(question.getTestCases()));
         vo.setAcceptanceRate(toDouble(question.getAcceptanceRate()));
 
-        PracticeStatusResponse status = loadStatus(questionId);
+        PracticeStatusDTO status = loadStatus(questionId);
         if (status != null) {
             vo.setDone(status.getDone());
             vo.setLastAnswer(status.getLastAnswer());
@@ -107,7 +107,7 @@ public class ExamQuestionPracticeServiceImpl implements ExamQuestionPracticeServ
         return vo;
     }
 
-    private PracticeItemVO toItemVO(ExamQuestion question, PracticeStatusResponse status) {
+    private PracticeItemVO toItemVO(ExamQuestion question, PracticeStatusDTO status) {
         PracticeItemVO vo = new PracticeItemVO();
         vo.setId(question.getId());
         vo.setContent(question.getContent());
@@ -130,18 +130,18 @@ public class ExamQuestionPracticeServiceImpl implements ExamQuestionPracticeServ
         return vo;
     }
 
-    private Map<Long, PracticeStatusResponse> loadStatusBatch(Long userId, List<ExamQuestion> questions) {
+    private Map<Long, PracticeStatusDTO> loadStatusBatch(Long userId, List<ExamQuestion> questions) {
         if (questions == null || questions.isEmpty()) {
             return Map.of();
         }
-        StudyPracticeService service = studyPracticeServiceProvider.getIfAvailable();
+        StudyPracticeApi service = studyPracticeServiceProvider.getIfAvailable();
         if (service == null) {
-            log.warn("StudyPracticeService 实现不存在，刷题个人状态置空");
+            log.warn("StudyPracticeApi 实现不存在，刷题个人状态置空");
             return Map.of();
         }
         List<Long> questionIds = questions.stream().map(ExamQuestion::getId).toList();
         try {
-            Result<Map<Long, PracticeStatusResponse>> result = service.getQuestionStatusBatch(userId, questionIds);
+            Result<Map<Long, PracticeStatusDTO>> result = service.getQuestionStatusBatch(userId, questionIds);
             return result == null || result.getData() == null ? Map.of() : result.getData();
         } catch (Exception e) {
             log.warn("批量查询刷题个人状态失败: {}", e.getMessage());
@@ -149,13 +149,13 @@ public class ExamQuestionPracticeServiceImpl implements ExamQuestionPracticeServ
         }
     }
 
-    private PracticeStatusResponse loadStatus(Long questionId) {
-        StudyPracticeService service = studyPracticeServiceProvider.getIfAvailable();
+    private PracticeStatusDTO loadStatus(Long questionId) {
+        StudyPracticeApi service = studyPracticeServiceProvider.getIfAvailable();
         if (service == null) {
             return null;
         }
         try {
-            Result<PracticeStatusResponse> result = service.getQuestionStatus(SecurityUtils.getUserId(), questionId);
+            Result<PracticeStatusDTO> result = service.getQuestionStatus(SecurityUtils.getUserId(), questionId);
             return result == null ? null : result.getData();
         } catch (Exception e) {
             log.warn("查询单题状态失败: {}", e.getMessage());

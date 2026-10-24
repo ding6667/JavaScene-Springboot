@@ -12,8 +12,6 @@ import org.springframework.security.config.annotation.method.configuration.Enabl
 @ComponentScan(basePackages = "com.amlve")
 @MapperScan(basePackages = {
         "com.amlve.system.mapper",
-        "com.amlve.file.mapper",
-        "com.amlve.grading.mapper",
         "com.amlve.dialogue.mapper"
 })
 @Slf4j
