@@ -54,7 +54,7 @@ import java.util.concurrent.RejectedExecutionException;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-public abstract class KnowledgeDatasetServiceImpl implements KnowledgeDatasetService,com.amlve.knowledgeapi.service.KnowledgeService {
+public class KnowledgeDatasetServiceImpl implements KnowledgeDatasetService,com.amlve.knowledgeapi.service.KnowledgeService {
 
     private final Configuration configuration;
     private final QAAgentClient qaAgentClient;
