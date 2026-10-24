@@ -6,7 +6,7 @@ import com.amlve.agentscoreapi.dto.response.ScoreEvaluateResponse;
 /**
  * 评分智能体 API。
  */
-public interface ScoreClient {
+public interface ScoreAgentClient {
 
     /**
      * 调用 Dify 批改工作流
