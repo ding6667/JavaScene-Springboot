@@ -3,6 +3,8 @@ package com.amlve.teach.dto.request;
 import jakarta.validation.constraints.NotNull;
 import lombok.Data;
 
+import java.util.Map;
+
 /**
  * 教师生成教案的请求参数（前端提交用）
  */
@@ -47,6 +49,12 @@ public class PrepareRequest {
      * 模板 themeCode 用于注入 PPT 视觉主题，structureMd 作为 PPT 生成骨架
      */
     private Long templateId;
+
+    /**
+     * PPT 风格令牌（可选）：传了则以该值为准，否则回退到模板 themeCode 对应的预置令牌。
+     * 当前仅用于后端 PPT Markdown 样式覆写；agent-prepare-api 契约无此字段，暂不透传 Dify。
+     */
+    private Map<String, Object> styleTokens;
 
     /**
      * PPT 生成配置（可选，未传字段由工作流兜底默认值）

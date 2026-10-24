@@ -5,8 +5,11 @@ import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
+import com.baomidou.mybatisplus.extension.handlers.JacksonTypeHandler;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
+
+import java.util.Map;
 
 /**
  * PPT模板实体，对应数据库 teach_ppt_template 表
@@ -14,7 +17,7 @@ import lombok.EqualsAndHashCode;
  */
 @Data
 @EqualsAndHashCode(callSuper = true)
-@TableName("teach_ppt_template")
+@TableName(value = "teach_ppt_template", autoResultMap = true)
 public class TeachPptTemplate extends BaseEntity {
 
     /** 主键，数据库自增 */
@@ -36,6 +39,10 @@ public class TeachPptTemplate extends BaseEntity {
     /** 内容结构（MD 骨架，AI 生成 PPT 时填充此结构的占位符） */
     @TableField("structure_md")
     private String structureMd;
+
+    /** 设计令牌（JSON 列：主色/背景色/文字色/字体/字重/代码底色等；为空时回退主题预置令牌） */
+    @TableField(value = "design_tokens", typeHandler = JacksonTypeHandler.class)
+    private Map<String, Object> designTokens;
 
     /** 预览图URL */
     @TableField("preview_image")

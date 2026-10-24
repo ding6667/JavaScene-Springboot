@@ -22,6 +22,7 @@ import com.amlve.teach.tableEnt.TeachPrepareRecord;
 import com.amlve.teach.tableEnt.TeachPpt;
 import com.amlve.teach.util.MarkdownToPptxUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -46,9 +47,24 @@ public class TeachPrepareServiceImpl implements TeachPrepareService {
     /** 错误信息落库截断长度 */
     private static final int ERROR_MSG_MAX = 500;
 
+    /** 风格令牌序列化器（令牌为简单键值对，不依赖容器内定制配置） */
+    private static final ObjectMapper JSON_MAPPER = new ObjectMapper();
+
     /** frontmatter 分隔线（独占一行的 ---），用于定位已含 frontmatter 内容的闭合位置 */
     private static final java.util.regex.Pattern FRONTMATTER_DELIM =
             java.util.regex.Pattern.compile("(?m)^---\\s*$");
+
+    /** 风格令牌颜色值校验：仅允许十六进制或 rgb(a)，杜绝样式注入 */
+    private static final java.util.regex.Pattern CSS_COLOR_PATTERN =
+            java.util.regex.Pattern.compile("^(#[0-9a-fA-F]{3,8}|rgba?\\([0-9.,%\\s]{3,40}\\))$");
+
+    /** 风格令牌字体值校验：字体名、引号、逗号与空白 */
+    private static final java.util.regex.Pattern CSS_FONT_PATTERN =
+            java.util.regex.Pattern.compile("^[\\w\\u4e00-\\u9fa5 ,'\"-]{1,120}$");
+
+    /** 风格令牌字重值校验 */
+    private static final java.util.regex.Pattern CSS_WEIGHT_PATTERN =
+            java.util.regex.Pattern.compile("^(normal|bold|bolder|lighter|[1-9]00)$");
 
     @Resource
     private KnowledgeChapterApi knowledgeChapterApi;
@@ -75,6 +91,8 @@ public class TeachPrepareServiceImpl implements TeachPrepareService {
             // 1. 解析 PPT 模板：templateId 为空用系统默认模板，非空校验可用性（系统或本人且启用）
             TeachPptTemplate template = resolveTemplate(request.getTemplateId(), teacherId);
             String themeCode = template != null ? template.getThemeCode() : null;
+            // 风格令牌：请求显式传入优先，其次模板 design_tokens，最后回退主题预置令牌
+            java.util.Map<String, Object> styleTokens = resolveStyleTokens(request.getStyleTokens(), template);
 
             // 2. 跨模块查询章节备课素材（knowledge 已按 page/pageOrder 升序序列化），失败即中断备课
             Result<com.amlve.knowledgeapi.dto.response.TeachingMaterialDTO> materialResult =
@@ -87,7 +105,7 @@ public class TeachPrepareServiceImpl implements TeachPrepareService {
 
             // 3. 调用备课智能体（素材 DTO 跨模块转换后传入，模板骨架随 ppt_config 下发），失败即中断备课
             Result<com.amlve.agentprepareapi.dto.response.PrepareResponse> agentResultRaw =
-                    prepareAgentClient.generate(toApiRequest(request, template), toApiMaterial(material));
+                    prepareAgentClient.generate(toApiRequest(request, template, styleTokens), toApiMaterial(material));
             if (agentResultRaw == null || agentResultRaw.getCode() != ErrorCodeConstant.SUCCESS) {
                 throw new BusinessException("备课智能体调用失败: "
                         + (agentResultRaw == null ? "接口返回为空" : agentResultRaw.getMessage()));
@@ -99,7 +117,8 @@ public class TeachPrepareServiceImpl implements TeachPrepareService {
             Long pptxFileSize = null;
             String pptxFileName = null;
             if (agentResult.getPptx() != null && !agentResult.getPptx().isBlank()) {
-                pptxUrl = markdownToPptxUtil.convertContent(injectTheme(agentResult.getPptx(), themeCode));
+                pptxUrl = markdownToPptxUtil.convertContent(
+                        injectTheme(agentResult.getPptx(), themeCode, styleTokens));
                 if (pptxUrl != null) {
                     pptxFileName = Paths.get(pptxUrl).getFileName().toString();
                     try {
@@ -210,21 +229,51 @@ public class TeachPrepareServiceImpl implements TeachPrepareService {
     }
 
     /**
-     * PPT Markdown 注入 Marp 基础 frontmatter 与主题样式。
+     * 解析 PPT 风格令牌：请求显式传入（非空）优先，其次是模板库内 design_tokens，
+     * 最后回退 themeCode 对应的预置令牌。
+     */
+    private java.util.Map<String, Object> resolveStyleTokens(java.util.Map<String, Object> requestTokens,
+                                                             TeachPptTemplate template) {
+        if (requestTokens != null && !requestTokens.isEmpty()) {
+            return requestTokens;
+        }
+        if (template == null) {
+            return null;
+        }
+        java.util.Map<String, Object> stored = template.getDesignTokens();
+        if (stored != null && !stored.isEmpty()) {
+            return stored;
+        }
+        return MarpThemeConstants.getDesignTokens(template.getThemeCode());
+    }
+
+    /**
+     * PPT Markdown 注入 Marp 基础 frontmatter、主题样式与风格令牌覆写。
      * <p>
      * marp2pptx 不支持向 Marp CLI 透传 --theme-set，自定义 CSS 主题以 {@code <style>} 块
-     * 内联进 Markdown（Marp 会将其应用到每页并覆盖默认外观）。themeCode 无对应 CSS 时
-     * 仅注入基础 frontmatter（marp/paginate/16:9），走 Marp 默认外观。
+     * 内联进 Markdown（Marp 会将其应用到每页并覆盖默认外观）。主题 CSS 之后追加由风格令牌
+     * 生成的白名单覆写规则（颜色/字体/字重），实现模板主题的个性化微调。
      * <ul>
      *     <li>内容无 frontmatter：头部拼接 frontmatter + style 块；</li>
      *     <li>内容已含 frontmatter（如 Dify 输出自带）：style 块插入到 frontmatter 闭合线之后，不重复注入基础配置；</li>
-     *     <li>无主题样式可注入：原样返回。</li>
+     *     <li>既无主题样式也无可覆写令牌：原样返回。</li>
      * </ul>
      */
-    private String injectTheme(String contentMd, String themeCode) {
-        String css = MarpThemeConstants.getThemeStylesheet(themeCode);
-        if (css == null) {
+    private String injectTheme(String contentMd, String themeCode, java.util.Map<String, Object> styleTokens) {
+        String themeCss = MarpThemeConstants.getThemeStylesheet(themeCode);
+        String overrideCss = buildTokenOverrideCss(styleTokens);
+        if (themeCss == null && overrideCss.isEmpty()) {
             return contentMd;
+        }
+        StringBuilder css = new StringBuilder();
+        if (themeCss != null) {
+            css.append(themeCss);
+        }
+        if (!overrideCss.isEmpty()) {
+            if (css.length() > 0) {
+                css.append('\n');
+            }
+            css.append("/* design tokens */\n").append(overrideCss);
         }
         String styleBlock = "<style>\n" + css + "\n</style>\n\n";
         if (!contentMd.startsWith("---")) {
@@ -244,9 +293,60 @@ public class TeachPrepareServiceImpl implements TeachPrepareService {
         return contentMd;
     }
 
+    /**
+     * 由风格令牌生成覆写 CSS：取值逐项通过白名单校验，非法字段静默忽略（不阻断备课）。
+     */
+    private String buildTokenOverrideCss(java.util.Map<String, Object> tokens) {
+        if (tokens == null || tokens.isEmpty()) {
+            return "";
+        }
+        String primaryColor = safeToken(tokens.get("primaryColor"), CSS_COLOR_PATTERN);
+        String backgroundColor = safeToken(tokens.get("backgroundColor"), CSS_COLOR_PATTERN);
+        String textColor = safeToken(tokens.get("textColor"), CSS_COLOR_PATTERN);
+        String codeBgColor = safeToken(tokens.get("codeBgColor"), CSS_COLOR_PATTERN);
+        String fontFamily = safeToken(tokens.get("fontFamily"), CSS_FONT_PATTERN);
+        String headingWeight = safeToken(tokens.get("headingWeight"), CSS_WEIGHT_PATTERN);
+
+        StringBuilder css = new StringBuilder();
+        appendRule(css, "section",
+                "background", backgroundColor,
+                "color", textColor,
+                "font-family", fontFamily);
+        appendRule(css, "h1, h2, h3",
+                "color", primaryColor,
+                "font-weight", headingWeight);
+        appendRule(css, "pre, code",
+                "background", codeBgColor);
+        return css.toString();
+    }
+
+    /** 追加一条 CSS 规则；声明值均为空时不输出空规则 */
+    private void appendRule(StringBuilder css, String selector, String... declarations) {
+        StringBuilder body = new StringBuilder();
+        for (int i = 0; i + 1 < declarations.length; i += 2) {
+            String value = declarations[i + 1];
+            if (value != null) {
+                body.append("  ").append(declarations[i]).append(": ").append(value).append(";\n");
+            }
+        }
+        if (body.length() > 0) {
+            css.append(selector).append(" {\n").append(body).append("}\n");
+        }
+    }
+
+    /** 字符串令牌白名单校验：非字符串或格式不符返回 null */
+    private String safeToken(Object value, java.util.regex.Pattern pattern) {
+        if (!(value instanceof String text)) {
+            return null;
+        }
+        String trimmed = text.trim();
+        return pattern.matcher(trimmed).matches() ? trimmed : null;
+    }
+
     /** 前端请求 → 智能体 api 请求（字段对齐 api 契约，模板骨架填充 ppt_config.structure） */
     private com.amlve.agentprepareapi.dto.request.PrepareRequest toApiRequest(PrepareRequest request,
-                                                                              TeachPptTemplate template) {
+                                                                              TeachPptTemplate template,
+                                                                              java.util.Map<String, Object> styleTokens) {
         com.amlve.agentprepareapi.dto.request.PrepareRequest apiRequest =
                 new com.amlve.agentprepareapi.dto.request.PrepareRequest();
         apiRequest.setChapterId(request.getChapterId());
@@ -257,6 +357,8 @@ public class TeachPrepareServiceImpl implements TeachPrepareService {
         apiRequest.setKeyPoints(request.getKeyPoints());
         apiRequest.setUserMessage(request.getUserMessage());
         apiRequest.setTemplateId(request.getTemplateId() == null ? null : String.valueOf(request.getTemplateId()));
+        // 风格令牌：JSON 字符串透传工作流；空令牌传空串，工作流按默认风格处理
+        apiRequest.setStyleTokens(toStyleTokensJson(styleTokens));
 
         // PPT 配置：模板骨架 structureMd 优先填充 structure（无模板时空串，由工作流兜底）
         PptConfig pptConfig = new PptConfig();
@@ -290,6 +392,19 @@ public class TeachPrepareServiceImpl implements TeachPrepareService {
             apiRequest.setHomeworkConfig(config);
         }
         return apiRequest;
+    }
+
+    /** 风格令牌 → JSON 字符串；空令牌返回空串，序列化异常降级空串（不阻断备课） */
+    private String toStyleTokensJson(java.util.Map<String, Object> styleTokens) {
+        if (styleTokens == null || styleTokens.isEmpty()) {
+            return "";
+        }
+        try {
+            return JSON_MAPPER.writeValueAsString(styleTokens);
+        } catch (Exception e) {
+            log.warn("风格令牌序列化失败，本次按默认风格处理", e);
+            return "";
+        }
     }
 
     /** knowledge-api 素材 DTO → agent-prepare-api 素材 DTO（逐字段拷贝，避免跨模块类加载问题） */

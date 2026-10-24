@@ -6,7 +6,9 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.regex.Pattern;
 
 /**
@@ -28,7 +30,26 @@ public final class MarpThemeConstants {
     /** 预置主题元数据（外观主题列表接口直接返回，不查库） */
     public static final List<MarpThemeVO> THEMES = buildThemes();
 
+    /**
+     * 预置主题的设计令牌：模板未配置 design_tokens 时按 themeCode 回退，
+     * 保证模板详情与备课生成始终有令牌可用。
+     */
+    private static final Map<String, Map<String, Object>> DESIGN_TOKENS = buildDesignTokens();
+
     private MarpThemeConstants() {
+    }
+
+    /**
+     * 读取主题设计令牌（模板详情 designTokens 字段来源）。
+     *
+     * @param themeCode 主题编码
+     * @return 只读令牌 Map；未知主题返回 null
+     */
+    public static Map<String, Object> getDesignTokens(String themeCode) {
+        if (themeCode == null) {
+            return null;
+        }
+        return DESIGN_TOKENS.get(themeCode);
     }
 
     /**
@@ -55,10 +76,10 @@ public final class MarpThemeConstants {
 
     private static List<MarpThemeVO> buildThemes() {
         List<MarpThemeVO> themes = new ArrayList<>();
-        themes.add(theme("java-default", "标准教学蓝", "白底深蓝主色，适合常规课堂投影"));
-        themes.add(theme("java-dark", "深色演示", "黑底白字高对比，适合暗光环境演示"));
-        themes.add(theme("java-uncover", "活力渐变", "渐变背景大字排版，适合案例驱动的活泼课堂"));
-        themes.add(theme("java-minimal", "极简留白", "极简排版突出内容，适合概念对比与重点提炼"));
+        themes.add(theme("java-default", "标准教学", "白底黑字，克制清晰，适合常规课堂投影"));
+        themes.add(theme("java-dark", "深色演示", "深灰底浅字，适合弱光环境与投影对比"));
+        themes.add(theme("java-uncover", "案例大字", "浅灰底超大字标题，适合案例拆解与重点强调"));
+        themes.add(theme("java-minimal", "极简留白", "暖白底细字重，留白充足，适合概念讲解"));
         return List.copyOf(themes);
     }
 
@@ -68,5 +89,40 @@ public final class MarpThemeConstants {
         vo.setName(name);
         vo.setDescription(description);
         return vo;
+    }
+
+    /**
+     * 预置主题设计令牌：取值与 marp-themes/{themeCode}.css 中的关键样式保持一致，
+     * 供前端模板详情展示与备课生成时的视觉覆写使用。
+     */
+    private static Map<String, Map<String, Object>> buildDesignTokens() {
+        Map<String, Map<String, Object>> tokens = new LinkedHashMap<>();
+        tokens.put("java-default", tokens("#1c1917", "#ffffff", "#333333",
+                "'Microsoft YaHei', 'PingFang SC', 'Helvetica Neue', sans-serif", "bold", "#f5f5f4",
+                "白底黑字，克制清晰，适合常规课堂投影"));
+        tokens.put("java-dark", tokens("#ffffff", "#1c1917", "#e7e5e4",
+                "'Microsoft YaHei', 'PingFang SC', 'Helvetica Neue', sans-serif", "bold", "#292524",
+                "深灰底浅字，适合弱光环境与投影对比"));
+        tokens.put("java-uncover", tokens("#000000", "#f5f5f4", "#1c1917",
+                "'Microsoft YaHei', 'PingFang SC', 'Helvetica Neue', sans-serif", "800", "#e7e5e4",
+                "浅灰底超大字标题，适合案例拆解与重点强调"));
+        tokens.put("java-minimal", tokens("#292524", "#fafaf9", "#44403c",
+                "'Noto Serif SC', Georgia, 'Times New Roman', serif", "300", "#f0eeec",
+                "暖白底细字重，留白充足，适合概念讲解"));
+        return Map.copyOf(tokens);
+    }
+
+    private static Map<String, Object> tokens(String primaryColor, String backgroundColor, String textColor,
+                                              String fontFamily, String headingWeight, String codeBgColor,
+                                              String styleDescription) {
+        Map<String, Object> token = new LinkedHashMap<>();
+        token.put("primaryColor", primaryColor);
+        token.put("backgroundColor", backgroundColor);
+        token.put("textColor", textColor);
+        token.put("fontFamily", fontFamily);
+        token.put("headingWeight", headingWeight);
+        token.put("codeBgColor", codeBgColor);
+        token.put("styleDescription", styleDescription);
+        return java.util.Collections.unmodifiableMap(token);
     }
 }

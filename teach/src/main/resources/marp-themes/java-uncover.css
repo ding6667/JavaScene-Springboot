@@ -1,33 +1,35 @@
 /* @theme java-uncover */
 
-/* Java活泼渐变主题：紫蓝渐变背景，适合案例驱动、互动课堂 */
+/* Java案例大字主题：浅灰底、超大黑标题，靠字号与字重形成冲击，适合案例课 */
 section {
   padding: 70px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: #ffffff;
+  background: #f5f5f4;
+  color: #1c1917;
   font-family: 'Microsoft YaHei', 'PingFang SC', 'Helvetica Neue', sans-serif;
   font-size: 27px;
   line-height: 1.6;
 }
 
 h1 {
-  color: #ffd54f;
-  font-size: 48px;
-  font-weight: bold;
-  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+  color: #000000;
+  font-size: 62px;
+  font-weight: 800;
+  letter-spacing: -1px;
+  margin-bottom: 24px;
 }
 
 h2 {
-  color: #ffe082;
-  font-size: 36px;
-  font-weight: bold;
-  border-left: 6px solid #ffd54f;
-  padding-left: 14px;
+  color: #1c1917;
+  font-size: 42px;
+  font-weight: 700;
+  border-left: 8px solid #1c1917;
+  padding-left: 16px;
 }
 
 h3 {
-  color: #fff3e0;
+  color: #292524;
   font-size: 30px;
+  font-weight: 600;
 }
 
 ul li, ol li {
@@ -35,19 +37,22 @@ ul li, ol li {
 }
 
 strong {
-  color: #ffd54f;
+  color: #000000;
+  font-weight: bold;
 }
 
 code {
-  background: rgba(255, 255, 255, 0.15);
+  background: #e7e5e4;
+  border: 1px solid #d6d3d1;
   border-radius: 4px;
   padding: 2px 8px;
-  color: #ffe082;
+  color: #1c1917;
   font-family: Consolas, 'Courier New', monospace;
 }
 
 pre {
-  background: rgba(0, 0, 0, 0.35);
+  background: #ffffff;
+  border: 1px solid #d6d3d1;
   border-radius: 8px;
   padding: 20px;
   font-size: 20px;
@@ -55,8 +60,9 @@ pre {
 
 pre code {
   background: none;
+  border: none;
   padding: 0;
-  color: #f8f8f2;
+  color: #1c1917;
 }
 
 table {
@@ -65,18 +71,18 @@ table {
 }
 
 th {
-  background: #ffd54f;
-  color: #5e35b1;
+  border-bottom: 3px solid #1c1917;
   padding: 10px 16px;
+  font-weight: 700;
 }
 
 td {
-  border: 1px solid rgba(255, 255, 255, 0.4);
+  border-bottom: 1px solid #d6d3d1;
   padding: 8px 16px;
 }
 
 blockquote {
-  border-left: 5px solid #ffd54f;
+  border-left: 5px solid #a8a29e;
   padding-left: 16px;
-  color: #e0e0e0;
+  color: #57534e;
 }

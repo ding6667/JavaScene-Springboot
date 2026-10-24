@@ -1,32 +1,32 @@
 /* @theme java-minimal */
 
-/* Java极简主题：大留白细字重，适合概念对比、严谨学术场合 */
+/* Java极简留白主题：细字重、大留白，适合概念对比与重点提炼 */
 section {
   padding: 80px;
-  background: #fafafa;
-  color: #2c2c2c;
+  background: #fafaf9;
+  color: #44403c;
   font-family: 'Noto Serif SC', Georgia, 'Times New Roman', serif;
   font-size: 25px;
   line-height: 1.7;
 }
 
 h1 {
-  color: #2c2c2c;
+  color: #292524;
   font-size: 48px;
   font-weight: 300;
   letter-spacing: 2px;
-  border-bottom: 1px solid #cccccc;
+  border-bottom: 1px solid #d6d3d1;
   padding-bottom: 20px;
 }
 
 h2 {
-  color: #555555;
+  color: #57534e;
   font-size: 34px;
   font-weight: 400;
 }
 
 h3 {
-  color: #777777;
+  color: #78716c;
   font-size: 28px;
   font-weight: 400;
 }
@@ -36,21 +36,22 @@ ul li, ol li {
 }
 
 strong {
-  color: #000000;
+  color: #1c1917;
   font-weight: bold;
 }
 
 code {
-  background: #f0f0f0;
+  background: #f0eeec;
+  border: 1px solid #e7e5e4;
   border-radius: 3px;
   padding: 2px 8px;
-  color: #d63384;
+  color: #1c1917;
   font-family: Consolas, 'Courier New', monospace;
 }
 
 pre {
   background: #ffffff;
-  border: 1px solid #dddddd;
+  border: 1px solid #e7e5e4;
   border-radius: 4px;
   padding: 20px;
   font-size: 20px;
@@ -58,8 +59,9 @@ pre {
 
 pre code {
   background: none;
+  border: none;
   padding: 0;
-  color: #333333;
+  color: #292524;
 }
 
 table {
@@ -68,18 +70,18 @@ table {
 }
 
 th {
-  border-bottom: 2px solid #2c2c2c;
+  border-bottom: 2px solid #292524;
   padding: 10px 16px;
   font-weight: 400;
 }
 
 td {
-  border-bottom: 1px solid #dddddd;
+  border-bottom: 1px solid #e7e5e4;
   padding: 8px 16px;
 }
 
 blockquote {
-  border-left: 3px solid #999999;
+  border-left: 3px solid #a8a29e;
   padding-left: 16px;
-  color: #888888;
+  color: #78716c;
 }

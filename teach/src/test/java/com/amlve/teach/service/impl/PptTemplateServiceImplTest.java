@@ -103,6 +103,38 @@ class PptTemplateServiceImplTest {
         assertThat(vo.getStructureMd()).contains("# 总结");
         assertThat(vo.getThemeCode()).isEqualTo("java-default");
         assertThat(vo.getIsSystem()).isEqualTo(1);
+        // 设计令牌按 themeCode 从预置常量解析
+        assertThat(vo.getDesignTokens())
+                .containsEntry("primaryColor", "#1c1917")
+                .containsEntry("backgroundColor", "#ffffff");
+    }
+
+    @Test
+    void getTemplateDetail_shouldPreferDbDesignTokens_overPresetTokens() {
+        TeachPptTemplate template = systemTemplate();
+        template.setDesignTokens(java.util.Map.of(
+                "primaryColor", "#111111",
+                "backgroundColor", "#eeeeee"));
+        when(teachPptTemplateMapper.selectById(TEMPLATE_ID)).thenReturn(template);
+
+        PptTemplateDetailVO vo = service.getTemplateDetail(TEMPLATE_ID);
+
+        assertThat(vo.getDesignTokens())
+                .containsEntry("primaryColor", "#111111")
+                .containsEntry("backgroundColor", "#eeeeee");
+    }
+
+    @Test
+    void getTemplateDetail_shouldFallbackToPresetTokens_whenDbTokensEmpty() {
+        TeachPptTemplate template = systemTemplate();
+        template.setDesignTokens(java.util.Map.of());
+        when(teachPptTemplateMapper.selectById(TEMPLATE_ID)).thenReturn(template);
+
+        PptTemplateDetailVO vo = service.getTemplateDetail(TEMPLATE_ID);
+
+        assertThat(vo.getDesignTokens())
+                .containsEntry("primaryColor", "#1c1917")
+                .containsEntry("backgroundColor", "#ffffff");
     }
 
     @Test

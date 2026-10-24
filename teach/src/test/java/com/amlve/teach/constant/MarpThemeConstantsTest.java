@@ -42,4 +42,26 @@ class MarpThemeConstantsTest {
         assertThat(MarpThemeConstants.THEMES).extracting("code")
                 .containsExactlyInAnyOrder("java-default", "java-dark", "java-uncover", "java-minimal");
     }
+
+    @Test
+    void designTokens_shouldResolvePresetThemes() {
+        // 模板详情 designTokens 来源：与主题 CSS 关键取值一致
+        assertThat(MarpThemeConstants.getDesignTokens("java-default"))
+                .containsEntry("primaryColor", "#1c1917")
+                .containsEntry("backgroundColor", "#ffffff")
+                .containsEntry("headingWeight", "bold");
+        assertThat(MarpThemeConstants.getDesignTokens("java-dark"))
+                .containsEntry("backgroundColor", "#1c1917")
+                .containsEntry("textColor", "#e7e5e4");
+        assertThat(MarpThemeConstants.getDesignTokens("java-uncover"))
+                .containsEntry("headingWeight", "800");
+        assertThat(MarpThemeConstants.getDesignTokens("java-minimal"))
+                .containsEntry("headingWeight", "300");
+    }
+
+    @Test
+    void designTokens_shouldReturnNull_forUnknownOrNullTheme() {
+        assertThat(MarpThemeConstants.getDesignTokens("no-such-theme")).isNull();
+        assertThat(MarpThemeConstants.getDesignTokens(null)).isNull();
+    }
 }

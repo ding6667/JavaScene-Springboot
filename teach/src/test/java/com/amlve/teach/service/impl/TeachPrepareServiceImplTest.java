@@ -416,4 +416,103 @@ class TeachPrepareServiceImplTest {
 
         verify(prepareAgentClient, never()).generate(any(), any());
     }
+
+    @Test
+    void generate_shouldPreferRequestStyleTokens_overTemplateTokens() {
+        // 请求显式传 styleTokens：优先于模板主题预置令牌，输出白名单覆写规则
+        when(teachPptTemplateMapper.selectList(any(LambdaQueryWrapper.class)))
+                .thenReturn(java.util.List.of(systemTemplate()));
+        when(knowledgeChapterApi.getTeachingMaterials(CHAPTER_ID)).thenReturn(Result.success(buildKnowledgeMaterial()));
+        when(prepareAgentClient.generate(any(com.amlve.agentprepareapi.dto.request.PrepareRequest.class), any()))
+                .thenReturn(Result.success(buildAgentResult()));
+        when(markdownToPptxUtil.convertContent(anyString())).thenReturn(PPTX_PATH);
+        mockInsertBackfillId();
+
+        PrepareRequest request = buildRequest();
+        request.setStyleTokens(java.util.Map.of(
+                "backgroundColor", "#fafaf9",
+                "primaryColor", "#292524",
+                "headingWeight", "800"));
+
+        service.generateTeachingMaterials(request);
+
+        ArgumentCaptor<String> mdCaptor = ArgumentCaptor.forClass(String.class);
+        verify(markdownToPptxUtil).convertContent(mdCaptor.capture());
+        String md = mdCaptor.getValue();
+        // 主题样式仍在，令牌覆写使用请求值（而非模板 java-uncover 的默认值）
+        assertThat(md).contains("@theme java-uncover")
+                .contains("/* design tokens */")
+                .contains("background: #fafaf9")
+                .contains("font-weight: 800");
+    }
+
+    @Test
+    void generate_shouldFallbackToTemplateDesignTokens_whenRequestTokensAbsent() {
+        // 未传 styleTokens：回退模板 themeCode 对应的预置令牌
+        when(teachPptTemplateMapper.selectList(any(LambdaQueryWrapper.class)))
+                .thenReturn(java.util.List.of(systemTemplate()));
+        when(knowledgeChapterApi.getTeachingMaterials(CHAPTER_ID)).thenReturn(Result.success(buildKnowledgeMaterial()));
+        when(prepareAgentClient.generate(any(com.amlve.agentprepareapi.dto.request.PrepareRequest.class), any()))
+                .thenReturn(Result.success(buildAgentResult()));
+        when(markdownToPptxUtil.convertContent(anyString())).thenReturn(PPTX_PATH);
+        mockInsertBackfillId();
+
+        service.generateTeachingMaterials(buildRequest());
+
+        ArgumentCaptor<String> mdCaptor = ArgumentCaptor.forClass(String.class);
+        verify(markdownToPptxUtil).convertContent(mdCaptor.capture());
+        // java-uncover 预置令牌：浅灰底
+        assertThat(mdCaptor.getValue()).contains("/* design tokens */").contains("background: #f5f5f4");
+    }
+
+    @Test
+    void generate_shouldPreferTemplateDbTokens_overPresetTokens() {
+        // 模板库内配置了 design_tokens：优先于 themeCode 预置令牌
+        TeachPptTemplate template = systemTemplate();
+        template.setDesignTokens(java.util.Map.of(
+                "backgroundColor", "#101010",
+                "primaryColor", "#fafafa"));
+        when(teachPptTemplateMapper.selectList(any(LambdaQueryWrapper.class)))
+                .thenReturn(java.util.List.of(template));
+        when(knowledgeChapterApi.getTeachingMaterials(CHAPTER_ID)).thenReturn(Result.success(buildKnowledgeMaterial()));
+        when(prepareAgentClient.generate(any(com.amlve.agentprepareapi.dto.request.PrepareRequest.class), any()))
+                .thenReturn(Result.success(buildAgentResult()));
+        when(markdownToPptxUtil.convertContent(anyString())).thenReturn(PPTX_PATH);
+        mockInsertBackfillId();
+
+        service.generateTeachingMaterials(buildRequest());
+
+        ArgumentCaptor<String> mdCaptor = ArgumentCaptor.forClass(String.class);
+        verify(markdownToPptxUtil).convertContent(mdCaptor.capture());
+        assertThat(mdCaptor.getValue())
+                .contains("background: #101010")
+                .contains("color: #fafafa");
+    }
+
+    @Test
+    void generate_shouldDropIllegalStyleTokens() {
+        // 非法令牌（CSS 注入/越权字重）逐项丢弃，不影响备课主流程
+        when(knowledgeChapterApi.getTeachingMaterials(CHAPTER_ID)).thenReturn(Result.success(buildKnowledgeMaterial()));
+        when(prepareAgentClient.generate(any(com.amlve.agentprepareapi.dto.request.PrepareRequest.class), any()))
+                .thenReturn(Result.success(buildAgentResult()));
+        when(markdownToPptxUtil.convertContent(anyString())).thenReturn(PPTX_PATH);
+        mockInsertBackfillId();
+
+        PrepareRequest request = buildRequest();
+        request.setStyleTokens(java.util.Map.of(
+                "backgroundColor", "red; } body { display: none",
+                "fontFamily", "Arial; background: url(http://evil)",
+                "headingWeight", "9999"));
+
+        PrepareResponse response = service.generateTeachingMaterials(request);
+
+        assertThat(response.getPptxUrl()).isEqualTo(PPTX_PATH);
+        ArgumentCaptor<String> mdCaptor = ArgumentCaptor.forClass(String.class);
+        verify(markdownToPptxUtil).convertContent(mdCaptor.capture());
+        // 全部令牌非法：不输出覆写规则，原文不被注入
+        assertThat(mdCaptor.getValue())
+                .doesNotContain("design tokens")
+                .doesNotContain("display: none")
+                .doesNotContain("evil");
+    }
 }

@@ -2,6 +2,8 @@ package com.amlve.teach.dto.response;
 
 import lombok.Data;
 
+import java.util.Map;
+
 /**
  * PPT 模板详情（含 structure_md 全文，供前端骨架预览）
  */
@@ -34,4 +36,10 @@ public class PptTemplateDetailVO {
 
     /** 排序值 */
     private Integer sortOrder;
+
+    /**
+     * 设计令牌（主色/背景色/文字色/字体/字重/代码底色等），
+     * 取模板 design_tokens，未配置时按 themeCode 回退预置常量；可空（未知主题）
+     */
+    private Map<String, Object> designTokens;
 }

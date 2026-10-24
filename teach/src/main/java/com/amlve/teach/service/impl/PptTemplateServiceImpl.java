@@ -16,6 +16,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 /**
@@ -80,7 +81,17 @@ public class PptTemplateServiceImpl implements PptTemplateService {
         vo.setIsSystem(template.getIsSystem());
         vo.setTeacherId(template.getTeacherId());
         vo.setSortOrder(template.getSortOrder());
+        vo.setDesignTokens(resolveDesignTokens(template));
         return vo;
+    }
+
+    /** 设计令牌：优先取模板库内 design_tokens，未配置时回退 themeCode 对应的预置令牌 */
+    private Map<String, Object> resolveDesignTokens(TeachPptTemplate template) {
+        Map<String, Object> stored = template.getDesignTokens();
+        if (stored != null && !stored.isEmpty()) {
+            return stored;
+        }
+        return MarpThemeConstants.getDesignTokens(template.getThemeCode());
     }
 
     @Override
