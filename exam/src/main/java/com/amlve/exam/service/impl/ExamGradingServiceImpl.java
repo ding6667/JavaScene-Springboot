@@ -2,7 +2,7 @@ package com.amlve.exam.service.impl;
 
 import com.amlve.agentscoreapi.dto.request.ScoreEvaluateRequest;
 import com.amlve.agentscoreapi.dto.response.ScoreEvaluateResponse;
-import com.amlve.agentscoreapi.service.ScoreClient;
+import com.amlve.agentscoreapi.service.ScoreAgentClient;
 import com.amlve.common.exception.BusinessException;
 import com.amlve.exam.dto.response.GradingResultResponse;
 import com.amlve.exam.enumeration.ExamGradingTaskStatus;
@@ -29,7 +29,7 @@ import java.util.stream.Collectors;
 /**
  * 答题批改服务实现。
  * <p>
- * 异步逐题调用评分智能体（{@link ScoreClient}），汇总得分与错误原因写回批改任务。
+ * 异步逐题调用评分智能体（{@link ScoreAgentClient}），汇总得分与错误原因写回批改任务。
  * 批改运行在异步线程，异常无法向外回传，故统一记录日志并把失败信息写入批改任务的 errorMessage，
  * 便于前端/排查时定位。
  */
@@ -41,7 +41,7 @@ public class ExamGradingServiceImpl implements ExamGradingService {
     private final ExamGradingTaskMapper gradingTaskMapper;
     private final ExamHomeworkSubmitMapper submitMapper;
     private final ExamQuestionMapper questionMapper;
-    private final ScoreClient scoreClient;
+    private final ScoreAgentClient scoreClient;
     private final ExamWrongQuestionService wrongQuestionService;
 
     /**

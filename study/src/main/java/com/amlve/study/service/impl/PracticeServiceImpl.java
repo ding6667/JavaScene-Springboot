@@ -221,10 +221,10 @@ public class PracticeServiceImpl
             ScoreEvaluateRequest scoreRequest = new ScoreEvaluateRequest();
             scoreRequest.setStudentAnswer(request.getAnswerContent());
             scoreRequest.setStandardAnswer(question.getAnswer());
-            scoreRequest.setQuestionType(question.getType());
-            scoreRequest.setFullScore(fullScore);
+            scoreRequest.setQuestionType(question.getType().toString());
+            scoreRequest.setFullScore(String.valueOf(fullScore));
             scoreRequest.setQuestionContent(question.getContent());
-            scoreRequest.setChapterId(question.getChapterId());
+            scoreRequest.setChapterId(question.getChapterId().toString());
             ScoreEvaluateResponse scoreResponse = scoreAgentClient.evaluate(scoreRequest);
             if (scoreResponse != null && scoreResponse.getScore() != null) {
                 score = scoreResponse.getScore();

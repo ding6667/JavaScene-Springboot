@@ -12,7 +12,7 @@ import com.amlve.common.request.PageResult;
 import com.amlve.common.request.Result;
 import com.amlve.examapi.dto.response.QuestionDetailResponse;
 import com.amlve.examapi.service.ExamQuestionApi;
-import com.amlve.knowledgeapi.dto.response.ChapterNameResponse;
+import com.amlve.knowledgeapi.dto.response.ChapterNameDTO;
 import com.amlve.knowledgeapi.service.KnowledgeChapterApi;
 import com.amlve.study.dto.request.CodeRecordQueryRequest;
 import com.amlve.study.dto.request.CodeRunRequest;
@@ -42,39 +42,13 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
-import javax.tools.Diagnostic;
-import javax.tools.DiagnosticCollector;
-import javax.tools.JavaCompiler;
-import javax.tools.JavaFileObject;
-import javax.tools.StandardJavaFileManager;
-import javax.tools.ToolProvider;
-import java.io.BufferedReader;
-import java.io.BufferedWriter;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.io.OutputStream;
-import java.io.OutputStreamWriter;
+import javax.tools.*;
+import java.io.*;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.FileVisitResult;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.nio.file.SimpleFileVisitor;
+import java.nio.file.*;
 import java.nio.file.attribute.BasicFileAttributes;
-import java.util.ArrayList;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Locale;
-import java.util.Map;
-import java.util.UUID;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
-import java.util.concurrent.ThreadFactory;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
+import java.util.*;
+import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -646,7 +620,7 @@ public class CodeRunServiceImpl implements CodeRunService {
             return;
         }
         try {
-            Result<ChapterNameResponse> result = knowledgeChapterApi.getChapterNameById(chapterId);
+            Result<ChapterNameDTO> result = knowledgeChapterApi.getChapterNameById(chapterId);
             if (result != null && result.getCode() == ErrorCodeConstant.SUCCESS && result.getData() != null) {
                 String name = readChapterName(result.getData());
                 if (name != null && !name.isBlank()) {
@@ -659,7 +633,7 @@ public class CodeRunServiceImpl implements CodeRunService {
     }
 
     /** ChapterNameResponse 未提供 getter，用字段可见的 Jackson 反射读取章节名 */
-    private String readChapterName(ChapterNameResponse response) {
+    private String readChapterName(ChapterNameDTO response) {
         try {
             JsonNode node = FIELD_REFLECT_MAPPER.convertValue(response, JsonNode.class);
             String fullName = node.path("chapterName").asText(null);
