@@ -21,7 +21,7 @@ import com.amlve.teachapi.dto.response.HomeworkResponse;
 import com.amlve.teachapi.dto.response.HomeworkSubmitCheckResponse;
 import com.amlve.teachapi.dto.response.StudentHomeworkBriefResponse;
 import com.amlve.teachapi.dto.response.StudentHomeworkDetailResponse;
-import com.amlve.examapi.dto.response.QuestionBaseResponse;
+import com.amlve.examapi.dto.response.QuestionBaseDTO;
 import com.amlve.examapi.dto.response.QuestionDetailResponse;
 import com.amlve.examapi.service.ExamQuestionApi;
 import com.amlve.knowledgeapi.dto.request.ChapterNamesRequest;
@@ -89,16 +89,16 @@ public class TeachServiceImpl implements TeachService, TeachHomeworkService {
             throw new BusinessException(ErrorCodeConstant.PARAM_INVALID, "作业题目存在重复，请去重后再发布");
         }
         // 批量校验题目存在性：题库接口失败或任一题目缺失则发布失败
-        Result<List<QuestionBaseResponse>> checkResult = examQuestionApi.getQuestionsByIds(new ArrayList<>(questionIds));
+        Result<List<QuestionBaseDTO>> checkResult = examQuestionApi.getQuestionsByIds(new ArrayList<>(questionIds));
         if (checkResult == null || checkResult.getCode() != 200) {
             log.warn("发布作业题目校验失败: 题目IDs={}, result={}", questionIds,
                     checkResult == null ? "null" : checkResult.getCode() + "/" + checkResult.getMessage());
             throw new BusinessException(ErrorCodeConstant.BUSINESS_ERROR, "题目校验服务不可用，请稍后重试");
         }
-        List<QuestionBaseResponse> questionBases = checkResult.getData();
+        List<QuestionBaseDTO> questionBases = checkResult.getData();
         if (questionBases == null || questionBases.size() != questionIds.size()) {
             Set<Long> foundIds = questionBases == null ? Set.of()
-                    : questionBases.stream().map(QuestionBaseResponse::getId).collect(Collectors.toSet());
+                    : questionBases.stream().map(QuestionBaseDTO::getId).collect(Collectors.toSet());
             List<Long> missing = questionIds.stream().filter(id -> !foundIds.contains(id)).toList();
             throw new BusinessException(ErrorCodeConstant.PARAM_INVALID, "以下题目不存在或已删除: " + missing);
         }
@@ -120,11 +120,11 @@ public class TeachServiceImpl implements TeachService, TeachHomeworkService {
         homework.setPublishTime(LocalDateTime.now());
         homeworkMapper.insert(homework);
         // 写题目快照：基础字段来自批量校验结果，答案与解析逐题补充（弱依赖，失败降级留空不阻塞发布）
-        Map<Long, QuestionBaseResponse> baseMap = questionBases.stream()
-                .collect(Collectors.toMap(QuestionBaseResponse::getId, Function.identity()));
+        Map<Long, QuestionBaseDTO> baseMap = questionBases.stream()
+                .collect(Collectors.toMap(QuestionBaseDTO::getId, Function.identity()));
         for (int i = 0; i < questions.size(); i++) {
             HomeworkQuestionItem item = questions.get(i);
-            QuestionBaseResponse base = baseMap.get(item.getQuestionId());
+            QuestionBaseDTO base = baseMap.get(item.getQuestionId());
             TeachHomeworkQuestion snapshot = new TeachHomeworkQuestion();
             snapshot.setHomeworkId(homework.getId());
             snapshot.setQuestionId(base.getId());

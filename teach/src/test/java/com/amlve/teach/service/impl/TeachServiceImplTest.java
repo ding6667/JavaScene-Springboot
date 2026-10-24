@@ -3,7 +3,7 @@ package com.amlve.teach.service.impl;
 import com.amlve.common.constant.ErrorCodeConstant;
 import com.amlve.common.exception.BusinessException;
 import com.amlve.common.request.Result;
-import com.amlve.examapi.dto.response.QuestionBaseResponse;
+import com.amlve.examapi.dto.response.QuestionBaseDTO;
 import com.amlve.examapi.dto.response.QuestionDetailResponse;
 import com.amlve.examapi.service.ExamQuestionApi;
 import com.amlve.knowledgeapi.dto.response.ChapterNameDTO;
@@ -101,8 +101,8 @@ class TeachServiceImplTest {
     }
 
     /** exam-api 批量校验返回的题目基础信息 */
-    private QuestionBaseResponse buildQuestionBase(Long questionId) {
-        QuestionBaseResponse base = new QuestionBaseResponse();
+    private QuestionBaseDTO buildQuestionBase(Long questionId) {
+        QuestionBaseDTO base = new QuestionBaseDTO();
         base.setId(questionId);
         base.setContent("下列哪些是 Java 的基本数据类型？");
         base.setType(1);
