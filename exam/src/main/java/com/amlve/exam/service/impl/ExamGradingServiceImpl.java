@@ -156,6 +156,7 @@ public class ExamGradingServiceImpl implements ExamGradingService {
             return;
         }
         task.setErrorMessage("批改失败: " + e.getMessage());
+        task.setStatus(ExamGradingTaskStatus.FAILED);
         gradingTaskMapper.updateById(task);
     }
 

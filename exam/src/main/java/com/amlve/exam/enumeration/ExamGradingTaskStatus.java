@@ -11,7 +11,8 @@ import lombok.Getter;
 public enum ExamGradingTaskStatus {
 
     PENDING(0, "待批改"),
-    DONE(1, "已完成");
+    DONE(1, "已完成"),
+    FAILED(2, "批改失败");
 
     @EnumValue
     private final Integer value;

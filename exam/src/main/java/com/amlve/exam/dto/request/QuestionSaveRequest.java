@@ -79,7 +79,27 @@ public class QuestionSaveRequest {
 
     private Integer difficulty;
 
+    /**
+     * 原始难度分（1.0-5.0）
+     */
+    private BigDecimal difficultyScore;
+
     private Integer score;
 
     private String cognitiveLevel;
+
+    /**
+     * 能力维度
+     */
+    private List<String> abilityDimensions;
+
+    /**
+     * 常见错误
+     */
+    private List<String> commonMistakes;
+
+    /**
+     * 相似题ID列表
+     */
+    private List<Long> relatedQuestionIds;
 }
