@@ -3,7 +3,7 @@ package com.amlve.agentscore.client;
 import com.amlve.agentscore.bean.DifyClient;
 import com.amlve.agentscoreapi.dto.request.ScoreEvaluateRequest;
 import com.amlve.agentscoreapi.dto.response.ScoreEvaluateResponse;
-import com.amlve.agentscoreapi.service.ScoreClient;
+import com.amlve.agentscoreapi.service.ScoreAgentClient;
 import com.amlve.common.exception.BusinessException;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -26,7 +26,7 @@ import java.util.Map;
 @Slf4j
 @Component
 @RequiredArgsConstructor
-public class ScoreClientImpl implements ScoreClient {
+public class ScoreClientImpl implements ScoreAgentClient {
 
     private static final ObjectMapper MAPPER = new ObjectMapper()
             .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);

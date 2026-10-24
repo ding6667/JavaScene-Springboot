@@ -1,8 +1,8 @@
 package com.amlve.study.service.impl;
 
-import com.amlve.agentscoreapi.ScoreAgentClient;
 import com.amlve.agentscoreapi.dto.request.ScoreEvaluateRequest;
 import com.amlve.agentscoreapi.dto.response.ScoreEvaluateResponse;
+import com.amlve.agentscoreapi.service.ScoreAgentClient;
 import com.amlve.common.enums.JudgeModeEnum;
 import com.amlve.common.enums.QuestionTypeEnum;
 import com.amlve.common.enums.RunStatusEnum;
