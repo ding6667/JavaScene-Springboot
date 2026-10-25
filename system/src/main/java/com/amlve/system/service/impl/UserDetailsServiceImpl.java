@@ -30,10 +30,15 @@ public class UserDetailsServiceImpl implements UserDetailsService {
             throw new UsernameNotFoundException(BusinessConstant.LOGIN_USERNAME_NOT_EXIST + username);
         }
 
+        // enabled=0 视为禁用：登录时由 DaoAuthenticationProvider 抛 DisabledException，
+        // 已签发 token 由 JwtAuthenticationFilter 拦截
+        boolean enabled = user.getEnabled() != null && user.getEnabled() == 1;
+
         return new CustomUserDetails(
                 user.getId(),
                 user.getUsername(),
                 user.getPassword(),
+                enabled,
                 Collections.singletonList(new SimpleGrantedAuthority("ROLE_" + user.getRoleName()))
         );
     }

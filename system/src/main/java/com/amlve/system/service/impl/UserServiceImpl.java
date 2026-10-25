@@ -11,10 +11,13 @@ import com.amlve.system.converter.UserConverter;
 import com.amlve.system.dto.request.AdminRegisterRequest;
 import com.amlve.system.dto.request.UserCreateRequest;
 import com.amlve.system.dto.request.UserUpdateRequest;
+import com.amlve.system.dto.response.LoginVO;
 import com.amlve.system.dto.response.UserInfoResponse;
 import com.amlve.system.mapper.UserMapper;
+import com.amlve.system.service.TokenRevocationService;
 import com.amlve.system.service.UserService;
 import com.amlve.system.tableEnt.User;
+import com.amlve.system.util.RouteResolver;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
@@ -25,14 +28,17 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.authentication.DisabledException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.GrantedAuthority;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -50,14 +56,20 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
     private final PasswordEncoder passwordEncoder;
     private final AuthenticationManager authenticationManager;
     private final UserConverter userConverter;
+    private final RouteResolver routeResolver;
+    private final TokenRevocationService tokenRevocationService;
 
     @Override
-    public String checkUser(String username, String password) {
+    public LoginVO checkUser(String username, String password) {
         try {
             UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(username, password);
             Authentication authentication = authenticationManager.authenticate(authToken);
             CustomUserDetails user = (CustomUserDetails) authentication.getPrincipal();
-            return jwtUtil.generateToken(user.getUserId(), user.getUsername());
+            return buildLogin(user.getUserId(), user.getUsername(), toRoleNames(user.getAuthorities()));
+        } catch (DisabledException e) {
+            log.warn("禁用账号尝试登录, 用户名: {}", username);
+            throw new BusinessException(com.amlve.common.constant.ErrorCodeConstant.UNAUTHORIZED,
+                    com.amlve.common.constant.ErrorMessageConstant.ACCOUNT_DISABLED);
         } catch (BadCredentialsException e) {
             log.warn("登录失败, 用户名: {}", username);
             throw new BusinessException(ErrorCodeConstant.LOGIN_ERROR, ErrorMessageConstant.LOGIN_ERROR);
@@ -66,7 +78,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
 
     @Override
     @Transactional
-    public String register(String username, String password) {
+    public LoginVO register(String username, String password) {
         // 1. 检查用户名是否已存在
         long count = userMapper.selectCount(new LambdaQueryWrapper<User>().eq(User::getUsername, username));
         if (count > 0) {
@@ -82,16 +94,16 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         user.setRoleName("STUDENT"); // 自助注册仅产生学生，教师/管理员走管理端
         userMapper.insert(user);
 
-        // 3. 返回 JWT（注册即登录，直接返回 Token，角色写入 role claim）
+        // 3. 注册即登录，返回 token + 角色 + 落地页
         log.info("用户注册成功: {}", username);
-        return jwtUtil.generateToken(user.getId(), user.getUsername());
+        return buildLogin(user.getId(), user.getUsername(), List.of(user.getRoleName()));
     }
 
     /**
      * 管理员注册：系统仅支持一名管理员，通过后台初始化密钥（app.admin.init-key）注册，注册即登录
      */
     @Override
-    public String registerAdmin(AdminRegisterRequest request) {
+    public LoginVO registerAdmin(AdminRegisterRequest request) {
         if (!StringUtils.hasText(adminInitKey) || !adminInitKey.equals(request.getAdminKey())) {
             log.warn("管理员注册被拒绝: 初始化密钥缺失或错误, 用户名: {}", request.getUsername());
             throw new BusinessException(ErrorCodeConstant.PERMISSION_DENIED, ErrorMessageConstant.ADMIN_INIT_KEY_INVALID);
@@ -111,7 +123,31 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         user.setRoleName("ADMIN");
         userMapper.insert(user);
         log.info("管理员注册成功: {}", request.getUsername());
-        return jwtUtil.generateToken(user.getId(), user.getUsername());
+        return buildLogin(user.getId(), user.getUsername(), List.of(user.getRoleName()));
+    }
+
+    /**
+     * 签发 token 并组装登录响应，token 的 roles claim 与返回给前端的 roles 保持同源
+     */
+    private LoginVO buildLogin(Long userId, String username, List<String> roles) {
+        return LoginVO.builder()
+                .token(jwtUtil.generateToken(userId, username, roles))
+                .userId(userId)
+                .username(username)
+                .roles(roles)
+                .defaultRoute(routeResolver.resolve(roles))
+                .build();
+    }
+
+    /**
+     * 去掉 Spring Security 的 ROLE_ 前缀，得到业务角色名
+     */
+    private static List<String> toRoleNames(Collection<? extends GrantedAuthority> authorities) {
+        return authorities.stream()
+                .map(GrantedAuthority::getAuthority)
+                .filter(a -> a.startsWith("ROLE_"))
+                .map(a -> a.substring("ROLE_".length()))
+                .collect(Collectors.toList());
     }
 
     @Override
@@ -157,7 +193,8 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         if (exist == null) {
             throw new BusinessException(ErrorCodeConstant.USER_NOT_FOUND, ErrorMessageConstant.USER_NOT_FOUND);
         }
-        if (StringUtils.hasText(request.getPassword())) {
+        boolean passwordChanged = StringUtils.hasText(request.getPassword());
+        if (passwordChanged) {
             exist.setPassword(passwordEncoder.encode(request.getPassword()));
         }
         if (request.getRealName() != null) {
@@ -190,6 +227,11 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
             exist.setEnabled(request.getEnabled());
         }
         userMapper.updateById(exist);
+        // 改密码后旧 token 必须立刻失效，否则「改了密码」不等于「踢掉了拿旧凭证的人」。
+        // 角色与 enabled 不需要这一步：过滤器每请求从库重载 authorities 和 enabled，改动即时生效
+        if (passwordChanged) {
+            tokenRevocationService.revokeAllTokens(exist.getId(), "password_reset");
+        }
         return userConverter.toResponse(exist);
     }
 
@@ -234,8 +276,8 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
 
     /**
      * 编程式角色校验：当前登录用户必须是教师
-     * 说明：JWT 过滤器构建的认证令牌不含角色信息，无法直接使用 @PreAuthorize 的 hasRole，
-     * 此处通过 SecurityUtils 获取当前用户后查库比对角色
+     * 过滤器已把 ROLE_&lt;roleName&gt; 装入 authorities，对当前登录用户的判断可直接用
+     * @PreAuthorize("hasRole('TEACHER')")；本方法保留供需要校验「他人」角色的调用点使用
      */
     @Override
     public boolean isTeacher(Long userId) {
@@ -248,8 +290,8 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
 
     /**
      * 编程式角色校验：判断指定用户是否为管理员（系统仅一名，后台密钥注册产生）
-     * 说明：JWT 过滤器构建的认证令牌不含角色信息，无法直接使用 @PreAuthorize 的 hasRole，
-     * 供其他模块（如 knowledge 权重配置）经 system-api 跨模块调用
+     * 供其他模块（如 knowledge 权重配置）经 system-api 跨模块调用；
+     * 对当前登录用户的判断可用 @PreAuthorize("hasRole('ADMIN')") 替代
      */
     @Override
     public boolean isAdmin(Long userId) {
@@ -262,8 +304,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
 
     /**
      * 编程式角色校验：当前登录用户必须是管理员（唯一，后台密钥注册产生）
-     * 说明：JWT 过滤器构建的认证令牌不含角色信息，无法直接使用 @PreAuthorize 的 hasRole，
-     * 此处通过 SecurityUtils 获取当前用户后查库比对角色
+     * 等价写法是 @PreAuthorize("hasRole('ADMIN')")，此处保留因需记录被拒 userId 到告警日志
      */
     private void checkAdminPermission() {
         Long userId = SecurityUtils.getUserId();

@@ -2,7 +2,6 @@ package com.amlve.exam.controller;
 
 import com.amlve.common.request.Result;
 import com.amlve.exam.service.ExamQuestionGenerateService;
-import com.amlve.exam.util.ExamAuthSupport;
 import com.amlve.examapi.dto.request.QuestionGenerateBizRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -19,11 +18,10 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/api/exam/question/generate")
 @RequiredArgsConstructor
-@PreAuthorize("isAuthenticated()")
+@PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
 public class ExamQuestionGenerateController {
 
     private final ExamQuestionGenerateService generateService;
-    private final ExamAuthSupport examAuthSupport;
 
     /**
      * AI 生成题目
@@ -32,7 +30,6 @@ public class ExamQuestionGenerateController {
      */
     @PostMapping
     public Result<Integer> generate(@RequestBody QuestionGenerateBizRequest request) {
-        examAuthSupport.requireTeacherOrAdmin();
         log.info("AI 出题: chapterId={}, difficultyConfigId={}, count={}",
                 request.getChapterId(), request.getDifficultyConfigId(), request.getCount());
         return Result.success(generateService.generate(request));

@@ -14,19 +14,17 @@ import org.springframework.stereotype.Component;
 
 import javax.crypto.SecretKey;
 import java.nio.charset.StandardCharsets;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.Map;
+import java.time.Duration;
+import java.util.*;
 
 @Slf4j
 @Component
 public class JWTUtil {
 
-    // 配置文件填写密钥，长度至少32位！
     @Value("${jwt.secret}")
     private String secretStr;
 
-    @Value("${jwt.expiration}") // 默认2小时
+    @Value("${jwt.expiration}") // 毫秒，例如 7200000
     private Long expiration;
 
     private SecretKey secretKey;
@@ -34,89 +32,86 @@ public class JWTUtil {
     @PostConstruct
     public void init() {
         byte[] bytes = secretStr.getBytes(StandardCharsets.UTF_8);
+        if (bytes.length < 32) {
+            throw new IllegalStateException("jwt.secret 长度不足 32 字节，HS256 无法工作");
+        }
         secretKey = Keys.hmacShaKeyFor(bytes);
-        log.info("========== JWT 密钥初始化 ==========");
-        log.info("  secretStr = [{}]", secretStr);
-        log.info("  secretStr 长度 = {} 字节 / {} 字符", bytes.length, secretStr.length());
-        log.info("====================================");
+        log.info("JWT 密钥初始化完成，长度 = {} 字节", bytes.length);
     }
 
     /**
-     * 生成 JWT，同时存储 userId 和 username
+     * 生成 JWT：userId + username + roles + jti
      */
-    public String generateToken(Long userId, String username) {
+    public String generateToken(Long userId, String username, List<String> roles) {
         Map<String, Object> claims = new HashMap<>();
         claims.put("userId", userId);
         claims.put("username", username);
+        claims.put("roles", roles == null ? Collections.emptyList() : roles);
 
+        Date now = new Date();
         String token = Jwts.builder()
-                .setClaims(claims)
+                .setClaims(claims)              // setClaims 必须放最前，它会覆盖其他
                 .setSubject(String.valueOf(userId))
-                .setIssuedAt(new Date())
-                .setExpiration(new Date(System.currentTimeMillis() + expiration))
+                .setId(UUID.randomUUID().toString())   // jti
+                .setIssuedAt(now)
+                .setExpiration(new Date(now.getTime() + expiration))
                 .signWith(secretKey)
                 .compact();
 
-        // 自验：如果这里都过不了，说明密钥初始化就有问题
+        // 自验：失败直接抛，绝不把坏 token 发出去
         try {
             Jwts.parserBuilder().setSigningKey(secretKey).build().parseClaimsJws(token);
-            log.info("✅ generateToken 自验通过 | userId={} | 生成的token前50={}", userId, token.substring(0, Math.min(50, token.length())));
         } catch (Exception e) {
-            log.error("❌ generateToken 自验失败！！！原因：{}", e.getMessage());
+            log.error("JWT 自验失败，密钥或配置有误：{}", e.getMessage());
+            throw new IllegalStateException("JWT 签发异常", e);
         }
         return token;
     }
 
     /**
-     * 解析 token，获取 userId
+     * 验签并返回 claims。调用方一次取齐 subject / jti / iat，避免同一请求重复验签。
      */
-    public Long getUserIdByToken(String token) {
-        Claims claims = Jwts.parserBuilder()
+    public Claims parseClaims(String token) {
+        return Jwts.parserBuilder()
                 .setSigningKey(secretKey)
                 .build()
                 .parseClaimsJws(token)
                 .getBody();
-        return claims.get("userId", Long.class);
     }
 
     /**
-     * 解析 token，获取 username
+     * 验签但忽略过期：登出一个已经放着过夜的 token 时仍要拿到 jti 才能拉黑。
+     * 只放过 ExpiredJwtException，签名照样校验——绕过验签会让伪造 token 也能写黑名单。
      */
-    public String getUsernameByToken(String token) {
-        Claims claims = Jwts.parserBuilder()
-                .setSigningKey(secretKey)
-                .build()
-                .parseClaimsJws(token)
-                .getBody();
-        return claims.get("username", String.class);
-    }
-
-    /**
-     * 校验 token 是否合法、没过期
-     */
-    public boolean verifyToken(String token) {
-        // 诊断：打印 Filter 收到的 token
-        if (token != null) {
-            log.info("🔍 verifyToken 收到的token | 长度={} | 前50={}", token.length(), token.substring(0, Math.min(50, token.length())));
-        }
+    public Claims parseIgnoringExpiration(String token) {
         try {
-            Jwts.parserBuilder()
-                    .setSigningKey(secretKey)
-                    .build()
-                    .parseClaimsJws(token);
+            return parseClaims(token);
+        } catch (ExpiredJwtException e) {
+            return e.getClaims();
+        }
+    }
+
+    /**
+     * token 最大存活时间。吊销记录的 TTL 由它推导，避免与 jwt.expiration 配置脱节
+     */
+    public Duration maxTokenLifetime() {
+        return Duration.ofMillis(expiration);
+    }
+
+    /** 校验签名 + 过期 */
+    public boolean verifyToken(String token) {
+        try {
+            parseClaims(token);
             return true;
         } catch (ExpiredJwtException e) {
-            log.warn("Token 已过期: {}", e.getMessage());
-            throw new BusinessException(ErrorCodeConstant.UNAUTHORIZED, ErrorMessageConstant.TOKEN_EXPIRED);
+            throw new BusinessException(ErrorCodeConstant.UNAUTHORIZED,
+                    ErrorMessageConstant.TOKEN_EXPIRED);
         } catch (Exception e) {
-            log.warn("Token 无效: {}", e.getMessage());
-            throw new BusinessException(ErrorCodeConstant.UNAUTHORIZED, ErrorMessageConstant.TOKEN_INVALID);
+            throw new BusinessException(ErrorCodeConstant.UNAUTHORIZED,
+                    ErrorMessageConstant.TOKEN_INVALID);
         }
     }
 
-    /**
-     * 从请求头中提取 Token（工具方法，方便调用）
-     */
     public String extractToken(String authorizationHeader) {
         if (authorizationHeader != null && authorizationHeader.startsWith("Bearer ")) {
             return authorizationHeader.substring(7);
