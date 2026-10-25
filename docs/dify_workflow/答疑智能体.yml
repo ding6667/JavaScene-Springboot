@@ -1,0 +1,392 @@
+app:
+  description: '1.概念通俗化翻译：将教材晦涩学术表述转化为零基础学生可理解的语言，不篡改教材定义。
+
+    2. 知识点辨析：针对教材高频易混点（如成员变量与局部变量、重写与重载、throw与throws）进行对比讲解。
+
+    3. 章节定点答疑：学生可指定章节提问，智能体严格限定在该章节知识范围内作答，防止超前知识点泄露。
+
+    4. 教材原文溯源：每次回答自动附带教材出处、页码对应知识点描述。
+
+    '
+  icon: 🤖
+  icon_background: '#FFEAD5'
+  icon_type: emoji
+  mode: workflow
+  name: 答疑智能体
+  use_icon_as_answer_icon: false
+dependencies:
+- current_identifier: null
+  type: marketplace
+  value:
+    marketplace_plugin_unique_identifier: langgenius/deepseek:0.0.26@bdf47cb41e9062bba00d26625d2a795c1874011d8ce64bff738c44b5a31787ea
+    version: null
+- current_identifier: null
+  type: marketplace
+  value:
+    marketplace_plugin_unique_identifier: langgenius/tongyi:0.2.24@21cf04c4a5cc4438c3f634cebbaa1d969b42056d5b8e45878b74b2b3981b7259
+    version: null
+kind: app
+version: 0.7.0
+workflow:
+  conversation_variables: []
+  environment_variables: []
+  features:
+    file_upload:
+      allowed_file_extensions:
+      - .JPG
+      - .JPEG
+      - .PNG
+      - .GIF
+      - .WEBP
+      - .SVG
+      allowed_file_types:
+      - image
+      allowed_file_upload_methods:
+      - local_file
+      - remote_url
+      enabled: false
+      fileUploadConfig:
+        attachment_image_file_size_limit: 2
+        audio_file_size_limit: 50
+        batch_count_limit: 5
+        file_size_limit: 15
+        file_upload_limit: 50
+        image_file_batch_limit: 10
+        image_file_size_limit: 10
+        knowledge_file_size_limit: 15
+        single_chunk_attachment_limit: 10
+        skill_file_size_limit: 50
+        video_file_size_limit: 100
+        workflow_file_upload_limit: 10
+      image:
+        enabled: false
+        number_limits: 3
+        transfer_methods:
+        - local_file
+        - remote_url
+      number_limits: 3
+    opening_statement: ''
+    retriever_resource:
+      enabled: true
+    sensitive_word_avoidance:
+      enabled: false
+    speech_to_text:
+      enabled: false
+    suggested_questions: []
+    suggested_questions_after_answer:
+      enabled: false
+    text_to_speech:
+      enabled: false
+      language: ''
+      voice: ''
+  graph:
+    edges:
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: start
+        targetType: knowledge-retrieval
+      id: 1788778547817-source-1788778931589-target
+      source: '1788778547817'
+      sourceHandle: source
+      target: '1788778931589'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: knowledge-retrieval
+        targetType: llm
+      id: 1788778931589-source-1788779448612-target
+      source: '1788778931589'
+      sourceHandle: source
+      target: '1788779448612'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: llm
+        targetType: end
+      id: 1788779448612-source-1788779517762-target
+      source: '1788779448612'
+      sourceHandle: source
+      target: '1788779517762'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    nodes:
+    - data:
+        selected: false
+        title: 用户输入
+        type: start
+        variables:
+        - default: ''
+          hint: ''
+          label: chapterId
+          options: []
+          placeholder: ''
+          required: false
+          type: number
+          variable: chapterId
+        - default: ''
+          hint: ''
+          label: userQuery
+          options: []
+          placeholder: ''
+          required: true
+          type: paragraph
+          variable: userQuery
+      height: 134
+      id: '1788778547817'
+      position:
+        x: 80
+        y: 282
+      positionAbsolute:
+        x: 80
+        y: 282
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 242
+      zIndex: 0
+    - data:
+        author: 猪培根
+        desc: ''
+        height: 176
+        selected: false
+        showAuthor: true
+        text: '{"root":{"children":[{"children":[{"detail":0,"format":0,"mode":"normal","style":"","text":"{","type":"text","version":1}],"direction":null,"format":"","indent":0,"type":"paragraph","version":1,"textFormat":0,"textStyle":""},{"children":[{"detail":0,"format":0,"mode":"normal","style":"","text":" 
+            \"inputs\": {","type":"text","version":1}],"direction":null,"format":"","indent":0,"type":"paragraph","version":1,"textFormat":0,"textStyle":""},{"children":[{"detail":0,"format":0,"mode":"normal","style":"","text":" 
+                \"chapterId\": string ,","type":"text","version":1}],"direction":null,"format":"","indent":0,"type":"paragraph","version":1,"textFormat":0,"textStyle":""},{"children":[{"detail":0,"format":0,"mode":"normal","style":"","text":" 
+                \"userQuery\" : string","type":"text","version":1}],"direction":null,"format":"","indent":0,"type":"paragraph","version":1,"textFormat":0,"textStyle":""},{"children":[{"detail":0,"format":0,"mode":"normal","style":"","text":" 
+            }","type":"text","version":1}],"direction":null,"format":"","indent":0,"type":"paragraph","version":1,"textFormat":0,"textStyle":""},{"children":[{"detail":0,"format":0,"mode":"normal","style":"","text":"}","type":"text","version":1}],"direction":null,"format":"","indent":0,"type":"paragraph","version":1,"textFormat":0,"textStyle":""}],"direction":null,"format":"","indent":0,"type":"root","version":1}}'
+        theme: blue
+        title: ''
+        type: ''
+        width: 335
+      height: 176
+      id: '1788778572408'
+      position:
+        x: 62.004837844145
+        y: 39.96845915275716
+      positionAbsolute:
+        x: 62.004837844145
+        y: 39.96845915275716
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom-note
+      width: 335
+      zIndex: 0
+    - data:
+        dataset_ids:
+        - jA+dDZKuGSJt6GIMs/tpd0Z8iava2e12G6BGpumvD4wFLFTFpJ7gFPHXyhjVqWD2
+        metadata_filtering_conditions:
+          conditions:
+          - comparison_operator: '='
+            id: 980256ae-5a0b-495e-bd9d-cd43d11cdb92
+            metadata_id: ebfc81f9-0667-4295-83b8-ede38830157b
+            name: chapter_id
+            value: '{{#1788778547817.chapterId#}}'
+          logical_operator: and
+        metadata_filtering_mode: manual
+        multiple_retrieval_config:
+          reranking_enable: false
+          reranking_mode: weighted_score
+          reranking_model:
+            model: qwen3-rerank
+            provider: langgenius/tongyi/tongyi
+          score_threshold: null
+          top_k: 5
+          weights:
+            keyword_setting:
+              keyword_weight: 0.3
+            vector_setting:
+              embedding_model_name: text-embedding-v3
+              embedding_provider_name: langgenius/tongyi/tongyi
+              vector_weight: 0.7
+            weight_type: customized
+        query_attachment_selector: []
+        query_variable_selector:
+        - '1788778547817'
+        - userQuery
+        retrieval_mode: multiple
+        selected: true
+        title: 知识检索
+        type: knowledge-retrieval
+      height: 89
+      id: '1788778931589'
+      position:
+        x: 720.004794331819
+        y: 303
+      positionAbsolute:
+        x: 720.004794331819
+        y: 303
+      selected: true
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 241
+      zIndex: 0
+    - data:
+        context:
+          enabled: true
+          variable_selector:
+          - '1788778931589'
+          - result
+        model:
+          completion_params:
+            temperature: 0.7
+          mode: chat
+          name: deepseek-v4-flash
+          provider: langgenius/deepseek/deepseek
+        prompt_template:
+        - id: a608a2eb-bbe5-4aa3-8b7b-e0ed95a3df88
+          role: system
+          text: "# 系统提示词（SYSTEM Prompt）\n\n你是一位严谨的 Java 编程助教，专门负责《Java程序设计基础》（西安电子科技大学出版社，刘平山主编）教材的理论教学答疑。\n\
+            \n## 一、你的身份与定位\n\n你是**教材知识答疑智能体**，是学生理论学习的核心 AI 助手。你的唯一知识来源是《Java程序设计基础》这本教材，你的职责是帮助学生理解教材中的概念、语法、原理、重难点和易混淆知识点。\n\
+            \n你**不是**通用编程助手，**不是**代码生成器，**不是**行业顾问。\n\n\n## 二、你的知识范围\n\n你只能回答以下范围内的问题：\n\
+            \n- Java概述、开发环境搭建\n- 基本数据类型、运算符、流程控制\n- 数组、字符串\n- 类与对象、封装、继承、多态、接口\n-\
+            \ 异常处理\n- IO流\n- 多线程\n- 集合框架\n- 教材中各章节的例题、课后习题、实训案例\n\n**超出以上范围的内容（如 Spring\
+            \ Boot、Maven、Git、设计模式、行业最佳实践等），一律拒绝回答。**\n\n\n## 三、你的回答原则\n\n### 原则 1：通俗化翻译\n\
+            将教材中的学术表述，转化为零基础学生能够理解的语言，但**不得篡改教材原意和定义**。\n\n### 原则 2：知识点辨析\n针对高频易混淆概念，主动进行对比讲解。例如：\n\
+            - 成员变量 vs 局部变量\n- 重写 vs 重载\n- throw vs throws\n- abstract class vs interface\n\
+            \n### 原则 3：章节限定\n- 如果学生未指定章节，根据问题关键词自动匹配对应章节。\n- 如果学生指定了章节，**严格限定在该章节知识范围内作答**，禁止泄露超前知识点。\n\
+            \n### 原则 4：教材溯源\n每次回答必须附带教材出处，格式为：\n> **参考来源**：《Java程序设计基础》第X章 [章节名] 第X节\
+            \ [节名]，P.XXX\n\n### 原则 5：引导式教学\n- 对于概念类问题：给出清晰定义 + 通俗解释 + 代码示例（简短）\n-\
+            \ 对于代码类问题：**只给思路和关键代码片段，不给出完整的可运行成品代码**\n- 对于易混淆点：给出对比表格或对比说明\n\n\n##\
+            \ 四、输入与输出规范\n\n### 输入\n你会收到两个参数：\n- `user_query`（必填）：用户的问题文本\n- `chapter_id`（选填）：用户限定的章节ID\n\
+            \n### 输出格式\n你必须使用 **Markdown 格式** 输出所有回答，要求如下：\n\n1. **标题**：使用 `#`、`##`、`###`\
+            \ 来区分内容层级，禁止使用纯文本加粗代替标题\n2. **代码块**：凡是涉及代码，必须使用三个反引号（```）包裹，并标注语言类型（如\
+            \ `java`、`bash`）\n3. **分割线**：在不同话题之间，使用 `---` 单独成行分隔\n4. **禁止**：不要输出原始\
+            \ HTML 标签\n\n### 输出结构\n每次回答至少包含以下结构：\n```markdown\n## [知识点名称]\n\n### \U0001F4D6\
+            \ 教材定义\n[教材原文或核心定义]\n\n### \U0001F4A1 通俗解释\n[用学生能听懂的话重新表述]\n\n### \U0001F4CD\
+            \ 教材溯源\n> **参考来源**：《Java程序设计基础》第X章 [章节名]，P.XXX\n\n---\n### 补充说明（可选）\n\
+            [扩展内容]\n```\n\n\n## 五、兜底机制\n\n### 当问题超出教材范围时\n如果学生的问题不在你的知识范围内，**必须**统一回复：\n\
+            \n> 该问题超出《Java程序设计基础》（刘平山）教材教学范围，请提问本章课内知识点。\n\n### 当知识库未检索到相关内容时\n如果知识库中没有匹配的内容，**禁止**自行编造答案，回复：\n\
+            \n> 教材中暂未找到相关知识点，请确认您的问题是否属于本章节范围，或尝试换个方式提问。\n\n\n## 六、附加指令格式\n\n当用户提问中包含“请帮我写一段代码”、“请给出代码示例”等指令时，优先给出实现思路，再给出代码片段。\n\
+            \n示例输出结构：\n```markdown\n## 实现思路\n[用 3-5 句话描述实现逻辑]\n\n---\n```java\n//\
+            \ 关键代码片段（非完整程序）\npublic class Example {\n    // 只展示核心逻辑\n}\n```\n```\n\
+            \n\n## 七、输出示例\n\n### 示例 1：概念答疑\n**用户输入**：`什么是封装？`\n\n**输出**：\n```markdown\n\
+            ## 封装\n\n### \U0001F4D6 教材定义\n封装是面向对象编程的三大特性之一，指将对象的属性和操作属性的方法捆绑在一起，并隐藏对象内部实现细节，仅对外暴露必要的访问接口。\n\
+            \n### \U0001F4A1 通俗解释\n封装就像一台自动贩卖机。你只需要投币、按按钮（调用方法），就能拿到饮料（得到结果）。你不需要知道机器内部电机怎么转、管道怎么走（内部实现细节）。贩卖机只给你看能按的按钮（对外接口），内部零件是对你隐藏的。\n\
+            \n在 Java 中，封装的实现方式是通过 `private` 修饰成员变量，通过 `public` 的 getter/setter 方法对外提供访问。\n\
+            \n### \U0001F4CD 教材溯源\n> **参考来源**：《Java程序设计基础》第5章 类与对象 第3节 封装，P.123-125\n\
+            ```\n\n### 示例 2：超出范围\n**用户输入**：`Spring Boot 怎么整合 MyBatis？`\n\n**输出**：\n\
+            ```markdown\n该问题超出《Java程序设计基础》（刘平山）教材教学范围，请提问本章课内知识点。\n```\n\n\n## 八、核心红线（绝对不能做）\n\
+            \n1. ❌ 禁止输出教材以外的 Java 高级特性（如 Lambda、Stream、反射深入用法）\n2. ❌ 禁止输出框架知识（Spring、MyBatis、Hibernate\
+            \ 等）\n3. ❌ 禁止输出行业拓展内容（微服务、分布式、性能优化等）\n4. ❌ 禁止直接输出完整的可运行代码（只给思路 + 关键片段）\n\
+            5. ❌ 禁止在没有知识库匹配的情况下编造答案\n6. ❌ 禁止篡改教材定义和原文\n\n---\n\n现在，请根据以上规则回答学生的问题。\n"
+        - id: 0050869f-c065-4eed-9d26-e953b5c02a3c
+          role: assistant
+          text: 检索到的上下文如下：{{#context#}}
+        - id: 5402c5c1-635f-4365-9818-906a9cbfd8e4
+          role: user
+          text: '【限定章节ID】{{#1788778547817.chapterId#}}（为空表示学生未指定章节，此时按问题关键词匹配）
+
+
+            【学生问题】{{#1788778547817.userQuery#}}'
+        selected: false
+        structured_output_enabled: false
+        title: LLM
+        type: llm
+        vision:
+          enabled: false
+      height: 87
+      id: '1788779448612'
+      position:
+        x: 1021.004794331819
+        y: 303
+      positionAbsolute:
+        x: 1021.004794331819
+        y: 303
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 241
+      zIndex: 0
+    - data:
+        outputs:
+        - value_selector:
+          - '1788779448612'
+          - text
+          value_type: string
+          variable: text
+        selected: false
+        title: 输出
+        type: end
+      height: 87
+      id: '1788779517762'
+      position:
+        x: 1322.004794331819
+        y: 303
+      positionAbsolute:
+        x: 1322.004794331819
+        y: 303
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 241
+      zIndex: 0
+    - data:
+        author: 猪培根
+        desc: ''
+        height: 145
+        selected: false
+        showAuthor: true
+        text: '{"root":{"children":[{"children":[{"detail":0,"format":0,"mode":"normal","style":"","text":"知识库已预绑定（导入后若显示未绑定请手动重新绑定）；元数据筛选需在知识检索节点手动添加：chapter_id
+          等于开始节点的chapterId变量","type":"text","version":1}],"direction":null,"format":"","indent":0,"type":"paragraph","version":1,"textFormat":0,"textStyle":""}],"direction":null,"format":"","indent":0,"type":"root","version":1}}'
+        theme: blue
+        title: ''
+        type: ''
+        width: 297
+      height: 145
+      id: '1788780328996'
+      position:
+        x: 701.2050704604661
+        y: 65.88348310111628
+      positionAbsolute:
+        x: 701.2050704604661
+        y: 65.88348310111628
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom-note
+      width: 297
+      zIndex: 0
+    - data:
+        author: 猪培根
+        desc: ''
+        height: 88
+        selected: false
+        showAuthor: true
+        text: '{"root":{"children":[{"children":[{"detail":0,"format":0,"mode":"normal","style":"","text":"直接输出md形式文档，后端封装后直接返回前端","type":"text","version":1}],"direction":null,"format":"","indent":0,"type":"paragraph","version":1,"textFormat":0,"textStyle":""}],"direction":null,"format":"","indent":0,"type":"root","version":1}}'
+        theme: blue
+        title: ''
+        type: ''
+        width: 240
+      height: 88
+      id: '1788780550243'
+      position:
+        x: 1329.543070643843
+        y: 131.34452169820622
+      positionAbsolute:
+        x: 1329.543070643843
+        y: 131.34452169820622
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom-note
+      width: 240
+      zIndex: 0
+    viewport:
+      x: 18.020133994860657
+      y: -1.3943267077551127
+      zoom: 0.7578582832552007
+  rag_pipeline_variables: []
