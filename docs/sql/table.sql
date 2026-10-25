@@ -1,35 +1,32 @@
-create table class
+create table javascene.exam_grading_task
 (
-    id          bigint auto_increment comment '班级ID，主键'
+    id            bigint auto_increment comment '主键ID'
         primary key,
-    class_name  varchar(64)                        not null comment '班级名称（如：三班）',
-    class_code  varchar(64)                        not null comment '班级编号（如：CLASS_2024_03）',
-    grade       tinyint                            not null comment '年级（1~6 或 7~12 等）',
-    user_id     bigint                             not null comment '负责教师ID（关联用户表）',
-    semester    varchar(20)                        null comment '学期（如：2026-01）',
-    status      tinyint  default 1                 not null comment '状态：1-启用，0-停用',
-    course_id   bigint                             null,
-    create_time datetime default CURRENT_TIMESTAMP not null comment '创建时间',
-    update_time datetime default CURRENT_TIMESTAMP not null on update CURRENT_TIMESTAMP comment '最后更新时间',
-    deleted     tinyint  default 0                 not null comment '逻辑删除标志：0-未删除，1-已删除',
-    constraint uk_class_code
-        unique (class_code)
+    homework_id   bigint                             not null comment '作业ID（关联 teach_homework）',
+    user_id       bigint                             not null comment '提交学生ID',
+    total_score   int      default 100               null comment '作业满分',
+    student_score int                                null comment '学生总分',
+    score_detail  json                               null comment '单题得分与错误原因，JSON数组',
+    status        tinyint  default 0                 not null comment '批改状态：0=待批改，1=已完成，2=批改失败',
+    error_message varchar(2000)                      null comment '批改失败原因',
+    create_time   datetime default CURRENT_TIMESTAMP not null comment '创建时间',
+    update_time   datetime default CURRENT_TIMESTAMP not null on update CURRENT_TIMESTAMP comment '更新时间',
+    deleted       tinyint  default 0                 not null comment '逻辑删除',
+    constraint uk_homework_user
+        unique (homework_id, user_id)
 )
-    comment '班级基础信息表' collate = utf8mb4_unicode_ci;
+    comment '作业批改任务表（按学生+作业汇总）' collate = utf8mb4_unicode_ci;
 
-create index class_course_id_index
-    on class (course_id);
+create index idx_deleted
+    on javascene.exam_grading_task (deleted);
 
-create index idx_class_name
-    on class (class_name);
-
-create index idx_semester_status
-    on class (semester, status);
+create index idx_homework_id
+    on javascene.exam_grading_task (homework_id);
 
 create index idx_user_id
-    on class (user_id);
+    on javascene.exam_grading_task (user_id);
 
-create table exam_homework_submit
+create table javascene.exam_homework_submit
 (
     id             bigint auto_increment comment '主键ID'
         primary key,
@@ -47,18 +44,18 @@ create table exam_homework_submit
     comment '作业提交表' collate = utf8mb4_unicode_ci;
 
 create index idx_deleted
-    on exam_homework_submit (deleted);
+    on javascene.exam_homework_submit (deleted);
 
 create index idx_homework_id
-    on exam_homework_submit (homework_id);
+    on javascene.exam_homework_submit (homework_id);
 
 create index idx_question_id
-    on exam_homework_submit (question_id);
+    on javascene.exam_homework_submit (question_id);
 
 create index idx_user_id
-    on exam_homework_submit (user_id);
+    on javascene.exam_homework_submit (user_id);
 
-create table exam_question
+create table javascene.exam_question
 (
     id                   bigint auto_increment comment '主键ID'
         primary key,
@@ -93,18 +90,18 @@ create table exam_question
     comment '题目表' collate = utf8mb4_unicode_ci;
 
 create index idx_chapter_id
-    on exam_question (chapter_id);
+    on javascene.exam_question (chapter_id);
 
 create index idx_deleted
-    on exam_question (deleted);
+    on javascene.exam_question (deleted);
 
 create index idx_difficulty
-    on exam_question (difficulty);
+    on javascene.exam_question (difficulty);
 
 create index idx_type
-    on exam_question (type);
+    on javascene.exam_question (type);
 
-create table exam_question_difficulty_config
+create table javascene.exam_question_difficulty_config
 (
     id                  bigint auto_increment
         primary key,
@@ -140,43 +137,15 @@ create table exam_question_difficulty_config
     comment '出题难度配置表';
 
 create index idx_deleted
-    on exam_question_difficulty_config (deleted);
+    on javascene.exam_question_difficulty_config (deleted);
 
 create index idx_status
-    on exam_question_difficulty_config (status);
+    on javascene.exam_question_difficulty_config (status);
 
 create index idx_teacher_chapter
-    on exam_question_difficulty_config (teacher_id, chapter_id);
+    on javascene.exam_question_difficulty_config (teacher_id, chapter_id);
 
-create table exam_grading_task
-(
-    id            bigint auto_increment comment '主键ID'
-        primary key,
-    homework_id   bigint                             not null comment '作业ID（关联 teach_homework）',
-    user_id       bigint                             not null comment '提交学生ID',
-    total_score   int      default 100               null comment '作业满分',
-    student_score int                                null comment '学生总分',
-    score_detail  json                               null comment '单题得分与错误原因，JSON数组',
-    status        tinyint  default 0                 not null comment '批改状态：0=待批改，1=已完成，2=批改失败',
-    error_message varchar(2000)                      null comment '批改失败原因',
-    create_time   datetime default CURRENT_TIMESTAMP not null comment '创建时间',
-    update_time   datetime default CURRENT_TIMESTAMP not null on update CURRENT_TIMESTAMP comment '更新时间',
-    deleted       tinyint  default 0                 not null comment '逻辑删除',
-    constraint uk_homework_user
-        unique (homework_id, user_id)
-)
-    comment '作业批改任务表（按学生+作业汇总）' collate = utf8mb4_unicode_ci;
-
-create index idx_deleted
-    on exam_grading_task (deleted);
-
-create index idx_homework_id
-    on exam_grading_task (homework_id);
-
-create index idx_user_id
-    on exam_grading_task (user_id);
-
-create table exam_wrong_question
+create table javascene.exam_wrong_question
 (
     id              bigint auto_increment comment '主键ID'
         primary key,
@@ -196,45 +165,15 @@ create table exam_wrong_question
     comment '错题归档表' collate = utf8mb4_unicode_ci;
 
 create index idx_deleted
-    on exam_wrong_question (deleted);
+    on javascene.exam_wrong_question (deleted);
 
 create index idx_question_id
-    on exam_wrong_question (question_id);
+    on javascene.exam_wrong_question (question_id);
 
 create index idx_user_id
-    on exam_wrong_question (user_id);
+    on javascene.exam_wrong_question (user_id);
 
-create table grading_task
-(
-    id                      varchar(36)                           not null comment '批阅任务ID'
-        primary key,
-    file_id                 varchar(36)                           not null comment '关联的文件ID（指向 upload_file）',
-    user_id                 bigint                                null,
-    rubric_id               bigint                                null,
-    student_count           int         default 0                 null comment '学生总人数',
-    processed_student_count int                                   null comment '已完成学生作业数量',
-    status                  tinyint(1)  default 0                 null comment '0-待处理 1-处理中 2-已完成 3-已过期 4-失败(可重试)',
-    retry_count             int         default 0                 null comment '重试次数',
-    error_message           text                                  null comment '错误信息',
-    create_time             datetime    default CURRENT_TIMESTAMP null comment '任务创建时间',
-    finish_time             datetime                              null comment '完成时间',
-    deleted                 tinyint     default 0                 not null,
-    task_category           varchar(20) default 'HOMEWORK'        not null comment '任务类别: HOMEWORK(平时), MIDTERM(期中), FINAL(期末)',
-    task_sequence           int                                   null comment '该类任务下的序号，如第1次平时作业就填1',
-    class_id                varchar(32)                           not null comment '所属班级ID',
-    semester                varchar(20)                           not null comment '学期，如 2026-01',
-    file_type               varchar(16)                           not null comment '文件类型，支持zip，word',
-    student_id              bigint                                null comment '学生id'
-)
-    comment '批阅任务表';
-
-create index idx_file_id
-    on grading_task (file_id);
-
-create index idx_status
-    on grading_task (status);
-
-create table intent_draft
+create table javascene.intent_draft
 (
     id                  bigint auto_increment
         primary key,
@@ -246,7 +185,7 @@ create table intent_draft
     reviewed_time       datetime                           null
 );
 
-create table knowledge_chapter
+create table javascene.knowledge_chapter
 (
     id               bigint                             not null comment '主键ID'
         primary key,
@@ -266,15 +205,15 @@ create table knowledge_chapter
     comment '教材章节表' collate = utf8mb4_unicode_ci;
 
 create index idx_course_id
-    on knowledge_chapter (course_id);
+    on javascene.knowledge_chapter (course_id);
 
 create index idx_delete_flag
-    on knowledge_chapter (deleted);
+    on javascene.knowledge_chapter (deleted);
 
 create index idx_parent_id
-    on knowledge_chapter (parent_id);
+    on javascene.knowledge_chapter (parent_id);
 
-create table knowledge_code_snippet
+create table javascene.knowledge_code_snippet
 (
     id             bigint                               not null comment '主键ID'
         primary key,
@@ -291,12 +230,12 @@ create table knowledge_code_snippet
     comment '教材代码片段表';
 
 create index idx_chapter_deleted
-    on knowledge_code_snippet (chapter_id, deleted);
+    on javascene.knowledge_code_snippet (chapter_id, deleted);
 
 create index idx_chapter_key_deleted
-    on knowledge_code_snippet (chapter_id, is_key_example, deleted);
+    on javascene.knowledge_code_snippet (chapter_id, is_key_example, deleted);
 
-create table knowledge_concept
+create table javascene.knowledge_concept
 (
     id          bigint                              not null comment '主键ID'
         primary key,
@@ -313,12 +252,12 @@ create table knowledge_concept
     comment '教材核心概念表';
 
 create index idx_chapter_deleted
-    on knowledge_concept (chapter_id, deleted);
+    on javascene.knowledge_concept (chapter_id, deleted);
 
 create index idx_name_deleted
-    on knowledge_concept (name, deleted);
+    on javascene.knowledge_concept (name, deleted);
 
-create table knowledge_content
+create table javascene.knowledge_content
 (
     id                 bigint                             not null comment '主键ID'
         primary key,
@@ -336,21 +275,21 @@ create table knowledge_content
     comment '教材原文内容表（AI检索用）' collate = utf8mb4_unicode_ci;
 
 create fulltext index ft_content
-    on knowledge_content (content);
+    on javascene.knowledge_content (content);
 
 create index idx_chapter_id
-    on knowledge_content (chapter_id);
+    on javascene.knowledge_content (chapter_id);
 
 create index idx_content_type
-    on knowledge_content (content_type);
+    on javascene.knowledge_content (content_type);
 
 create index idx_deleted
-    on knowledge_content (deleted);
+    on javascene.knowledge_content (deleted);
 
 create index idx_knowledge_point_id
-    on knowledge_content (knowledge_point_id);
+    on javascene.knowledge_content (knowledge_point_id);
 
-create table knowledge_difficult_point
+create table javascene.knowledge_difficult_point
 (
     id          bigint                              not null comment '主键ID'
         primary key,
@@ -366,12 +305,12 @@ create table knowledge_difficult_point
     comment '教材重难点表';
 
 create index idx_chapter_deleted
-    on knowledge_difficult_point (chapter_id, deleted);
+    on javascene.knowledge_difficult_point (chapter_id, deleted);
 
 create index idx_chapter_type_deleted
-    on knowledge_difficult_point (chapter_id, type, deleted);
+    on javascene.knowledge_difficult_point (chapter_id, type, deleted);
 
-create table knowledge_exercise
+create table javascene.knowledge_exercise
 (
     id              bigint                              not null comment '主键ID'
         primary key,
@@ -389,15 +328,15 @@ create table knowledge_exercise
     comment '教材课后习题表';
 
 create index idx_chapter_deleted
-    on knowledge_exercise (chapter_id, deleted);
+    on javascene.knowledge_exercise (chapter_id, deleted);
 
 create index idx_chapter_difficulty_deleted
-    on knowledge_exercise (chapter_id, difficulty, deleted);
+    on javascene.knowledge_exercise (chapter_id, difficulty, deleted);
 
 create index idx_knowledge_point_deleted
-    on knowledge_exercise (knowledge_point, deleted);
+    on javascene.knowledge_exercise (knowledge_point, deleted);
 
-create table knowledge_keyword
+create table javascene.knowledge_keyword
 (
     id                 bigint                             not null comment '主键ID'
         primary key,
@@ -417,15 +356,15 @@ create table knowledge_keyword
     comment '教材关键词表（AI校验用）' collate = utf8mb4_unicode_ci;
 
 create index idx_chapter_id
-    on knowledge_keyword (chapter_id);
+    on javascene.knowledge_keyword (chapter_id);
 
 create index idx_deleted
-    on knowledge_keyword (deleted);
+    on javascene.knowledge_keyword (deleted);
 
 create index idx_point_id
-    on knowledge_keyword (knowledge_point_id);
+    on javascene.knowledge_keyword (knowledge_point_id);
 
-create table knowledge_point
+create table javascene.knowledge_point
 (
     id          bigint                             not null comment '主键ID'
         primary key,
@@ -443,18 +382,18 @@ create table knowledge_point
     comment '教材知识点表' collate = utf8mb4_unicode_ci;
 
 create fulltext index ft_keyword
-    on knowledge_point (keyword);
+    on javascene.knowledge_point (keyword);
 
 create index idx_chapter_id
-    on knowledge_point (chapter_id);
+    on javascene.knowledge_point (chapter_id);
 
 create index idx_deleted
-    on knowledge_point (deleted);
+    on javascene.knowledge_point (deleted);
 
 create index idx_difficulty
-    on knowledge_point (difficulty);
+    on javascene.knowledge_point (difficulty);
 
-create table knowledge_upload_record
+create table javascene.knowledge_upload_record
 (
     id                 bigint auto_increment comment '主键ID'
         primary key,
@@ -482,27 +421,27 @@ create table knowledge_upload_record
     comment '知识库上传记录表' collate = utf8mb4_unicode_ci;
 
 create index idx_chapter_id
-    on knowledge_upload_record (chapter_id);
+    on javascene.knowledge_upload_record (chapter_id);
 
 create index idx_dataset_id
-    on knowledge_upload_record (dataset_id);
+    on javascene.knowledge_upload_record (dataset_id);
 
 create index idx_deleted
-    on knowledge_upload_record (deleted);
+    on javascene.knowledge_upload_record (deleted);
 
 create index idx_document_id
-    on knowledge_upload_record (document_id);
+    on javascene.knowledge_upload_record (document_id);
 
 create index idx_status
-    on knowledge_upload_record (status);
+    on javascene.knowledge_upload_record (status);
 
 create index idx_upload_by
-    on knowledge_upload_record (upload_by);
+    on javascene.knowledge_upload_record (upload_by);
 
 create index idx_upload_time
-    on knowledge_upload_record (upload_time);
+    on javascene.knowledge_upload_record (upload_time);
 
-create table knowledge_weight_config
+create table javascene.knowledge_weight_config
 (
     id                      bigint                                  not null comment '主键ID'
         primary key,
@@ -522,12 +461,12 @@ create table knowledge_weight_config
     comment '知识点权重配置表' collate = utf8mb4_unicode_ci;
 
 create index idx_chapter_id
-    on knowledge_weight_config (chapter_id);
+    on javascene.knowledge_weight_config (chapter_id);
 
 create index idx_weight
-    on knowledge_weight_config (weight desc);
+    on javascene.knowledge_weight_config (weight desc);
 
-create table qa_record
+create table javascene.qa_record
 (
     id                bigint auto_increment comment '主键ID'
         primary key,
@@ -549,24 +488,24 @@ create table qa_record
     comment '学生问答记录表' collate = utf8mb4_unicode_ci;
 
 create index idx_chapter_id
-    on qa_record (chapter_id);
+    on javascene.qa_record (chapter_id);
 
 create index idx_create_time
-    on qa_record (create_time);
+    on javascene.qa_record (create_time);
 
 create index idx_deleted
-    on qa_record (deleted);
+    on javascene.qa_record (deleted);
 
 create index idx_session_id
-    on qa_record (session_id);
+    on javascene.qa_record (session_id);
 
 create index idx_session_round
-    on qa_record (session_id, round_no);
+    on javascene.qa_record (session_id, round_no);
 
 create index idx_user_id
-    on qa_record (user_id);
+    on javascene.qa_record (user_id);
 
-create table standard_config
+create table javascene.standard_config
 (
     id               bigint auto_increment
         primary key,
@@ -581,46 +520,9 @@ create table standard_config
     comment '评分标准配置表';
 
 create index idx_is_current
-    on standard_config (is_current);
+    on javascene.standard_config (is_current);
 
-create table student_result
-(
-    id                bigint auto_increment comment '自增主键'
-        primary key,
-    task_id           varchar(36)                           not null comment '关联的任务ID',
-    user_id           bigint                                null,
-    student_id        varchar(20)                           not null comment '学生学号',
-    student_name      varchar(50)                           not null comment '学生姓名',
-    raw_score         varchar(20)                           null comment 'AI原始评分',
-    ai_comment        text                                  null comment 'AI批阅评语(Markdown格式)',
-    comment_json      json                                  not null comment '评语源json',
-    teacher_score     varchar(20)                           null comment '教师修改后的分数',
-    teacher_comment   text                                  null comment '教师批阅评语',
-    teacher_note      varchar(500)                          null comment '教师备注',
-    status            varchar(20) default 'PENDING'         not null comment '状态: PENDING=待批阅, PROCESSING=处理中, APPROVED=已批阅, FAILED=失败',
-    error_message     varchar(500)                          null comment '错误信息(处理失败时记录)',
-    word_content_path varchar(500)                          null comment '学生作业路径(Markdown格式,用于重试)',
-    create_time       datetime    default CURRENT_TIMESTAMP not null,
-    update_time       datetime    default CURRENT_TIMESTAMP not null on update CURRENT_TIMESTAMP,
-    deleted           tinyint     default 0                 not null,
-    constraint uk_task_student
-        unique (task_id, student_id),
-    constraint student_result_ibfk_1
-        foreign key (task_id) references grading_task (id)
-            on delete cascade
-)
-    comment '学生批阅结果表';
-
-create index idx_status
-    on student_result (status);
-
-create index idx_student_id
-    on student_result (student_id);
-
-create index idx_task_id
-    on student_result (task_id);
-
-create table study_code_run_record
+create table javascene.study_code_run_record
 (
     id                  bigint auto_increment comment '主键ID'
         primary key,
@@ -660,18 +562,18 @@ create table study_code_run_record
     comment '代码运行记录表' collate = utf8mb4_unicode_ci;
 
 create index idx_chapter_id
-    on study_code_run_record (chapter_id);
+    on javascene.study_code_run_record (chapter_id);
 
 create index idx_question_id
-    on study_code_run_record (question_id);
+    on javascene.study_code_run_record (question_id);
 
 create index idx_status
-    on study_code_run_record (status);
+    on javascene.study_code_run_record (status);
 
 create index idx_user_id
-    on study_code_run_record (user_id);
+    on javascene.study_code_run_record (user_id);
 
-create table study_learning_progress
+create table javascene.study_learning_progress
 (
     id              bigint auto_increment comment '主键ID'
         primary key,
@@ -689,7 +591,7 @@ create table study_learning_progress
 )
     comment '学习进度表' collate = utf8mb4_unicode_ci;
 
-create table study_practice_record
+create table javascene.study_practice_record
 (
     id             bigint auto_increment comment '主键ID'
         primary key,
@@ -714,24 +616,24 @@ create table study_practice_record
     comment '学生自主练习记录表' collate = utf8mb4_unicode_ci;
 
 create index idx_chapter_id
-    on study_practice_record (chapter_id);
+    on javascene.study_practice_record (chapter_id);
 
 create index idx_deleted
-    on study_practice_record (deleted);
+    on javascene.study_practice_record (deleted);
 
 create index idx_practice_mode
-    on study_practice_record (practice_mode);
+    on javascene.study_practice_record (practice_mode);
 
 create index idx_run_record_id
-    on study_practice_record (run_record_id);
+    on javascene.study_practice_record (run_record_id);
 
 create index idx_status
-    on study_practice_record (status);
+    on javascene.study_practice_record (status);
 
 create index idx_user_id
-    on study_practice_record (user_id);
+    on javascene.study_practice_record (user_id);
 
-create table study_question_status
+create table javascene.study_question_status
 (
     id               bigint auto_increment comment '主键ID'
         primary key,
@@ -750,12 +652,12 @@ create table study_question_status
     comment '学生题目状态表' collate = utf8mb4_unicode_ci;
 
 create index idx_deleted
-    on study_question_status (deleted);
+    on javascene.study_question_status (deleted);
 
 create index idx_user_status
-    on study_question_status (user_id, status);
+    on javascene.study_question_status (user_id, status);
 
-create table sys_admin_info
+create table javascene.sys_admin_info
 (
     id               bigint auto_increment comment '主键ID'
         primary key,
@@ -771,7 +673,7 @@ create table sys_admin_info
 )
     comment '管理员信息扩展表' collate = utf8mb4_unicode_ci;
 
-create table sys_permission
+create table javascene.sys_permission
 (
     id        bigint auto_increment
         primary key,
@@ -784,7 +686,7 @@ create table sys_permission
 )
     comment '权限表';
 
-create table sys_role
+create table javascene.sys_role
 (
     id          bigint auto_increment comment '主键ID'
         primary key,
@@ -798,7 +700,7 @@ create table sys_role
 )
     comment '角色表';
 
-create table sys_role_permission
+create table javascene.sys_role_permission
 (
     id            bigint auto_increment
         primary key,
@@ -809,7 +711,7 @@ create table sys_role_permission
 )
     comment '角色权限关联表';
 
-create table sys_student_info
+create table javascene.sys_student_info
 (
     id              bigint auto_increment comment '主键ID'
         primary key,
@@ -833,9 +735,9 @@ create table sys_student_info
     comment '学生信息扩展表' collate = utf8mb4_unicode_ci;
 
 create index idx_class_id
-    on sys_student_info (class_id);
+    on javascene.sys_student_info (class_id);
 
-create table sys_teacher_info
+create table javascene.sys_teacher_info
 (
     id            bigint auto_increment comment '主键ID'
         primary key,
@@ -856,7 +758,7 @@ create table sys_teacher_info
 )
     comment '教师信息扩展表' collate = utf8mb4_unicode_ci;
 
-create table sys_user
+create table javascene.sys_user
 (
     id              bigint auto_increment comment '主键ID'
         primary key,
@@ -880,9 +782,9 @@ create table sys_user
     comment '用户表';
 
 create index idx_username
-    on sys_user (username);
+    on javascene.sys_user (username);
 
-create table sys_user_role
+create table javascene.sys_user_role
 (
     id          bigint auto_increment
         primary key,
@@ -895,30 +797,9 @@ create table sys_user_role
     comment '用户角色关联表';
 
 create index idx_user_id
-    on sys_user_role (user_id);
+    on javascene.sys_user_role (user_id);
 
-create table teach_class
-(
-    id            bigint auto_increment comment '主键ID'
-        primary key,
-    name          varchar(50)                        not null comment '班级名称',
-    teacher_id    bigint                             not null comment '班主任/任课教师ID',
-    grade         varchar(20)                        null comment '年级（如 2024级）',
-    student_count int      default 0                 null comment '学生人数',
-    course_id     bigint                             null comment '关联课程ID',
-    create_time   datetime default CURRENT_TIMESTAMP not null comment '创建时间',
-    update_time   datetime default CURRENT_TIMESTAMP not null on update CURRENT_TIMESTAMP comment '更新时间',
-    deleted       tinyint  default 0                 not null comment '逻辑删除'
-)
-    comment '班级表' collate = utf8mb4_unicode_ci;
-
-create index idx_deleted
-    on teach_class (deleted);
-
-create index idx_teacher_id
-    on teach_class (teacher_id);
-
-create table teach_homework
+create table javascene.teach_homework
 (
     id                bigint auto_increment comment '主键ID'
         primary key,
@@ -936,7 +817,7 @@ create table teach_homework
     close_reason      varchar(200)                       null comment '关闭原因',
     total_score       int      default 0                 not null comment '作业总分',
     question_count    int      default 0                 not null comment '题目数量',
-    submit_count      int      default 0                 not null comment '提交数量',
+    submitted_count   int      default 0                 not null comment '提交数量',
     create_time       datetime default CURRENT_TIMESTAMP not null comment '创建时间',
     update_time       datetime default CURRENT_TIMESTAMP not null on update CURRENT_TIMESTAMP comment '更新时间',
     deleted           tinyint  default 0                 not null comment '逻辑删除'
@@ -944,24 +825,24 @@ create table teach_homework
     comment '作业表' collate = utf8mb4_unicode_ci;
 
 create index idx_chapter_id
-    on teach_homework (chapter_id);
+    on javascene.teach_homework (chapter_id);
 
 create index idx_class_id
-    on teach_homework (class_id);
+    on javascene.teach_homework (class_id);
 
 create index idx_deadline
-    on teach_homework (deadline);
+    on javascene.teach_homework (deadline);
 
 create index idx_deleted
-    on teach_homework (deleted);
+    on javascene.teach_homework (deleted);
 
 create index idx_status
-    on teach_homework (status);
+    on javascene.teach_homework (status);
 
 create index idx_teacher_id
-    on teach_homework (teacher_id);
+    on javascene.teach_homework (teacher_id);
 
-create table teach_homework_question
+create table javascene.teach_homework_question
 (
     id               bigint auto_increment comment '主键ID'
         primary key,
@@ -989,15 +870,15 @@ create table teach_homework_question
     comment '作业题目关联表' collate = utf8mb4_unicode_ci;
 
 create index idx_deleted
-    on teach_homework_question (deleted);
+    on javascene.teach_homework_question (deleted);
 
 create index idx_homework_id
-    on teach_homework_question (homework_id);
+    on javascene.teach_homework_question (homework_id);
 
 create index idx_question_id
-    on teach_homework_question (question_id);
+    on javascene.teach_homework_question (question_id);
 
-create table teach_ppt
+create table javascene.teach_ppt
 (
     id             bigint auto_increment comment '主键ID'
         primary key,
@@ -1014,18 +895,19 @@ create table teach_ppt
     comment 'PPT文件记录表' collate = utf8mb4_unicode_ci;
 
 create index idx_chapter_id
-    on teach_ppt (chapter_id);
+    on javascene.teach_ppt (chapter_id);
 
 create index idx_deleted
-    on teach_ppt (deleted);
+    on javascene.teach_ppt (deleted);
 
-create table teach_ppt_template
+create table javascene.teach_ppt_template
 (
     id            bigint auto_increment comment '主键ID'
         primary key,
     name          varchar(100)                       not null comment '模板名称',
     description   varchar(500)                       null comment '模板说明',
     theme_code    varchar(50)                        not null comment '视觉主题编码（对应 CSS 文件名）',
+    design_tokens json                               null comment '设计令牌（颜色、字体等）',
     structure_md  text                               not null comment '内容结构（MD 骨架）',
     preview_image varchar(255)                       null comment '预览图URL',
     is_system     tinyint  default 0                 not null comment '是否系统预设',
@@ -1039,12 +921,12 @@ create table teach_ppt_template
     comment 'PPT模板表' collate = utf8mb4_unicode_ci;
 
 create index idx_is_system
-    on teach_ppt_template (is_system);
+    on javascene.teach_ppt_template (is_system);
 
 create index idx_teacher_id
-    on teach_ppt_template (teacher_id);
+    on javascene.teach_ppt_template (teacher_id);
 
-create table teach_prepare_record
+create table javascene.teach_prepare_record
 (
     id          bigint auto_increment comment '主键ID'
         primary key,
@@ -1065,35 +947,15 @@ create table teach_prepare_record
     comment '备课记录表' collate = utf8mb4_unicode_ci;
 
 create index idx_chapter_id
-    on teach_prepare_record (chapter_id);
+    on javascene.teach_prepare_record (chapter_id);
 
 create index idx_deleted
-    on teach_prepare_record (deleted);
+    on javascene.teach_prepare_record (deleted);
 
 create index idx_teacher_id
-    on teach_prepare_record (teacher_id);
+    on javascene.teach_prepare_record (teacher_id);
 
-create table upload_file
-(
-    id                 varchar(36)                        not null comment 'upload_ID'
-        primary key,
-    user_id            bigint                             not null,
-    file_name          varchar(255)                       not null comment '原始文件名',
-    file_size          bigint   default 0                 null comment '文件大小（字节）',
-    raw_storage_path   varchar(500)                       not null comment '原始上传文件路径',
-    upload_time        datetime default CURRENT_TIMESTAMP null comment '上传时间',
-    expire_time        datetime                           null comment '过期时间',
-    unzip_storage_path varchar(500)                       null comment '解压后路径，可为空',
-    deleted            tinyint  default 0                 not null,
-    file_type          varchar(16)                        not null comment '文件类型 ',
-    expired            tinyint  default 0                 not null
-)
-    comment '上传文件记录表';
-
-create index idx_expire_time
-    on upload_file (expire_time);
-
-create table user_config
+create table javascene.user_config
 (
     id           bigint auto_increment
         primary key,
