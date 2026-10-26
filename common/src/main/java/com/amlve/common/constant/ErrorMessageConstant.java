@@ -26,5 +26,13 @@ public class ErrorMessageConstant {
      * 登录成功
      */
     public static final String SUCCESS_MSG = "登录成功";
+    /**
+     * 账号被管理员禁用（sys_user.enabled = 0）
+     */
+    public static final String ACCOUNT_DISABLED = "账号已被禁用，请联系管理员";
+    /**
+     * token 已被登出或踢人操作吊销
+     */
+    public static final String TOKEN_REVOKED = "登录已失效，请重新登录";
 }
 

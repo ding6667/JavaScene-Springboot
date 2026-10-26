@@ -4,18 +4,19 @@ import com.amlve.common.request.PageResult;
 import com.amlve.system.dto.request.AdminRegisterRequest;
 import com.amlve.system.dto.request.UserCreateRequest;
 import com.amlve.system.dto.request.UserUpdateRequest;
+import com.amlve.system.dto.response.LoginVO;
 import com.amlve.system.dto.response.UserInfoResponse;
 
 public interface UserService {
-    String checkUser(String username, String password);
+    LoginVO checkUser(String username, String password);
 
-    String register(String username, String password);
+    LoginVO register(String username, String password);
 
     /**
      * 管理员注册（系统后台，需初始化密钥 app.admin.init-key）
-     * @return 注册即登录的 JWT
+     * @return 注册即登录的 token、角色与落地页
      */
-    String registerAdmin(AdminRegisterRequest request);
+    LoginVO registerAdmin(AdminRegisterRequest request);
 
     /**
      * 获取用户信息

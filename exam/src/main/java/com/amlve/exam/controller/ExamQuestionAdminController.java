@@ -9,7 +9,6 @@ import com.amlve.exam.enumeration.QuestionDifficultyEnum;
 import com.amlve.common.enums.QuestionTypeEnum;
 import com.amlve.exam.service.ExamQuestionService;
 import com.amlve.exam.tableEnt.ExamQuestion;
-import com.amlve.exam.util.ExamAuthSupport;
 import com.amlve.examapi.dto.request.QuestionAdminQueryRequest;
 import com.amlve.examapi.dto.response.QuestionAdminVO;
 import jakarta.validation.Valid;
@@ -22,22 +21,20 @@ import java.util.List;
 /**
  * 题目管理接口（教师/管理员）：手动新增 / 修改 / 删除 / 管理端列表，以及随机抽题。
  * <p>
- * 类级 {@code @PreAuthorize("isAuthenticated()")} 要求登录；
- * 教师/管理员权限由 {@link ExamAuthSupport#requireTeacherOrAdmin()} 编程式校验。
+ * 类级 {@code @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")} 统一拦截，
+ * 角色已在 JWT 过滤器装入 authorities，无需再查库校验。
  */
 @RestController
 @RequestMapping("/api/exam/question/admin")
 @RequiredArgsConstructor
-@PreAuthorize("isAuthenticated()")
+@PreAuthorize("hasAnyRole('TEACHER','ADMIN')")
 public class ExamQuestionAdminController {
 
     private final ExamQuestionService questionService;
-    private final ExamAuthSupport examAuthSupport;
 
     /** 手动新增题目 */
     @PostMapping("/save")
     public Result<Long> save(@Valid @RequestBody QuestionSaveRequest request) {
-        examAuthSupport.requireTeacherOrAdmin();
         ExamQuestion question = toEntity(request);
         questionService.save(question);
         return Result.success(question.getId());
@@ -46,7 +43,6 @@ public class ExamQuestionAdminController {
     /** 修改题目 */
     @PutMapping("/update")
     public Result<Void> update(@Valid @RequestBody QuestionSaveRequest request) {
-        examAuthSupport.requireTeacherOrAdmin();
         if (request.getId() == null) {
             throw new BusinessException("题目ID不能为空");
         }
@@ -59,7 +55,6 @@ public class ExamQuestionAdminController {
     /** 删除题目（逻辑删除） */
     @DeleteMapping("/delete/{id}")
     public Result<Void> delete(@PathVariable Long id) {
-        examAuthSupport.requireTeacherOrAdmin();
         questionService.removeById(id);
         return Result.success(null);
     }
@@ -67,21 +62,18 @@ public class ExamQuestionAdminController {
     /** 分页查询题目列表（管理端） */
     @GetMapping("/list")
     public Result<PageResult<QuestionAdminVO>> list(QuestionAdminQueryRequest request) {
-        examAuthSupport.requireTeacherOrAdmin();
         return Result.success(questionService.listForAdmin(request));
     }
 
     /** 查询单题（管理端） */
     @GetMapping("/{id}")
     public Result<ExamQuestion> get(@PathVariable Long id) {
-        examAuthSupport.requireTeacherOrAdmin();
         return Result.success(questionService.getById(id));
     }
 
     /** 按章节随机抽取题目（不调用智能体） */
     @PostMapping("/random")
     public Result<List<ExamQuestion>> random(@Valid @RequestBody QuestionGenerateRequest request) {
-        examAuthSupport.requireTeacherOrAdmin();
         return Result.success(questionService.generate(request));
     }
 
