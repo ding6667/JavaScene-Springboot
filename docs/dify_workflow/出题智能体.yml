@@ -1,0 +1,801 @@
+app:
+  description: '1. 知识点精准命题：根据章节重难点权重分配题目数量，重难点题量多、难度高。
+
+    2. 难度分层生成：
+
+    基础层：教材原题变式、概念记忆题；
+
+    进阶层：知识点简单应用题；
+
+    拔高层：多知识点综合题，贴合期末考核难度。
+
+    3. 自动配套解析：每题生成教材对应知识点解析，不超纲、不超难。
+
+    4. 支持自定义组卷：教师可指定章节、难度、题型自动组卷。
+
+    '
+  icon: 🤖
+  icon_background: '#FFEAD5'
+  icon_type: emoji
+  mode: workflow
+  name: 出题智能体
+  use_icon_as_answer_icon: false
+dependencies: []
+kind: app
+version: 0.6.0
+workflow:
+  conversation_variables: []
+  environment_variables: []
+  features:
+    file_upload:
+      allowed_file_extensions:
+      - .JPG
+      - .JPEG
+      - .PNG
+      - .GIF
+      - .WEBP
+      - .SVG
+      allowed_file_types:
+      - image
+      allowed_file_upload_methods:
+      - local_file
+      - remote_url
+      enabled: false
+      fileUploadConfig:
+        attachment_image_file_size_limit: 2
+        audio_file_size_limit: 50
+        batch_count_limit: 5
+        file_size_limit: 15
+        file_upload_limit: 20
+        image_file_batch_limit: 10
+        image_file_size_limit: 10
+        single_chunk_attachment_limit: 10
+        video_file_size_limit: 100
+        workflow_file_upload_limit: 10
+      image:
+        enabled: false
+        number_limits: 3
+        transfer_methods:
+        - local_file
+        - remote_url
+      number_limits: 3
+    opening_statement: ''
+    retriever_resource:
+      enabled: true
+    sensitive_word_avoidance:
+      enabled: false
+    speech_to_text:
+      enabled: false
+    suggested_questions: []
+    suggested_questions_after_answer:
+      enabled: false
+    text_to_speech:
+      enabled: false
+      language: ''
+      voice: ''
+  graph:
+    edges:
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: start
+        targetType: code
+      id: 1788948464901-source-1789020674426-target
+      selected: false
+      source: '1788948464901'
+      sourceHandle: source
+      target: '1789020674426'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: true
+        isInLoop: false
+        iteration_id: '1789021143416'
+        sourceType: iteration-start
+        targetType: code
+      id: 1789021143416start-source-1789021176741-target
+      selected: false
+      source: 1789021143416start
+      sourceHandle: source
+      target: '1789021176741'
+      targetHandle: target
+      type: custom
+      zIndex: 1001
+    - data:
+        isInIteration: true
+        isInLoop: false
+        iteration_id: '1789021143416'
+        sourceType: code
+        targetType: knowledge-retrieval
+      id: 1789021176741-source-1789021178973-target
+      selected: false
+      source: '1789021176741'
+      sourceHandle: source
+      target: '1789021178973'
+      targetHandle: target
+      type: custom
+      zIndex: 1001
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: code
+        targetType: code
+      id: 1789020674426-source-1789023230011-target
+      selected: false
+      source: '1789020674426'
+      sourceHandle: source
+      target: '1789023230011'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: code
+        targetType: iteration
+      id: 1789023230011-source-1789021143416-target
+      source: '1789023230011'
+      sourceHandle: source
+      target: '1789021143416'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: true
+        isInLoop: false
+        iteration_id: '1789021143416'
+        sourceType: knowledge-retrieval
+        targetType: loop-end
+      id: 1789021178973-source-1789023506301-target
+      source: '1789021178973'
+      sourceHandle: source
+      target: '1789023506301'
+      targetHandle: target
+      type: custom
+      zIndex: 1001
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: iteration
+        targetType: llm
+      id: 1789021143416-source-1789023540789-target
+      source: '1789021143416'
+      sourceHandle: source
+      target: '1789023540789'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: llm
+        targetType: end
+      id: 1789023540789-source-1789020033243-target
+      source: '1789023540789'
+      sourceHandle: source
+      target: '1789020033243'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    nodes:
+    - data:
+        selected: false
+        title: 用户输入
+        type: start
+        variables:
+        - default: ''
+          hint: ''
+          label: input
+          options: []
+          placeholder: ''
+          required: true
+          type: json_object
+          variable: input
+      height: 107
+      id: '1788948464901'
+      position:
+        x: 80
+        y: 282
+      positionAbsolute:
+        x: 80
+        y: 282
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 242
+      zIndex: 0
+    - data:
+        author: 猪培根
+        desc: ''
+        height: 594
+        selected: false
+        showAuthor: true
+        text: '{"root":{"children":[{"children":[{"detail":0,"format":0,"mode":"normal","style":"","text":"{","type":"text","version":1}],"direction":null,"format":"","indent":0,"type":"paragraph","version":1,"textFormat":0,"textStyle":""},{"children":[{"detail":0,"format":0,"mode":"normal","style":"","text":"  \"input\":
+          {","type":"text","version":1}],"direction":null,"format":"","indent":0,"type":"paragraph","version":1,"textFormat":0,"textStyle":""},{"children":[{"detail":0,"format":0,"mode":"normal","style":"","text":"    \"chapter_id\":
+          {","type":"text","version":1}],"direction":null,"format":"","indent":0,"type":"paragraph","version":1,"textFormat":0,"textStyle":""},{"children":[{"detail":0,"format":0,"mode":"normal","style":"","text":"      \"type\":
+          \"String\",","type":"text","version":1}],"direction":null,"format":"","indent":0,"type":"paragraph","version":1,"textFormat":0,"textStyle":""},{"children":[{"detail":0,"format":0,"mode":"normal","style":"","text":"      \"required\":
+          true,","type":"text","version":1}],"direction":null,"format":"","indent":0,"type":"paragraph","version":1,"textFormat":0,"textStyle":""},{"children":[{"detail":0,"format":0,"mode":"normal","style":"","text":"      \"description\":
+          \"章节ID\"","type":"text","version":1}],"direction":null,"format":"","indent":0,"type":"paragraph","version":1,"textFormat":0,"textStyle":""},{"children":[{"detail":0,"format":0,"mode":"normal","style":"","text":"    },","type":"text","version":1}],"direction":null,"format":"","indent":0,"type":"paragraph","version":1,"textFormat":0,"textStyle":""},{"children":[{"detail":0,"format":0,"mode":"normal","style":"","text":"    \"chapter_name\":
+          {","type":"text","version":1}],"direction":null,"format":"","indent":0,"type":"paragraph","version":1,"textFormat":0,"textStyle":""},{"children":[{"detail":0,"format":0,"mode":"normal","style":"","text":"      \"type\":
+          \"String\",","type":"text","version":1}],"direction":null,"format":"","indent":0,"type":"paragraph","version":1,"textFormat":0,"textStyle":""},{"children":[{"detail":0,"format":0,"mode":"normal","style":"","text":"      \"required\":
+          false,","type":"text","version":1}],"direction":null,"format":"","indent":0,"type":"paragraph","version":1,"textFormat":0,"textStyle":""},{"children":[{"detail":0,"format":0,"mode":"normal","style":"","text":"      \"description\":
+          \"章节名称，用于上下文\"","type":"text","version":1}],"direction":null,"format":"","indent":0,"type":"paragraph","version":1,"textFormat":0,"textStyle":""},{"children":[{"detail":0,"format":0,"mode":"normal","style":"","text":"    },","type":"text","version":1}],"direction":null,"format":"","indent":0,"type":"paragraph","version":1,"textFormat":0,"textStyle":""},{"children":[{"detail":0,"format":0,"mode":"normal","style":"","text":"    \"allocation\":
+          {","type":"text","version":1}],"direction":null,"format":"","indent":0,"type":"paragraph","version":1,"textFormat":0,"textStyle":""},{"children":[{"detail":0,"format":0,"mode":"normal","style":"","text":"      \"type\":
+          \"String\",","type":"text","version":1}],"direction":null,"format":"","indent":0,"type":"paragraph","version":1,"textFormat":0,"textStyle":""},{"children":[{"detail":0,"format":0,"mode":"normal","style":"","text":"      \"required\":
+          true,","type":"text","version":1}],"direction":null,"format":"","indent":0,"type":"paragraph","version":1,"textFormat":0,"textStyle":""},{"children":[{"detail":0,"format":0,"mode":"normal","style":"","text":"      \"description\":
+          \"知识点分配（JSON字符串），由 QuestionAgentImpl 计算后传入\"","type":"text","version":1}],"direction":null,"format":"","indent":0,"type":"paragraph","version":1,"textFormat":0,"textStyle":""},{"children":[{"detail":0,"format":0,"mode":"normal","style":"","text":"    },","type":"text","version":1}],"direction":null,"format":"","indent":0,"type":"paragraph","version":1,"textFormat":0,"textStyle":""},{"children":[{"detail":0,"format":0,"mode":"normal","style":"","text":"    \"difficulty\":
+          {","type":"text","version":1}],"direction":null,"format":"","indent":0,"type":"paragraph","version":1,"textFormat":0,"textStyle":""},{"children":[{"detail":0,"format":0,"mode":"normal","style":"","text":"      \"type\":
+          \"String\",","type":"text","version":1}],"direction":null,"format":"","indent":0,"type":"paragraph","version":1,"textFormat":0,"textStyle":""},{"children":[{"detail":0,"format":0,"mode":"normal","style":"","text":"      \"required\":
+          false,","type":"text","version":1}],"direction":null,"format":"","indent":0,"type":"paragraph","version":1,"textFormat":0,"textStyle":""},{"children":[{"detail":0,"format":0,"mode":"normal","style":"","text":"      \"description\":
+          \"难度配置（JSON字符串）， \"{\\\"code\\\":\\\"basic\\\",\\\"name\\\":\\\"简单\\\",\\\"description\\\":\\\"考查基础概念\\\",\\\"example\\\":\\\"下列关于类的说法正确的是？\\\",\\\"cognitiveLevels\\\":[\\\"记忆\\\",\\\"理解\\\"]}\"","type":"text","version":1}],"direction":null,"format":"","indent":0,"type":"paragraph","version":1,"textFormat":0,"textStyle":""},{"children":[{"detail":0,"format":0,"mode":"normal","style":"","text":"    },","type":"text","version":1}],"direction":null,"format":"","indent":0,"type":"paragraph","version":1,"textFormat":0,"textStyle":""},{"children":[{"detail":0,"format":0,"mode":"normal","style":"","text":"    \"question_type\":
+          {","type":"text","version":1}],"direction":null,"format":"","indent":0,"type":"paragraph","version":1,"textFormat":0,"textStyle":""},{"children":[{"detail":0,"format":0,"mode":"normal","style":"","text":"      \"type\":
+          \"String\",","type":"text","version":1}],"direction":null,"format":"","indent":0,"type":"paragraph","version":1,"textFormat":0,"textStyle":""},{"children":[{"detail":0,"format":0,"mode":"normal","style":"","text":"      \"required\":
+          false,","type":"text","version":1}],"direction":null,"format":"","indent":0,"type":"paragraph","version":1,"textFormat":0,"textStyle":""},{"children":[{"detail":0,"format":0,"mode":"normal","style":"","text":"      \"description\":
+          \"题型过滤，默认 all\"","type":"text","version":1}],"direction":null,"format":"","indent":0,"type":"paragraph","version":1,"textFormat":0,"textStyle":""},{"children":[{"detail":0,"format":0,"mode":"normal","style":"","text":"    },","type":"text","version":1}],"direction":null,"format":"","indent":0,"type":"paragraph","version":1,"textFormat":0,"textStyle":""},{"children":[{"detail":0,"format":0,"mode":"normal","style":"","text":"    \"count\":
+          {","type":"text","version":1}],"direction":null,"format":"","indent":0,"type":"paragraph","version":1,"textFormat":0,"textStyle":""},{"children":[{"detail":0,"format":0,"mode":"normal","style":"","text":"      \"type\":
+          \"String\",","type":"text","version":1}],"direction":null,"format":"","indent":0,"type":"paragraph","version":1,"textFormat":0,"textStyle":""},{"children":[{"detail":0,"format":0,"mode":"normal","style":"","text":"      \"required\":
+          true,","type":"text","version":1}],"direction":null,"format":"","indent":0,"type":"paragraph","version":1,"textFormat":0,"textStyle":""},{"children":[{"detail":0,"format":0,"mode":"normal","style":"","text":"      \"description\":
+          \"出题数量\"","type":"text","version":1}],"direction":null,"format":"","indent":0,"type":"paragraph","version":1,"textFormat":0,"textStyle":""},{"children":[{"detail":0,"format":0,"mode":"normal","style":"","text":"    },","type":"text","version":1}],"direction":null,"format":"","indent":0,"type":"paragraph","version":1,"textFormat":0,"textStyle":""},{"children":[{"detail":0,"format":0,"mode":"normal","style":"","text":"    \"user_instruction\":
+          {","type":"text","version":1}],"direction":null,"format":"","indent":0,"type":"paragraph","version":1,"textFormat":0,"textStyle":""},{"children":[{"detail":0,"format":0,"mode":"normal","style":"","text":"      \"type\":
+          \"String\",","type":"text","version":1}],"direction":null,"format":"","indent":0,"type":"paragraph","version":1,"textFormat":0,"textStyle":""},{"children":[{"detail":0,"format":0,"mode":"normal","style":"","text":"      \"required\":
+          false,","type":"text","version":1}],"direction":null,"format":"","indent":0,"type":"paragraph","version":1,"textFormat":0,"textStyle":""},{"children":[{"detail":0,"format":0,"mode":"normal","style":"","text":"      \"description\":
+          \"用户额外指令\"","type":"text","version":1}],"direction":null,"format":"","indent":0,"type":"paragraph","version":1,"textFormat":0,"textStyle":""},{"children":[{"detail":0,"format":0,"mode":"normal","style":"","text":"    }","type":"text","version":1}],"direction":null,"format":"","indent":0,"type":"paragraph","version":1,"textFormat":0,"textStyle":""},{"children":[{"detail":0,"format":0,"mode":"normal","style":"","text":"  }","type":"text","version":1}],"direction":null,"format":"","indent":0,"type":"paragraph","version":1,"textFormat":0,"textStyle":""},{"children":[{"detail":0,"format":0,"mode":"normal","style":"","text":"}","type":"text","version":1}],"direction":null,"format":"","indent":0,"type":"paragraph","version":1,"textFormat":0,"textStyle":""}],"direction":null,"format":"","indent":0,"type":"root","version":1}}'
+        theme: blue
+        title: ''
+        type: ''
+        width: 832
+      height: 594
+      id: '1789019847445'
+      position:
+        x: -70.69701565816172
+        y: -369.0853547060805
+      positionAbsolute:
+        x: -70.69701565816172
+        y: -369.0853547060805
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom-note
+      width: 832
+      zIndex: 0
+    - data:
+        outputs:
+        - value_selector:
+          - '1789023540789'
+          - structured_output
+          value_type: object
+          variable: output
+        selected: false
+        title: 输出
+        type: end
+      height: 87
+      id: '1789020033243'
+      position:
+        x: 1842.4585894047664
+        y: 303
+      positionAbsolute:
+        x: 1842.4585894047664
+        y: 303
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 241
+      zIndex: 0
+    - data:
+        author: 猪培根
+        desc: ''
+        height: 433
+        selected: false
+        showAuthor: true
+        text: '{"root":{"children":[{"children":[{"detail":0,"format":0,"mode":"normal","style":"","text":"
+          \"response\": {","type":"text","version":1}],"direction":null,"format":"","indent":0,"type":"paragraph","version":1,"textFormat":0,"textStyle":""},{"children":[{"detail":0,"format":0,"mode":"normal","style":"","text":"    \"questions\":
+          {","type":"text","version":1}],"direction":null,"format":"","indent":0,"type":"paragraph","version":1,"textFormat":0,"textStyle":""},{"children":[{"detail":0,"format":0,"mode":"normal","style":"","text":"      \"type\":
+          \"String\",","type":"text","version":1}],"direction":null,"format":"","indent":0,"type":"paragraph","version":1,"textFormat":0,"textStyle":""},{"children":[{"detail":0,"format":0,"mode":"normal","style":"","text":"      \"description\":
+          \"题目列表（JSON字符串），结构与 QuestionItem 一致\"","type":"text","version":1}],"direction":null,"format":"","indent":0,"type":"paragraph","version":1,"textFormat":0,"textStyle":""},{"children":[{"detail":0,"format":0,"mode":"normal","style":"","text":"    },","type":"text","version":1}],"direction":null,"format":"","indent":0,"type":"paragraph","version":1,"textFormat":0,"textStyle":""},{"children":[{"detail":0,"format":0,"mode":"normal","style":"","text":"    \"total\":
+          {","type":"text","version":1}],"direction":null,"format":"","indent":0,"type":"paragraph","version":1,"textFormat":0,"textStyle":""},{"children":[{"detail":0,"format":0,"mode":"normal","style":"","text":"      \"type\":
+          \"Integer\",","type":"text","version":1}],"direction":null,"format":"","indent":0,"type":"paragraph","version":1,"textFormat":0,"textStyle":""},{"children":[{"detail":0,"format":0,"mode":"normal","style":"","text":"      \"description\":
+          \"题目总数\"","type":"text","version":1}],"direction":null,"format":"","indent":0,"type":"paragraph","version":1,"textFormat":0,"textStyle":""},{"children":[{"detail":0,"format":0,"mode":"normal","style":"","text":"    },","type":"text","version":1}],"direction":null,"format":"","indent":0,"type":"paragraph","version":1,"textFormat":0,"textStyle":""},{"children":[{"detail":0,"format":0,"mode":"normal","style":"","text":"    \"status\":
+          {","type":"text","version":1}],"direction":null,"format":"","indent":0,"type":"paragraph","version":1,"textFormat":0,"textStyle":""},{"children":[{"detail":0,"format":0,"mode":"normal","style":"","text":"      \"type\":
+          \"String\",","type":"text","version":1}],"direction":null,"format":"","indent":0,"type":"paragraph","version":1,"textFormat":0,"textStyle":""},{"children":[{"detail":0,"format":0,"mode":"normal","style":"","text":"      \"description\":
+          \"success / error\"","type":"text","version":1}],"direction":null,"format":"","indent":0,"type":"paragraph","version":1,"textFormat":0,"textStyle":""},{"children":[{"detail":0,"format":0,"mode":"normal","style":"","text":"    }","type":"text","version":1}],"direction":null,"format":"","indent":0,"type":"paragraph","version":1,"textFormat":0,"textStyle":""},{"children":[{"detail":0,"format":0,"mode":"normal","style":"","text":"  }","type":"text","version":1}],"direction":null,"format":"","indent":0,"type":"paragraph","version":1,"textFormat":0,"textStyle":""}],"direction":null,"format":"","indent":0,"type":"root","version":1}}'
+        theme: blue
+        title: ''
+        type: ''
+        width: 427
+      height: 433
+      id: '1789020037131'
+      position:
+        x: 1634.6007191705928
+        y: -218.70019983149712
+      positionAbsolute:
+        x: 1634.6007191705928
+        y: -218.70019983149712
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom-note
+      width: 427
+      zIndex: 0
+    - data:
+        code: "import json\n\n\ndef main(inputs: dict):\n    # 必填参数\n    chapter_id\
+          \ = inputs.get(\"chapter_id\")\n    chapter_name = inputs.get(\"chapter_name\"\
+          )\n    allocation_str = inputs.get(\"allocation\")\n    count = inputs.get(\"\
+          count\")\n\n    # 选填参数，带默认值\n    difficulty = inputs.get(\"difficulty\"\
+          , \"all\")\n    question_type = inputs.get(\"question_type\", \"all\")\n\
+          \    user_instruction = inputs.get(\"user_instruction\", \"\")\n\n    #\
+          \ allocation 是 JSON 字符串，解析成 list\n    allocation = json.loads(allocation_str)\
+          \ if allocation_str else []\n\n    # 可选：简单校验\n    if chapter_id is None:\n\
+          \        raise ValueError(\"chapter_id 不能为空\")\n    if allocation_str is\
+          \ None:\n        raise ValueError(\"allocation 不能为空\")\n    if count is\
+          \ None:\n        raise ValueError(\"count 不能为空\")\n\n    # 这里写你的业务逻辑，比如调用\
+          \ QuestionAgentImpl\n    # ...\n\n    return {\n        \"chapter_id\":\
+          \ chapter_id,\n        \"chapter_name\": chapter_name,\n        \"allocation\"\
+          : allocation,\n        \"allocation_str\": allocation_str,\n        \"difficulty\"\
+          : difficulty,\n        \"question_type\": question_type,\n        \"count\"\
+          : count,\n        \"user_instruction\": user_instruction,\n    }"
+        code_language: python3
+        outputs:
+          allocation:
+            children: null
+            type: array[object]
+          allocation_str:
+            children: null
+            type: string
+          chapter_id:
+            children: null
+            type: string
+          chapter_name:
+            children: null
+            type: string
+          count:
+            children: null
+            type: string
+          difficulty:
+            children: null
+            type: string
+          question_type:
+            children: null
+            type: string
+          user_instruction:
+            children: null
+            type: string
+        selected: false
+        title: 参数提取
+        type: code
+        variables:
+        - value_selector:
+          - '1788948464901'
+          - input
+          value_type: object
+          variable: inputs
+      height: 50
+      id: '1789020674426'
+      position:
+        x: 394.1078098700178
+        y: 303
+      positionAbsolute:
+        x: 394.1078098700178
+        y: 303
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 241
+      zIndex: 0
+    - data:
+        error_handle_mode: terminated
+        flatten_output: true
+        height: 357
+        is_parallel: true
+        iterator_input_type: array[object]
+        iterator_selector:
+        - '1789020674426'
+        - allocation
+        output_selector:
+        - '1789021178973'
+        - result
+        output_type: array[object]
+        parallel_nums: 10
+        selected: false
+        start_node_id: 1789021143416start
+        title: 迭代
+        type: iteration
+        width: 733
+      height: 357
+      id: '1789021143416'
+      position:
+        x: 727.1344243453586
+        y: 303
+      positionAbsolute:
+        x: 727.1344243453586
+        y: 303
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 733
+      zIndex: 0
+    - data:
+        desc: ''
+        isInIteration: true
+        selected: false
+        title: ''
+        type: iteration-start
+      draggable: false
+      height: 48
+      id: 1789021143416start
+      parentId: '1789021143416'
+      position:
+        x: 24
+        y: 68
+      positionAbsolute:
+        x: 751.1344243453586
+        y: 371
+      selectable: false
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom-iteration-start
+      width: 44
+      zIndex: 1001
+    - data:
+        code: "\ndef main(single_allocation: dict):\n    point_id = str(single_allocation.get(\"\
+          pointId\", \"\"))\n    name = str(single_allocation.get(\"name\", \"\"))\n\
+          \    count = str(single_allocation.get(\"count\", \"\"))\n\n    return {\n\
+          \        \"result\": {\n            \"pointId\": point_id,\n           \
+          \ \"name\": name,\n            \"count\": count,\n        }\n    }"
+        code_language: python3
+        isInIteration: true
+        isInLoop: false
+        iteration_id: '1789021143416'
+        outputs:
+          count:
+            children: null
+            type: string
+          name:
+            children: null
+            type: string
+          pointId:
+            children: null
+            type: string
+        selected: false
+        title: 对item提取
+        type: code
+        variables:
+        - value_selector:
+          - '1789021143416'
+          - item
+          value_type: object
+          variable: single_allocation
+      height: 50
+      id: '1789021176741'
+      parentId: '1789021143416'
+      position:
+        x: 125.95911151502082
+        y: 66
+      positionAbsolute:
+        x: 853.0935358603795
+        y: 369
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 241
+      zIndex: 1001
+    - data:
+        dataset_ids: []
+        isInIteration: true
+        isInLoop: false
+        iteration_id: '1789021143416'
+        metadata_filtering_conditions:
+          conditions:
+          - comparison_operator: is
+            id: c9cd14e9-9317-41f5-bd85-80b6fba8b6f8
+            metadata_id: 0aa85b04-a371-47cd-8d4d-658dec3ac4a7
+            name: chapter_id
+            value: '{{#1789020674426.chapter_id#}}'
+          logical_operator: and
+        metadata_filtering_mode: manual
+        multiple_retrieval_config:
+          reranking_enable: false
+          reranking_mode: weighted_score
+          reranking_model:
+            model: qwen3-rerank
+            provider: langgenius/tongyi/tongyi
+          score_threshold: 0.64
+          top_k: 5
+          weights:
+            keyword_setting:
+              keyword_weight: 0.3
+            vector_setting:
+              embedding_model_name: text-embedding-v3
+              embedding_provider_name: langgenius/tongyi/tongyi
+              vector_weight: 0.7
+            weight_type: customized
+        query_attachment_selector: []
+        query_variable_selector:
+        - '1789021176741'
+        - name
+        retrieval_mode: multiple
+        selected: false
+        title: 知识检索
+        type: knowledge-retrieval
+      height: 50
+      id: '1789021178973'
+      parentId: '1789021143416'
+      position:
+        x: 124.85130164500356
+        y: 164.99999999999977
+      positionAbsolute:
+        x: 851.9857259903622
+        y: 467.9999999999998
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 241
+      zIndex: 1001
+    - data:
+        code: "\nimport json\n\n\ndef main(difficulty: str) -> dict:\n    \"\"\"\n\
+          \    从 Dify 传入的 difficulty JSON 字符串中提取字段\n    用于后续节点单独引用\n\n    :param difficulty:\
+          \ JSON 字符串，结构对应 Java 的 DifficultyConfig\n    :return: 拆分后的字段\n    \"\"\"\
+          \n    # 兜底：空字符串或 None\n    if not difficulty or not difficulty.strip():\n\
+          \        return {\n            \"difficulty_code\": \"\",\n            \"\
+          difficulty_name\": \"\",\n            \"difficulty_description\": \"\",\n\
+          \            \"difficulty_example\": \"\",\n            \"cognitive_levels\"\
+          : \"\"\n        }\n\n    try:\n        config = json.loads(difficulty)\n\
+          \    except (json.JSONDecodeError, TypeError) as e:\n        # 解析失败时返回空，避免工作流崩溃\n\
+          \        return {\n            \"difficulty_code\": \"\",\n            \"\
+          difficulty_name\": \"\",\n            \"difficulty_description\": \"\",\n\
+          \            \"difficulty_example\": \"\",\n            \"cognitive_levels\"\
+          : \"\",\n            \"parse_error\": f\"difficulty 解析失败: {str(e)}\"\n \
+          \       }\n\n    # 提取各字段（带默认值）\n    code = config.get(\"code\", \"\")\n\
+          \    name = config.get(\"name\", \"\")\n    description = config.get(\"\
+          description\", \"\")\n    example = config.get(\"example\", \"\")\n\n  \
+          \  # cognitiveLevels 是列表，拼接为字符串供 LLM 阅读\n    cognitive_levels_list = config.get(\"\
+          cognitiveLevels\", [])\n    if isinstance(cognitive_levels_list, list):\n\
+          \        cognitive_levels = \"、\".join(str(item) for item in cognitive_levels_list)\n\
+          \    else:\n        cognitive_levels = str(cognitive_levels_list)\n\n  \
+          \  return {\n        \"difficulty_code\": code,\n        \"difficulty_name\"\
+          : name,\n        \"difficulty_description\": description,\n        \"difficulty_example\"\
+          : example,\n        \"cognitive_levels\": cognitive_levels\n    }"
+        code_language: python3
+        outputs:
+          cognitive_levels:
+            children: null
+            type: string
+          difficulty_code:
+            children: null
+            type: string
+          difficulty_description:
+            children: null
+            type: string
+          difficulty_example:
+            children: null
+            type: string
+          difficulty_name:
+            children: null
+            type: string
+        selected: false
+        title: difficult提取
+        type: code
+        variables:
+        - value_selector:
+          - '1789020674426'
+          - difficulty
+          value_type: string
+          variable: difficulty
+      height: 50
+      id: '1789023230011'
+      position:
+        x: 394.1078098700178
+        y: 416.0149980907181
+      positionAbsolute:
+        x: 394.1078098700178
+        y: 416.0149980907181
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 241
+      zIndex: 0
+    - data:
+        isInIteration: true
+        isInLoop: false
+        iteration_id: '1789021143416'
+        selected: false
+        title: 退出循环
+        type: loop-end
+      height: 53
+      id: '1789023506301'
+      parentId: '1789021143416'
+      position:
+        x: 467.47260051431067
+        y: 65
+      positionAbsolute:
+        x: 1194.6070248596693
+        y: 368
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom-simple
+      width: 243
+      zIndex: 1001
+    - data:
+        context:
+          enabled: true
+          variable_selector:
+          - '1789021143416'
+          - output
+        model:
+          completion_params:
+            temperature: 0.7
+          mode: chat
+          name: deepseek-v4-flash
+          provider: langgenius/deepseek/deepseek
+        prompt_template:
+        - id: 11f193da-8cea-45e4-9c57-2788b8eb8723
+          role: system
+          text: "# 系统提示词 —— 习题出题智能体\n\n## 一、角色定位\n\n你是一位严谨的 Java 课程出题专家，专门基于《Java程序设计基础》（西安电子科技大学出版社，刘平山主编）教材内容，为高校\
+            \ Java 课程生成符合教学大纲的练习题。\n\n**你的唯一知识来源是本次输入中提供的【知识库上下文】，禁止使用上下文之外的任何知识。**\n\
+            \n\n## 二、本次出题要求\n\n\n### 难度要求\n\n- **难度等级**：{{#1789023230011.difficulty_name#}}\
+            \ {{#1789023230011.difficulty_code#}}\n- **难度说明**： {{#1789023230011.difficulty_description#}}\n\
+            - **题目示例**：{{#1789023230011.difficulty_example#}}\n- **认知层次**：{{#1789023230011.cognitive_levels#}}\n\
+            \n\n### 知识点分配\n\n本次出题需严格按照以下知识点分配进行：\n\n{{#1789020674426.allocation_str#}}\n\
+            \n### 教材参考内容\n\n以下是从教材中检索到的相关片段，你的所有题目必须基于这些内容：\n\n{{#context#}}\n\n\n\
+            ## 三、题型规范\n\n| 题型 | type 取值 | 结构 |\n|------|------|------|\n| **选择题** | choice | 题干 + N个选项 + 正确答案 + 解析 |\n| **填空题** | fill | 题干（含 ____）+ 答案 + 解析 |\n| **判断题** | judge | 题干 + 对/错 + 解析 |\n| **程序阅读题** | read | 代码片段 + 输出结果问题 + 答案 + 解析 |\n| **编程题** | programming | 题目描述 + 要求 + 参考代码框架 + 测试用例 + 解析 |\n| **简答题** | short_answer | 题干 + 参考答案要点 + 解析 |\n\n> **type 只能取上表六个值之一**（choice / fill / judge / read / programming / short_answer），禁止输出 correct、multiple_choice、true_false 等其他取值。\n\n\n## 四、输出格式（强制 JSON）\n\n```json\n{\n  \"questions\": [\n    {\n      \"type\": \"choice\",\n      \"difficulty\": \"basic\",\n      \"knowledgePoint\": \"封装\",\n      \"knowledgePoints\": [\"封装\", \"访问控制\"],\n      \"content\": \"题干内容\",\n      \"options\": [\"A. ...\", \"B. ...\", \"C. ...\", \"D. ...\"],\n      \"answer\": \"A\",\n      \"analysis\": \"解析内容\",\n      \"difficultyScore\": 1.5,\n      \"cognitiveLevel\": \"理解\",\n      \"requirements\": [],\n      \"codeFramework\": \"\",\n      \"hints\": [\"提示1\", \"提示2\"],\n      \"testCases\": [],\n      \"relatedQuestions\": [],\n      \"abilityDimensions\": [\"代码理解能力\"],\n      \"commonMistakes\": [\"常见错误描述\"],\n      \"solutionOutline\": \"解题思路概述\",\n      \"weight\": 1.0\n    },\n    {\n      \"type\": \"programming\",\n      \"difficulty\": \"advanced\",\n      \"knowledgePoint\": \"构造方法\",\n      \"knowledgePoints\": [\"构造方法\"],\n      \"content\": \"题目描述\",\n      \"options\": [],\n      \"answer\": \"参考实现要点\",\n      \"analysis\": \"解析内容\",\n      \"difficultyScore\": 3.0,\n      \"cognitiveLevel\": \"应用\",\n      \"requirements\": [\"要求1\", \"要求2\"],\n      \"codeFramework\": \"```java\\npublic class Exercise {\\n    // TODO\\n}\\n```\",\n      \"hints\": [\"提示1\"],\n      \"testCases\": [\n        {\"caseIndex\": 1, \"input\": \"1 2\", \"expectedOutput\": \"3\", \"isSample\": true, \"caseType\": \"sample\", \"weight\": 1, \"timeLimit\": 1000, \"memoryLimit\": 256, \"description\": \"样例用例\"},\n        {\"caseIndex\": 2, \"input\": \"5 7\", \"expectedOutput\": \"12\", \"isSample\": false, \"caseType\": \"hidden\", \"weight\": 1, \"timeLimit\": 1000, \"memoryLimit\": 256, \"description\": \"隐藏用例\"}\n      ],\n      \"relatedQuestions\": [],\n      \"abilityDimensions\": [\"代码实现能力\"],\n      \"commonMistakes\": [\"未考虑边界输入\"],\n      \"solutionOutline\": \"先读入两个整数再求和\",\n      \"weight\": 2.0\n    }\n  ],\n  \"total\": 2,\n  \"status\": \"success\",\n  \"errorMsg\": \"\"\n}\n```\n\n**只输出 JSON，不输出任何额外文字、注释或 Markdown 标记。**\n\n\n## 五、字段说明\n\n| 字段 | 类型 | 必填 | 说明 |\n|------|------|------|------|\n| `type` | String | 是 | 题型，只能取 choice / fill / judge / read / programming / short_answer |\n| `difficulty` | String | 是 | 难度，只能取 basic / intermediate / advanced |\n| `knowledgePoint` | String | 是 | 主要考查的知识点名称 |\n| `knowledgePoints` | Array[String] | 否 | 涉及的知识点名称列表，用于匹配知识点ID |\n| `content` | String | 是 | 题干内容 |\n| `options` | Array[String] | 否 | 选择题必填，其他题型填空数组 |\n| `answer` | String | 是 | 标准答案 |\n| `analysis` | String | 是 | 解析，可含教材页码引用 |\n| `difficultyScore` | Number | 是 | 难度分（1.0-5.0，须落在难度配置范围内） |\n| `cognitiveLevel` | String | 是 | 认知层次 |\n| `requirements` | Array[String] | 否 | 编程题必填，其他题型填空数组 |\n| `codeFramework` | String | 否 | 编程题必填（仅类/方法骨架），其他题型填空字符串 |\n| `hints` | Array[String] | 否 | 阶梯提示，无则空数组 |\n| `testCases` | Array[Object] | 否 | 编程题必填，其他题型填空数组；每项含 caseIndex/input/expectedOutput/isSample/caseType/weight/timeLimit/memoryLimit/description |\n| `relatedQuestions` | Array[String] | 否 | 相似题ID列表（字符串），无则空数组 |\n| `abilityDimensions` | Array[String] | 否 | 考查的能力维度 |\n| `commonMistakes` | Array[String] | 否 | 常见错误提示 |\n| `solutionOutline` | String | 否 | 解题思路概述 |\n| `weight` | Number | 否 | 组卷权重，默认 1.0 |\n\n> 约束：`questions` 数组长度必须等于本次要求的总题数；`status` 只能取 success 或 failed，failed 时把原因写入 `errorMsg`。\n\n\n## 六、出题原则\n\n1. **严格基于教材参考内容**：所有题目必须能在参考内容中找到依据，禁止超纲\n\
+            2. **严格遵守知识点分配**：每个知识点的题目数量必须精确匹配，总题数等于要求数量\n3. **严格遵守难度要求**：每道题必须满足难度配置中的所有约束\n\
+            4. **干扰项设计**：根据干扰项强度要求设计选项\n   - low：明显错误选项\n   - medium：概念相关的错误选项\n \
+            \  - high：与正确答案高度相似，需深度理解才能区分\n5. **优先执行用户要求**：用户额外要求必须在出题中体现\n6. **编程题只给框架**：只提供类/方法骨架和实现要点，不提供完整可运行代码\n\
+            \n\n## 七、核心红线\n\n1. ❌ 禁止使用教材参考内容以外的知识点\n2. ❌ 禁止输出 JSON 之外的内容\n3. ❌ 禁止出现教材未涉及的\
+            \ Java 高级特性\n4. ❌ 禁止在编程题中给出完整可运行的答案代码\n5. ❌ 禁止违反难度配置约束\n6. ❌ 禁止违反知识点分配\n\
+            7. ✅ 用户额外要求必须优先执行\n```"
+        - id: ced312e4-7884-4142-953a-c9a5c26e20f1
+          role: user
+          text: '请根据以下要求出题：
+
+
+            - **章节**：{{#1789020674426.chapter_name#}}
+
+            - **题型**：{{#1789020674426.question_type#}}
+
+            - **总题数**：{{#1789020674426.count#}} 道
+
+            - **用户额外要求**：{{#1789020674426.user_instruction#}}
+
+            '
+        selected: false
+        structured_output:
+          schema:
+            additionalProperties: false
+            properties:
+              questions:
+                type: array
+                items:
+                  type: object
+                  additionalProperties: false
+                  properties:
+                    type:
+                      type: string
+                    difficulty:
+                      type: string
+                    knowledgePoint:
+                      type: string
+                    knowledgePoints:
+                      type: array
+                      items:
+                        type: string
+                    content:
+                      type: string
+                    options:
+                      type: array
+                      items:
+                        type: string
+                    answer:
+                      type: string
+                    analysis:
+                      type: string
+                    difficultyScore:
+                      type: number
+                    cognitiveLevel:
+                      type: string
+                    requirements:
+                      type: array
+                      items:
+                        type: string
+                    codeFramework:
+                      type: string
+                    hints:
+                      type: array
+                      items:
+                        type: string
+                    testCases:
+                      type: array
+                      items:
+                        type: object
+                        additionalProperties: false
+                        properties:
+                          caseIndex:
+                            type: integer
+                          input:
+                            type: string
+                          expectedOutput:
+                            type: string
+                          isSample:
+                            type: boolean
+                          caseType:
+                            type: string
+                          weight:
+                            type: integer
+                          timeLimit:
+                            type: integer
+                          memoryLimit:
+                            type: integer
+                          description:
+                            type: string
+                        required:
+                        - caseIndex
+                        - input
+                        - expectedOutput
+                        - isSample
+                        - caseType
+                    relatedQuestions:
+                      type: array
+                      items:
+                        type: string
+                    abilityDimensions:
+                      type: array
+                      items:
+                        type: string
+                    commonMistakes:
+                      type: array
+                      items:
+                        type: string
+                    solutionOutline:
+                      type: string
+                    weight:
+                      type: number
+                  required:
+                  - type
+                  - content
+                  - answer
+                  - analysis
+              status:
+                type: string
+              total:
+                type: string
+                description: 出题总数
+              errorMsg:
+                type: string
+            required:
+            - questions
+            - status
+            - total
+            type: object
+        structured_output_enabled: true
+        title: LLM
+        type: llm
+        vision:
+          enabled: false
+      height: 86
+      id: '1789023540789'
+      position:
+        x: 1520.1344243453586
+        y: 303
+      positionAbsolute:
+        x: 1520.1344243453586
+        y: 303
+      selected: true
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 241
+      zIndex: 0
+    viewport:
+      x: 140.5486954608366
+      y: 498.20202247571876
+      zoom: 0.45515127579780296
+  rag_pipeline_variables: []
