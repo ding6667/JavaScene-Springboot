@@ -76,4 +76,10 @@ public class ErrorCodeConstant {
      * 例如：学生尝试执行教师专属操作
      */
     public static final int PERMISSION_DENIED = 403;
+
+    /**
+     * 入参不合法
+     * 例如：旧密码错误、角色码映射不到、学号已被占用。取值与 common 的同名码保持一致
+     */
+    public static final int PARAM_INVALID = 1001;
 }

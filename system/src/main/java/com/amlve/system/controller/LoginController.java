@@ -3,9 +3,10 @@ package com.amlve.system.controller;
 import com.amlve.common.request.Result;
 import com.amlve.system.dto.request.LoginRequest;
 import com.amlve.system.dto.request.LogoutRequest;
-import com.amlve.system.dto.response.LoginVO;
+import com.amlve.system.dto.response.LoginResponse;
 import com.amlve.system.service.TokenRevocationService;
 import com.amlve.system.service.UserService;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -27,8 +28,20 @@ public class LoginController {
      * 登录：返回 token + 角色 + 后端算好的落地页
      */
     @PostMapping("/login")
-    public Result<LoginVO> login(@Valid @RequestBody LoginRequest loginRequest) {
-        return Result.success(userService.checkUser(loginRequest.getUsername(), loginRequest.getPassword()));
+    public Result<LoginResponse> login(@Valid @RequestBody LoginRequest loginRequest, HttpServletRequest request) {
+        return Result.success(userService.checkUser(
+                loginRequest.getUsername(), loginRequest.getPassword(), resolveClientIp(request)));
+    }
+
+    /**
+     * 取来源IP。反向代理后 getRemoteAddr 拿到的是代理地址，故优先 X-Forwarded-For 首段
+     */
+    private String resolveClientIp(HttpServletRequest request) {
+        String forwarded = request.getHeader("X-Forwarded-For");
+        if (forwarded != null && !forwarded.isBlank()) {
+            return forwarded.split(",")[0].trim();
+        }
+        return request.getRemoteAddr();
     }
 
     /**

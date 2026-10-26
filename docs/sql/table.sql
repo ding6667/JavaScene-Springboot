@@ -673,6 +673,27 @@ create table javascene.sys_admin_info
 )
     comment '管理员信息扩展表' collate = utf8mb4_unicode_ci;
 
+create table javascene.sys_class
+(
+    id            bigint auto_increment comment '主键ID'
+        primary key,
+    class_name    varchar(50)                        not null comment '班级名称',
+    teacher_id    bigint                             null comment '任课教师，关联 sys_user.id',
+    grade         varchar(20)                        null comment '年级，如 2024级',
+    student_count int      default 0                 null comment '学生人数，服务端统计，不接受前端写入',
+    course_id     bigint                             null comment '所属课程ID',
+    create_time   datetime default CURRENT_TIMESTAMP not null,
+    update_time   datetime default CURRENT_TIMESTAMP not null on update CURRENT_TIMESTAMP,
+    deleted       tinyint(1) default 0               not null
+)
+    comment '班级主数据表' collate = utf8mb4_unicode_ci;
+
+create index idx_teacher_id
+    on javascene.sys_class (teacher_id);
+
+create index idx_course_id
+    on javascene.sys_class (course_id);
+
 create table javascene.sys_permission
 (
     id        bigint auto_increment
@@ -774,8 +795,7 @@ create table javascene.sys_user
     deleted         tinyint(1) default 0                 null comment '逻辑删除（0-未删，1-已删）',
     create_time     datetime   default CURRENT_TIMESTAMP null comment '创建时间',
     update_time     datetime   default CURRENT_TIMESTAMP null on update CURRENT_TIMESTAMP comment '更新时间',
-    role_id         int                                  not null,
-    role_name       varchar(10)                          null,
+    role_id         int                                  not null comment '角色ID，关联 sys_role.id；角色名与描述一律从 sys_role 取',
     constraint username
         unique (username)
 )

@@ -5,73 +5,48 @@ import lombok.Data;
 import java.time.LocalDateTime;
 
 /**
- * 用户信息响应（不含密码等敏感字段）
+ * 当前用户完整信息：基础信息 + 按角色挂载的扩展信息，避免前端二次请求
  */
 @Data
 public class UserInfoResponse {
 
-    /**
-     * 用户ID
-     */
-    private Long id;
+    private Long userId;
 
-    /**
-     * 登录账号
-     */
     private String username;
 
-    /**
-     * 真实姓名
-     */
     private String realName;
 
-    /**
-     * 邮箱
-     */
     private String email;
 
-    /**
-     * 手机号
-     */
     private String phone;
 
-    /**
-     * 学号（学生角色，教师/管理员为 null）
-     */
-    private String studentNo;
+    private String avatar;
 
     /**
-     * 班级（学生角色，教师/管理员为 null）
+     * 角色ID：1=学生，2=教师，3=管理员
      */
-    private String className;
+    private Integer roleId;
 
     /**
-     * 专业（学生角色，教师/管理员为 null）
-     */
-    private String major;
-
-    /**
-     * 职称（教师角色，学生/管理员为 null）
-     */
-    private String title;
-
-    /**
-     * 角色ID
-     */
-    private String roleId;
-
-    /**
-     * 角色名称（STUDENT / TEACHER）
+     * 角色名：STUDENT / TEACHER / ADMIN
      */
     private String roleName;
 
     /**
-     * 账号状态：0-禁用，1-启用
+     * 角色中文描述
+     */
+    private String roleDesc;
+
+    /**
+     * 账号状态：0=禁用，1=启用
      */
     private Integer enabled;
 
+    private LocalDateTime lastLoginTime;
+
     /**
-     * 创建时间
+     * 角色扩展信息：STUDENT 为 StudentInfoResponse，TEACHER 为 TeacherInfoResponse，ADMIN 为 AdminInfoResponse。
+     * 缺扩展记录时为对应 Response 类的空对象而非 null，前端不必判空分支
      */
-    private LocalDateTime createTime;
+    private Object extInfo;
 }
