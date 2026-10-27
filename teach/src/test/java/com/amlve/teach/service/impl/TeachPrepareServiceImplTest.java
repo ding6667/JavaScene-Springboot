@@ -1,18 +1,16 @@
 package com.amlve.teach.service.impl;
 
-import com.amlve.agentprepareapi.service.PrepareAgentClient;
+import com.amlve.agentprepareapi.dto.request.TeachingMaterialDTO;
 import com.amlve.common.exception.BusinessException;
 import com.amlve.common.request.Result;
 import com.amlve.knowledgeapi.service.KnowledgeChapterApi;
 import com.amlve.teach.dto.request.PrepareRequest;
 import com.amlve.teach.dto.response.PrepareResponse;
-import com.amlve.teach.mapper.TeachPrepareRecordMapper;
-import com.amlve.teach.mapper.TeachPptMapper;
 import com.amlve.teach.mapper.TeachPptTemplateMapper;
+import com.amlve.teach.mapper.TeachPrepareRecordMapper;
+import com.amlve.teach.service.TeachPrepareAsyncService;
 import com.amlve.teach.tableEnt.TeachPptTemplate;
 import com.amlve.teach.tableEnt.TeachPrepareRecord;
-import com.amlve.teach.tableEnt.TeachPpt;
-import com.amlve.teach.util.MarkdownToPptxUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -23,18 +21,23 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.time.LocalDateTime;
+import java.util.List;
+
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 /**
- * 备课业务编排单元测试：Mock 素材接口/智能体客户端/PPT工具/Mapper，
- * 验证 DTO 转换、落库字段、失败兜底与 recordId 回填。
+ * 备课受理阶段单元测试：Mock 素材接口/模板 Mapper/备课记录 Mapper/异步生成服务，
+ * 验证模板与素材校验、status=2 记录落库、记录ID 回填与异步交接参数。
+ * <p>
+ * 智能体调用、PPT 转换与材料回写见 {@link TeachPrepareAsyncServiceImplTest}。
  */
 @ExtendWith(MockitoExtension.class)
 class TeachPrepareServiceImplTest {
@@ -43,26 +46,20 @@ class TeachPrepareServiceImplTest {
     private KnowledgeChapterApi knowledgeChapterApi;
 
     @Mock
-    private PrepareAgentClient prepareAgentClient;
-
-    @Mock
-    private MarkdownToPptxUtil markdownToPptxUtil;
-
-    @Mock
     private TeachPrepareRecordMapper teachPrepareRecordMapper;
 
     @Mock
-    private TeachPptMapper teachPptMapper;
+    private TeachPptTemplateMapper teachPptTemplateMapper;
 
     @Mock
-    private TeachPptTemplateMapper teachPptTemplateMapper;
+    private TeachPrepareAsyncService teachPrepareAsyncService;
 
     @InjectMocks
     private TeachPrepareServiceImpl service;
 
     private static final Long TEACHER_ID = 1L;
     private static final Long CHAPTER_ID = 5L;
-    private static final String PPTX_PATH = "D:/temp/commonFile/2026/09/08/uuid.pptx";
+    private static final Long RECORD_ID = 100L;
 
     @BeforeEach
     void setUpLoginTeacher() {
@@ -94,196 +91,6 @@ class TeachPrepareServiceImplTest {
                 .build();
     }
 
-    /** 智能体返回（含 PPT Markdown） */
-    private com.amlve.agentprepareapi.dto.response.PrepareResponse buildAgentResult() {
-        com.amlve.agentprepareapi.dto.response.PrepareResponse result =
-                new com.amlve.agentprepareapi.dto.response.PrepareResponse();
-        result.setLessonPlan("## 教案");
-        result.setPptx("# PPT\n\n---\n\n# 第二页");
-        result.setKeyPoints("## 重难点");
-        result.setHomework("## 习题");
-        result.setLab("## 实训");
-        return result;
-    }
-
-    /** 模拟 MyBatis-Plus insert 主键回填 */
-    private void mockInsertBackfillId() {
-        doAnswer(invocation -> {
-            TeachPrepareRecord r = invocation.getArgument(0);
-            r.setId(100L);
-            return 1;
-        }).when(teachPrepareRecordMapper).insert(any(TeachPrepareRecord.class));
-    }
-
-    @Test
-    void generate_shouldConvertMaterialFields_andSaveSuccessRecord() {
-        when(knowledgeChapterApi.getTeachingMaterials(CHAPTER_ID)).thenReturn(Result.success(buildKnowledgeMaterial()));
-        when(prepareAgentClient.generate(any(com.amlve.agentprepareapi.dto.request.PrepareRequest.class),
-                any(com.amlve.agentprepareapi.dto.request.TeachingMaterialDTO.class)))
-                .thenReturn(Result.success(buildAgentResult()));
-        when(markdownToPptxUtil.convertContent(anyString())).thenReturn(PPTX_PATH);
-        mockInsertBackfillId();
-
-        PrepareResponse response = service.generateTeachingMaterials(buildRequest());
-
-        // 响应字段完整，recordId 回填
-        assertThat(response.getChapterId()).isEqualTo(CHAPTER_ID);
-        assertThat(response.getLessonPlan()).isEqualTo("## 教案");
-        assertThat(response.getPptxUrl()).isEqualTo(PPTX_PATH);
-        assertThat(response.getKeyPoints()).isEqualTo("## 重难点");
-        assertThat(response.getHomework()).isEqualTo("## 习题");
-        assertThat(response.getLab()).isEqualTo("## 实训");
-        assertThat(response.getRecordId()).isEqualTo(100L);
-
-        // 备课记录：字段映射完整、teacherId 从登录上下文注入、status=1
-        ArgumentCaptor<TeachPrepareRecord> recordCaptor = ArgumentCaptor.forClass(TeachPrepareRecord.class);
-        verify(teachPrepareRecordMapper).insert(recordCaptor.capture());
-        TeachPrepareRecord record = recordCaptor.getValue();
-        assertThat(record.getChapterId()).isEqualTo(CHAPTER_ID);
-        assertThat(record.getTeacherId()).isEqualTo(TEACHER_ID);
-        assertThat(record.getLessonPlan()).isEqualTo("## 教案");
-        assertThat(record.getPptxMd()).contains("第二页");
-        assertThat(record.getPptxUrl()).isEqualTo(PPTX_PATH);
-        assertThat(record.getStatus()).isEqualTo(1);
-
-        // PPT 记录：文件名/路径/Markdown 落库
-        ArgumentCaptor<TeachPpt> pptCaptor = ArgumentCaptor.forClass(TeachPpt.class);
-        verify(teachPptMapper).insert(pptCaptor.capture());
-        TeachPpt ppt = pptCaptor.getValue();
-        assertThat(ppt.getChapterId()).isEqualTo(CHAPTER_ID);
-        assertThat(ppt.getFileName()).isEqualTo("uuid.pptx");
-        assertThat(ppt.getFilePath()).isEqualTo(PPTX_PATH);
-        assertThat(ppt.getMdContent()).contains("第二页");
-        assertThat(ppt.getDownloadCount()).isEqualTo(0);
-
-        // 素材 DTO 逐字段拷贝验证
-        @SuppressWarnings("unchecked")
-        ArgumentCaptor<com.amlve.agentprepareapi.dto.request.TeachingMaterialDTO> materialCaptor =
-                ArgumentCaptor.forClass(com.amlve.agentprepareapi.dto.request.TeachingMaterialDTO.class);
-        verify(prepareAgentClient).generate(any(), materialCaptor.capture());
-        com.amlve.agentprepareapi.dto.request.TeachingMaterialDTO material = materialCaptor.getValue();
-        assertThat(material.getChapterSummary()).isEqualTo("本章介绍类与对象");
-        assertThat(material.getConceptDefinitions()).isEqualTo("[{\"name\":\"类\"}]");
-        assertThat(material.getLabTasks()).isEqualTo("[]");
-    }
-
-    @Test
-    void generate_shouldNotInsertTeachPpt_whenPptxNull() {
-        // 智能体未返回 PPT（开关关闭）：不生成文件、不落 PPT 记录
-        com.amlve.agentprepareapi.dto.response.PrepareResponse agentResult = buildAgentResult();
-        agentResult.setPptx(null);
-        when(knowledgeChapterApi.getTeachingMaterials(CHAPTER_ID)).thenReturn(Result.success(buildKnowledgeMaterial()));
-        when(prepareAgentClient.generate(any(), any())).thenReturn(Result.success(agentResult));
-        mockInsertBackfillId();
-
-        PrepareResponse response = service.generateTeachingMaterials(buildRequest());
-
-        assertThat(response.getPptxUrl()).isNull();
-        verify(markdownToPptxUtil, never()).convertContent(anyString());
-        verify(teachPptMapper, never()).insert(any(TeachPpt.class));
-        // 其余材料正常返回，备课记录仍成功落库
-        assertThat(response.getLessonPlan()).isEqualTo("## 教案");
-        ArgumentCaptor<TeachPrepareRecord> captor = ArgumentCaptor.forClass(TeachPrepareRecord.class);
-        verify(teachPrepareRecordMapper).insert(captor.capture());
-        assertThat(captor.getValue().getStatus()).isEqualTo(1);
-    }
-
-    @Test
-    void generate_shouldDegrade_whenPptxConvertFail() {
-        // marp2pptx 不可用：pptxUrl=null，其余材料正常返回
-        when(knowledgeChapterApi.getTeachingMaterials(CHAPTER_ID)).thenReturn(Result.success(buildKnowledgeMaterial()));
-        when(prepareAgentClient.generate(any(), any())).thenReturn(Result.success(buildAgentResult()));
-        when(markdownToPptxUtil.convertContent(anyString())).thenReturn(null);
-        mockInsertBackfillId();
-
-        PrepareResponse response = service.generateTeachingMaterials(buildRequest());
-
-        assertThat(response.getPptxUrl()).isNull();
-        assertThat(response.getLessonPlan()).isEqualTo("## 教案");
-        verify(teachPptMapper, never()).insert(any(TeachPpt.class));
-        // 备课记录仍成功（PPT 记录 url 为 null）
-        ArgumentCaptor<TeachPrepareRecord> captor = ArgumentCaptor.forClass(TeachPrepareRecord.class);
-        verify(teachPrepareRecordMapper).insert(captor.capture());
-        assertThat(captor.getValue().getStatus()).isEqualTo(1);
-        assertThat(captor.getValue().getPptxUrl()).isNull();
-    }
-
-    @Test
-    void generate_shouldSaveFailedRecord_andRethrow_whenMaterialQueryFail() {
-        // 素材查询失败（章节不存在）：落 status=0 记录并上抛
-        when(knowledgeChapterApi.getTeachingMaterials(CHAPTER_ID))
-                .thenThrow(new BusinessException("章节不存在"));
-
-        assertThatThrownBy(() -> service.generateTeachingMaterials(buildRequest()))
-                .isInstanceOf(BusinessException.class)
-                .hasMessageContaining("章节不存在");
-
-        ArgumentCaptor<TeachPrepareRecord> captor = ArgumentCaptor.forClass(TeachPrepareRecord.class);
-        verify(teachPrepareRecordMapper).insert(captor.capture());
-        TeachPrepareRecord record = captor.getValue();
-        assertThat(record.getStatus()).isEqualTo(0);
-        assertThat(record.getErrorMsg()).contains("章节不存在");
-        assertThat(record.getTeacherId()).isEqualTo(TEACHER_ID);
-        // 失败路径不触达智能体与 PPT 记录
-        verify(prepareAgentClient, never()).generate(any(), any());
-        verify(teachPptMapper, never()).insert(any(TeachPpt.class));
-    }
-
-    @Test
-    void generate_shouldSaveFailedRecord_andRethrow_whenAgentFail() {
-        // 智能体调用失败：同样落 status=0 记录并上抛
-        when(knowledgeChapterApi.getTeachingMaterials(CHAPTER_ID)).thenReturn(Result.success(buildKnowledgeMaterial()));
-        when(prepareAgentClient.generate(any(), any()))
-                .thenThrow(new BusinessException("Dify 备课工作流执行失败: status=failed"));
-
-        assertThatThrownBy(() -> service.generateTeachingMaterials(buildRequest()))
-                .isInstanceOf(BusinessException.class)
-                .hasMessageContaining("Dify");
-
-        ArgumentCaptor<TeachPrepareRecord> captor = ArgumentCaptor.forClass(TeachPrepareRecord.class);
-        verify(teachPrepareRecordMapper).insert(captor.capture());
-        assertThat(captor.getValue().getStatus()).isEqualTo(0);
-        assertThat(captor.getValue().getErrorMsg()).contains("Dify");
-    }
-
-    @Test
-    void generate_shouldSaveFailedRecord_andRethrow_whenMaterialQueryReturnError() {
-        // 素材接口返回 error Result（不抛异常）：判错后中断备课并落失败记录
-        when(knowledgeChapterApi.getTeachingMaterials(CHAPTER_ID))
-                .thenReturn(Result.error("章节不存在"));
-
-        assertThatThrownBy(() -> service.generateTeachingMaterials(buildRequest()))
-                .isInstanceOf(BusinessException.class)
-                .hasMessageContaining("查询备课素材失败");
-
-        ArgumentCaptor<TeachPrepareRecord> captor = ArgumentCaptor.forClass(TeachPrepareRecord.class);
-        verify(teachPrepareRecordMapper).insert(captor.capture());
-        assertThat(captor.getValue().getStatus()).isEqualTo(0);
-        assertThat(captor.getValue().getErrorMsg()).contains("查询备课素材失败");
-        // 判错路径不触达智能体与 PPT 记录
-        verify(prepareAgentClient, never()).generate(any(), any());
-        verify(teachPptMapper, never()).insert(any(TeachPpt.class));
-    }
-
-    @Test
-    void generate_shouldSaveFailedRecord_andRethrow_whenAgentReturnError() {
-        // 智能体返回 error Result（不抛异常）：判错后中断备课并落失败记录
-        when(knowledgeChapterApi.getTeachingMaterials(CHAPTER_ID))
-                .thenReturn(Result.success(buildKnowledgeMaterial()));
-        when(prepareAgentClient.generate(any(), any()))
-                .thenReturn(Result.error("工作流执行失败"));
-
-        assertThatThrownBy(() -> service.generateTeachingMaterials(buildRequest()))
-                .isInstanceOf(BusinessException.class)
-                .hasMessageContaining("备课智能体调用失败");
-
-        ArgumentCaptor<TeachPrepareRecord> captor = ArgumentCaptor.forClass(TeachPrepareRecord.class);
-        verify(teachPrepareRecordMapper).insert(captor.capture());
-        assertThat(captor.getValue().getStatus()).isEqualTo(0);
-        assertThat(captor.getValue().getErrorMsg()).contains("备课智能体调用失败");
-        verify(teachPptMapper, never()).insert(any(TeachPpt.class));
-    }
-
     /** 系统模板（templateId 为空时的默认模板） */
     private TeachPptTemplate systemTemplate() {
         TeachPptTemplate template = new TeachPptTemplate();
@@ -297,40 +104,71 @@ class TeachPrepareServiceImplTest {
         return template;
     }
 
-    @Test
-    void generate_shouldResolveDefaultTemplate_andInjectTheme_whenTemplateIdNull() {
-        // templateId 未传：取 sort_order 最小的系统模板，骨架随 ppt_config 下发、主题注入转换入参
-        when(teachPptTemplateMapper.selectList(any(LambdaQueryWrapper.class)))
-                .thenReturn(java.util.List.of(systemTemplate()));
-        when(knowledgeChapterApi.getTeachingMaterials(CHAPTER_ID)).thenReturn(Result.success(buildKnowledgeMaterial()));
-        when(prepareAgentClient.generate(any(com.amlve.agentprepareapi.dto.request.PrepareRequest.class), any()))
-                .thenReturn(Result.success(buildAgentResult()));
-        when(markdownToPptxUtil.convertContent(anyString())).thenReturn(PPTX_PATH);
-        mockInsertBackfillId();
-
-        service.generateTeachingMaterials(buildRequest());
-
-        // 模板骨架结构下发智能体
-        ArgumentCaptor<com.amlve.agentprepareapi.dto.request.PrepareRequest> apiCaptor =
-                ArgumentCaptor.forClass(com.amlve.agentprepareapi.dto.request.PrepareRequest.class);
-        verify(prepareAgentClient).generate(apiCaptor.capture(), any());
-        assertThat(apiCaptor.getValue().getPptConfig().getStructure()).contains("# 总结");
-
-        // 转换入参注入 frontmatter + java-uncover 主题样式（<style> 内联，marp2pptx 不支持 --theme-set）
-        ArgumentCaptor<String> mdCaptor = ArgumentCaptor.forClass(String.class);
-        verify(markdownToPptxUtil).convertContent(mdCaptor.capture());
-        assertThat(mdCaptor.getValue()).startsWith("---\nmarp: true")
-                .contains("size: 16:9").contains("<style>").contains("@theme java-uncover").contains("第二页");
-
-        // 落库 md 为智能体返回原始内容（不含 frontmatter）
-        ArgumentCaptor<TeachPrepareRecord> recordCaptor = ArgumentCaptor.forClass(TeachPrepareRecord.class);
-        verify(teachPrepareRecordMapper).insert(recordCaptor.capture());
-        assertThat(recordCaptor.getValue().getPptxMd()).doesNotStartWith("---").contains("第二页");
+    /** 模拟 MyBatis-Plus ASSIGN_ID 主键回填与 MetaObjectHandler 的 createTime 填充 */
+    private void mockInsertBackfill() {
+        doAnswer(invocation -> {
+            TeachPrepareRecord r = invocation.getArgument(0);
+            r.setId(RECORD_ID);
+            r.setCreateTime(LocalDateTime.now());
+            return 1;
+        }).when(teachPrepareRecordMapper).insert(any(TeachPrepareRecord.class));
     }
 
     @Test
-    void generate_shouldUseSpecifiedTemplate_whenOwnedTemplateProvided() {
-        // 指定本人自定义模板：校验通过并按模板主题注入（java-dark 样式内联）
+    void accept_shouldInsertGeneratingRecord_andReturnRecordId() {
+        when(knowledgeChapterApi.getTeachingMaterials(CHAPTER_ID)).thenReturn(Result.success(buildKnowledgeMaterial()));
+        when(teachPptTemplateMapper.selectList(any(LambdaQueryWrapper.class)))
+                .thenReturn(List.of(systemTemplate()));
+        mockInsertBackfill();
+
+        PrepareResponse response = service.generateTeachingMaterials(buildRequest());
+
+        // 受理响应：只有记录ID与状态，不含五类材料
+        assertThat(response.getRecordId()).isEqualTo(RECORD_ID);
+        assertThat(response.getChapterId()).isEqualTo(CHAPTER_ID);
+        assertThat(response.getStatus()).isEqualTo(2);
+        assertThat(response.getStatusDesc()).isEqualTo("生成中");
+        assertThat(response.getGenerateTime()).isNotNull();
+
+        // 占位记录：主键雪花ID、教师ID 从登录上下文注入、status=2，材料字段留空待回写
+        ArgumentCaptor<TeachPrepareRecord> captor = ArgumentCaptor.forClass(TeachPrepareRecord.class);
+        verify(teachPrepareRecordMapper).insert(captor.capture());
+        TeachPrepareRecord record = captor.getValue();
+        assertThat(record.getChapterId()).isEqualTo(CHAPTER_ID);
+        assertThat(record.getTeacherId()).isEqualTo(TEACHER_ID);
+        assertThat(record.getStatus()).isEqualTo(2);
+        assertThat(record.getLessonPlan()).isNull();
+        assertThat(record.getPptxUrl()).isNull();
+    }
+
+    @Test
+    void accept_shouldHandOffToAsyncWorker_withPreparedRequestAndThemeCode() {
+        when(knowledgeChapterApi.getTeachingMaterials(CHAPTER_ID)).thenReturn(Result.success(buildKnowledgeMaterial()));
+        when(teachPptTemplateMapper.selectList(any(LambdaQueryWrapper.class)))
+                .thenReturn(List.of(systemTemplate()));
+        mockInsertBackfill();
+
+        service.generateTeachingMaterials(buildRequest());
+
+        ArgumentCaptor<com.amlve.agentprepareapi.dto.request.PrepareRequest> apiCaptor =
+                ArgumentCaptor.forClass(com.amlve.agentprepareapi.dto.request.PrepareRequest.class);
+        ArgumentCaptor<TeachingMaterialDTO> materialCaptor = ArgumentCaptor.forClass(TeachingMaterialDTO.class);
+        ArgumentCaptor<String> themeCaptor = ArgumentCaptor.forClass(String.class);
+        verify(teachPrepareAsyncService).generateAsync(eq(RECORD_ID), eq(CHAPTER_ID), eq(TEACHER_ID),
+                apiCaptor.capture(), materialCaptor.capture(), themeCaptor.capture());
+
+        // 模板骨架随 ppt_config 下发、主题码交后台注入、素材逐字段拷贝
+        assertThat(apiCaptor.getValue().getPptConfig().getStructure()).contains("# 总结");
+        assertThat(apiCaptor.getValue().getUserMessage()).isEqualTo("侧重案例讲解");
+        assertThat(themeCaptor.getValue()).isEqualTo("java-uncover");
+        TeachingMaterialDTO material = materialCaptor.getValue();
+        assertThat(material.getChapterSummary()).isEqualTo("本章介绍类与对象");
+        assertThat(material.getConceptDefinitions()).isEqualTo("[{\"name\":\"类\"}]");
+        assertThat(material.getLabTasks()).isEqualTo("[]");
+    }
+
+    @Test
+    void accept_shouldUseSpecifiedOwnedTemplate() {
         TeachPptTemplate own = systemTemplate();
         own.setId(20L);
         own.setThemeCode("java-dark");
@@ -341,49 +179,37 @@ class TeachPrepareServiceImplTest {
         request.setTemplateId(20L);
         when(teachPptTemplateMapper.selectById(20L)).thenReturn(own);
         when(knowledgeChapterApi.getTeachingMaterials(CHAPTER_ID)).thenReturn(Result.success(buildKnowledgeMaterial()));
-        when(prepareAgentClient.generate(any(com.amlve.agentprepareapi.dto.request.PrepareRequest.class), any()))
-                .thenReturn(Result.success(buildAgentResult()));
-        when(markdownToPptxUtil.convertContent(anyString())).thenReturn(PPTX_PATH);
-        mockInsertBackfillId();
+        mockInsertBackfill();
 
         service.generateTeachingMaterials(request);
 
-        ArgumentCaptor<String> mdCaptor = ArgumentCaptor.forClass(String.class);
-        verify(markdownToPptxUtil).convertContent(mdCaptor.capture());
-        assertThat(mdCaptor.getValue()).contains("<style>").contains("@theme java-dark");
+        ArgumentCaptor<String> themeCaptor = ArgumentCaptor.forClass(String.class);
+        verify(teachPrepareAsyncService).generateAsync(eq(RECORD_ID), eq(CHAPTER_ID), eq(TEACHER_ID),
+                any(), any(), themeCaptor.capture());
+        assertThat(themeCaptor.getValue()).isEqualTo("java-dark");
     }
 
     @Test
-    void generate_shouldInsertStyleAfterFrontmatter_whenAgentMdContainsFrontmatter() {
-        // Dify 输出已含 frontmatter：样式块插到闭合线之后、正文之前，不重复注入基础配置
-        when(teachPptTemplateMapper.selectList(any(LambdaQueryWrapper.class)))
-                .thenReturn(java.util.List.of(systemTemplate()));
+    void accept_shouldDegradeToNoTemplate_whenNoSystemTemplate() {
+        // 系统模板未初始化：仍受理，骨架下发空串、主题码为 null（后台不注入样式）
+        when(teachPptTemplateMapper.selectList(any(LambdaQueryWrapper.class))).thenReturn(List.of());
         when(knowledgeChapterApi.getTeachingMaterials(CHAPTER_ID)).thenReturn(Result.success(buildKnowledgeMaterial()));
-        com.amlve.agentprepareapi.dto.response.PrepareResponse agentResult = buildAgentResult();
-        agentResult.setPptx("---\nmarp: true\ntheme: gaia\n---\n\n# PPT\n\n---\n\n# 第二页");
-        when(prepareAgentClient.generate(any(com.amlve.agentprepareapi.dto.request.PrepareRequest.class), any()))
-                .thenReturn(Result.success(agentResult));
-        when(markdownToPptxUtil.convertContent(anyString())).thenReturn(PPTX_PATH);
-        mockInsertBackfillId();
+        mockInsertBackfill();
 
-        service.generateTeachingMaterials(buildRequest());
+        PrepareResponse response = service.generateTeachingMaterials(buildRequest());
 
-        ArgumentCaptor<String> mdCaptor = ArgumentCaptor.forClass(String.class);
-        verify(markdownToPptxUtil).convertContent(mdCaptor.capture());
-        String md = mdCaptor.getValue();
-        String frontmatterHead = "---\nmarp: true\ntheme: gaia\n---";
-        assertThat(md).startsWith(frontmatterHead).contains("<style>").contains("@theme java-uncover");
-        // 顺序：frontmatter 闭合线 → style 块 → 正文
-        int frontmatterEnd = md.indexOf(frontmatterHead) + frontmatterHead.length();
-        int stylePos = md.indexOf("<style>");
-        int bodyPos = md.indexOf("# PPT");
-        assertThat(stylePos).isGreaterThan(frontmatterEnd);
-        assertThat(bodyPos).isGreaterThan(stylePos);
+        assertThat(response.getRecordId()).isEqualTo(RECORD_ID);
+        ArgumentCaptor<com.amlve.agentprepareapi.dto.request.PrepareRequest> apiCaptor =
+                ArgumentCaptor.forClass(com.amlve.agentprepareapi.dto.request.PrepareRequest.class);
+        ArgumentCaptor<String> themeCaptor = ArgumentCaptor.forClass(String.class);
+        verify(teachPrepareAsyncService).generateAsync(eq(RECORD_ID), eq(CHAPTER_ID), eq(TEACHER_ID),
+                apiCaptor.capture(), any(), themeCaptor.capture());
+        assertThat(apiCaptor.getValue().getPptConfig().getStructure()).isEmpty();
+        assertThat(themeCaptor.getValue()).isNull();
     }
 
     @Test
-    void generate_shouldReject_whenTemplateNotAvailable() {
-        // 指定模板不存在：备课失败并落失败记录
+    void accept_shouldRejectWithoutRecord_whenTemplateNotAvailable() {
         PrepareRequest request = buildRequest();
         request.setTemplateId(999L);
         when(teachPptTemplateMapper.selectById(999L)).thenReturn(null);
@@ -392,15 +218,14 @@ class TeachPrepareServiceImplTest {
                 .isInstanceOf(BusinessException.class)
                 .hasMessageContaining("PPT模板不存在或不可用");
 
-        ArgumentCaptor<TeachPrepareRecord> captor = ArgumentCaptor.forClass(TeachPrepareRecord.class);
-        verify(teachPrepareRecordMapper).insert(captor.capture());
-        assertThat(captor.getValue().getStatus()).isEqualTo(0);
-        verify(prepareAgentClient, never()).generate(any(), any());
+        // 校验在落库之前：不留下半成品记录，也不交接后台任务
+        verify(teachPrepareRecordMapper, never()).insert(any(TeachPrepareRecord.class));
+        verify(teachPrepareAsyncService, never())
+                .generateAsync(any(), any(), any(), any(), any(), any());
     }
 
     @Test
-    void generate_shouldReject_whenTemplateBelongsToOtherTeacher() {
-        // 指定他人自定义模板：越权拒绝
+    void accept_shouldRejectWithoutRecord_whenTemplateBelongsToOtherTeacher() {
         TeachPptTemplate others = systemTemplate();
         others.setId(20L);
         others.setIsSystem(0);
@@ -414,6 +239,32 @@ class TeachPrepareServiceImplTest {
                 .isInstanceOf(BusinessException.class)
                 .hasMessageContaining("PPT模板不存在或不可用");
 
-        verify(prepareAgentClient, never()).generate(any(), any());
+        verify(teachPrepareRecordMapper, never()).insert(any(TeachPrepareRecord.class));
+    }
+
+    @Test
+    void accept_shouldRejectWithoutRecord_whenMaterialQueryThrows() {
+        when(knowledgeChapterApi.getTeachingMaterials(CHAPTER_ID))
+                .thenThrow(new BusinessException("章节不存在"));
+
+        assertThatThrownBy(() -> service.generateTeachingMaterials(buildRequest()))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("章节不存在");
+
+        verify(teachPrepareRecordMapper, never()).insert(any(TeachPrepareRecord.class));
+        verify(teachPrepareAsyncService, never())
+                .generateAsync(any(), any(), any(), any(), any(), any());
+    }
+
+    @Test
+    void accept_shouldRejectWithoutRecord_whenMaterialQueryReturnsError() {
+        when(knowledgeChapterApi.getTeachingMaterials(CHAPTER_ID))
+                .thenReturn(Result.error("章节不存在"));
+
+        assertThatThrownBy(() -> service.generateTeachingMaterials(buildRequest()))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("查询备课素材失败");
+
+        verify(teachPrepareRecordMapper, never()).insert(any(TeachPrepareRecord.class));
     }
 }

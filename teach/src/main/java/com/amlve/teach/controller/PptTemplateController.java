@@ -2,19 +2,15 @@ package com.amlve.teach.controller;
 
 import com.amlve.common.request.Result;
 import com.amlve.teach.dto.request.PptTemplateSaveRequest;
-import com.amlve.teach.dto.response.MarpThemeVO;
 import com.amlve.teach.dto.response.PptTemplateDetailVO;
 import com.amlve.teach.dto.response.PptTemplateResponse;
+import com.amlve.teach.dto.response.ThemeBriefResponse;
+import com.amlve.teach.dto.response.ThemeDetailResponse;
 import com.amlve.teach.service.PptTemplateService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
@@ -28,12 +24,6 @@ public class PptTemplateController {
 
     private final PptTemplateService pptTemplateService;
 
-    /** 外观主题列表（4 套预置 CSS 主题，常量返回不查库） */
-    @PreAuthorize("hasRole('TEACHER')")
-    @GetMapping
-    public Result<List<MarpThemeVO>> themes() {
-        return Result.success(pptTemplateService.listThemes());
-    }
 
     /** 模板列表（系统模板 + 本人自定义模板，按 sort_order 升序） */
     @PreAuthorize("hasRole('TEACHER')")
@@ -54,5 +44,18 @@ public class PptTemplateController {
     @PostMapping("/save")
     public Result<Long> save(@Valid @RequestBody PptTemplateSaveRequest request) {
         return Result.success(pptTemplateService.saveTemplate(request));
+    }
+
+    // 主题简要信息
+    @PreAuthorize("hasRole('TEACHER')")
+    @GetMapping("/themes")
+    public Result<List<ThemeBriefResponse>> listThemes() {
+        return Result.success(pptTemplateService.listThemes());
+    }
+
+    // 单个主题完整信息（含 CSS）
+    @GetMapping("/themes/{code}")
+    public Result<ThemeDetailResponse> getTheme(@PathVariable String code) {
+        return Result.success(pptTemplateService.getThemeDetail(code));
     }
 }

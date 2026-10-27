@@ -100,7 +100,7 @@ public class GlobalExceptionHandler {
     @ResponseStatus(HttpStatus.BAD_REQUEST)
     public Result<Void> handleMissingServletRequestParameterException(MissingServletRequestParameterException e) {
         log.warn("缺少必要参数: {}", e.getParameterName());
-        return Result.error(ErrorCodeConstant.PARAM_MISSING, "缺少必要参数: " + e.getParameterName());
+        return Result.error(ErrorCodeConstant.PARAM_MISSING, ErrorMessageConstant.PARAM_MISSING_PREFIX + e.getParameterName());
     }
 
     /**
@@ -110,7 +110,7 @@ public class GlobalExceptionHandler {
     @ResponseStatus(HttpStatus.BAD_REQUEST)
     public Result<Void> handleHttpMessageNotReadableException(HttpMessageNotReadableException e) {
         log.warn("请求体格式错误: {}", e.getMessage());
-        return Result.error(ErrorCodeConstant.PARAM_INVALID, "请求体格式错误");
+        return Result.error(ErrorCodeConstant.PARAM_INVALID, ErrorMessageConstant.PARAM_FORMAT_INVALID);
     }
 
     // ==================== 文件上传异常 ====================
@@ -122,7 +122,7 @@ public class GlobalExceptionHandler {
     @ResponseStatus(HttpStatus.PAYLOAD_TOO_LARGE)
     public Result<Void> handleMaxUploadSizeExceededException(MaxUploadSizeExceededException e) {
         log.warn("文件大小超限: {}", e.getMessage());
-        return Result.error(ErrorCodeConstant.FILE_SIZE_EXCEEDED, "文件大小超过限制（最大50MB）");
+        return Result.error(ErrorCodeConstant.FILE_SIZE_EXCEEDED, ErrorMessageConstant.FILE_SIZE_EXCEEDED);
     }
 
     // ==================== 请求方式异常 ====================
@@ -134,7 +134,7 @@ public class GlobalExceptionHandler {
     @ResponseStatus(HttpStatus.METHOD_NOT_ALLOWED)
     public Result<Void> handleHttpRequestMethodNotSupportedException(HttpRequestMethodNotSupportedException e) {
         log.warn("请求方法不支持: {}", e.getMessage());
-        return Result.error(ErrorCodeConstant.METHOD_NOT_ALLOWED, "请求方法不支持: " + e.getMethod());
+        return Result.error(ErrorCodeConstant.METHOD_NOT_ALLOWED, ErrorMessageConstant.METHOD_NOT_SUPPORTED_PREFIX + e.getMethod());
     }
 
     /**
@@ -144,7 +144,7 @@ public class GlobalExceptionHandler {
     @ResponseStatus(HttpStatus.UNSUPPORTED_MEDIA_TYPE)
     public Result<Void> handleHttpMediaTypeNotSupportedException(HttpMediaTypeNotSupportedException e) {
         log.warn("不支持的 Content-Type: {}", e.getMessage());
-        return Result.error(ErrorCodeConstant.UNSUPPORTED_MEDIA_TYPE, "不支持的 Content-Type: " + e.getContentType());
+        return Result.error(ErrorCodeConstant.UNSUPPORTED_MEDIA_TYPE, ErrorMessageConstant.CONTENT_TYPE_UNSUPPORTED_PREFIX + e.getContentType());
     }
 
     // ==================== 404 异常 ====================
@@ -156,7 +156,7 @@ public class GlobalExceptionHandler {
     @ResponseStatus(HttpStatus.NOT_FOUND)
     public Result<Void> handleNoHandlerFoundException(NoHandlerFoundException e) {
         log.warn("接口不存在: {}", e.getRequestURL());
-        return Result.error(ErrorCodeConstant.NOT_FOUND, "接口不存在: " + e.getRequestURL());
+        return Result.error(ErrorCodeConstant.NOT_FOUND, ErrorMessageConstant.ENDPOINT_NOT_FOUND_PREFIX + e.getRequestURL());
     }
 
     // ==================== 兜底异常 ====================
@@ -168,7 +168,7 @@ public class GlobalExceptionHandler {
     @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
     public Result<Void> handleException(Exception e) {
         log.error("系统异常: ", e);
-        return Result.error(ErrorCodeConstant.SYSTEM_ERROR, "系统异常，请稍后重试");
+        return Result.error(ErrorCodeConstant.SYSTEM_ERROR, ErrorMessageConstant.SYSTEM_ERROR_RETRY);
     }
 
     // ==================== 登录异常 ====================
@@ -192,6 +192,6 @@ public class GlobalExceptionHandler {
             // 下载场景：返回 403 状态码，且响应体为空
             return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
         }
-        return ResponseEntity.ok(Result.error(403, "权限不足"));
+        return ResponseEntity.ok(Result.error(403, ErrorMessageConstant.ACCESS_DENIED_GENERIC));
     }
 }

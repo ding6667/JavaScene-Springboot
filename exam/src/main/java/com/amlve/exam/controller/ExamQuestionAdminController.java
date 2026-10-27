@@ -1,5 +1,6 @@
 package com.amlve.exam.controller;
 
+import com.amlve.common.constant.ErrorMessageConstant;
 import com.amlve.common.exception.BusinessException;
 import com.amlve.common.request.PageResult;
 import com.amlve.common.request.Result;
@@ -44,7 +45,7 @@ public class ExamQuestionAdminController {
     @PutMapping("/update")
     public Result<Void> update(@Valid @RequestBody QuestionSaveRequest request) {
         if (request.getId() == null) {
-            throw new BusinessException("题目ID不能为空");
+            throw new BusinessException(ErrorMessageConstant.QUESTION_ID_MISSING);
         }
         ExamQuestion question = toEntity(request);
         question.setId(request.getId());

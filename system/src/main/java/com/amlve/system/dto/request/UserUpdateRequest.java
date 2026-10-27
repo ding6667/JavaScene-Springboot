@@ -1,5 +1,6 @@
 package com.amlve.system.dto.request;
 
+import com.amlve.system.constant.ErrorMessageConstant;
 import jakarta.validation.constraints.Email;
 import lombok.Data;
 
@@ -16,7 +17,7 @@ public class UserUpdateRequest {
 
     private String realName;
 
-    @Email(message = "邮箱格式不正确")
+    @Email(message = ErrorMessageConstant.USER_EMAIL_INVALID)
     private String email;
 
     private String phone;

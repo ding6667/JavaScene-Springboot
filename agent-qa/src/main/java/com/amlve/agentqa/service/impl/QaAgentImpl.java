@@ -1,5 +1,6 @@
 package com.amlve.agentqa.service.impl;
 
+import com.amlve.common.constant.ErrorMessageConstant;
 import com.amlve.agentqa.dto.context.ContextMessage;
 import com.amlve.agentqa.mapper.QaRecordMapper;
 import com.amlve.agentqa.service.QaContextManager;
@@ -106,7 +107,7 @@ public class QaAgentImpl implements QaAgent {
     @Override
     public Result<QAResponse> answer(Long userId, QARequest request) {
         if (request == null || !StringUtils.hasText(request.getQuestion())) {
-            throw new BusinessException("问题内容不能为空");
+            throw new BusinessException(ErrorMessageConstant.QA_QUESTION_EMPTY);
         }
         QaTurn turn = beginTurn(userId, request.getChapterId(), request.getSessionId(), request.getQuestion());
         Result<QaWorkflowAnswerVO> workflowResult =
@@ -125,10 +126,10 @@ public class QaAgentImpl implements QaAgent {
      */
     public QaTurn beginTurn(Long userId, Long chapterId, String sessionId, String question) {
         if (userId == null) {
-            throw new BusinessException("提问用户ID缺失，无法记录问答");
+            throw new BusinessException(ErrorMessageConstant.NOT_LOGGED_IN_RETRY);
         }
         if (!StringUtils.hasText(question)) {
-            throw new BusinessException("问题内容不能为空");
+            throw new BusinessException(ErrorMessageConstant.QA_QUESTION_EMPTY);
         }
         String resolvedSessionId = StringUtils.hasText(sessionId)
                 ? sessionId.trim() : UUID.randomUUID().toString().replace("-", "");
@@ -156,7 +157,7 @@ public class QaAgentImpl implements QaAgent {
         if (!StringUtils.hasText(answer)) {
             log.error("答疑未产出有效答案，不落库也不追加上下文: sessionId={}, roundNo={}",
                     turn.sessionId(), turn.roundNo());
-            throw new BusinessException("答疑失败：智能体未返回有效答案，请重试或换一种问法");
+            throw new BusinessException(ErrorMessageConstant.QA_ANSWER_EMPTY);
         }
         int responseTime = (int) (System.currentTimeMillis() - turn.startTime());
         KnowledgeVerifyResponse verify = verifyAgainstTextbook(turn.chapterId(), answer);
@@ -198,7 +199,7 @@ public class QaAgentImpl implements QaAgent {
     @Override
     public Result<PageResult<QaHistoryVO>> history(Long userId, QaHistoryQueryRequest request) {
         if (userId == null) {
-            throw new BusinessException("用户未登录，无法查询问答历史");
+            throw new BusinessException(ErrorMessageConstant.NOT_LOGGED_IN_RETRY);
         }
         QaHistoryQueryRequest query = request == null ? new QaHistoryQueryRequest() : request;
         int pageNum = query.getPageNum() == null || query.getPageNum() < 1 ? 1 : query.getPageNum();
@@ -392,10 +393,10 @@ public class QaAgentImpl implements QaAgent {
      */
     private QaWorkflowAnswerVO unwrap(Result<QaWorkflowAnswerVO> result) {
         if (result == null) {
-            throw new BusinessException("答疑智能体无响应，请稍后重试");
+            throw new BusinessException(ErrorMessageConstant.AGENT_UNAVAILABLE);
         }
         if (result.getCode() != ErrorCodeConstant.SUCCESS) {
-            throw new BusinessException("答疑失败: " + result.getMessage());
+            throw new BusinessException(ErrorMessageConstant.AGENT_UNAVAILABLE);
         }
         return result.getData();
     }

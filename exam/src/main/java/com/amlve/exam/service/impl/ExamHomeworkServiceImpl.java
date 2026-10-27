@@ -1,5 +1,6 @@
 package com.amlve.exam.service.impl;
 
+import com.amlve.common.constant.ErrorMessageConstant;
 import com.amlve.common.constant.ErrorCodeConstant;
 import com.amlve.common.exception.BusinessException;
 import com.amlve.common.request.Result;
@@ -68,7 +69,7 @@ public class ExamHomeworkServiceImpl implements ExamHomeworkService {
                 .distinct()
                 .toList();
         if (questionIds.isEmpty()) {
-            throw new BusinessException("答案列表不能为空");
+            throw new BusinessException(ErrorMessageConstant.ANSWER_LIST_MISSING);
         }
         Map<Long, ExamQuestion> questionMap = questionMapper.selectBatchIds(questionIds).stream()
                 .collect(Collectors.toMap(ExamQuestion::getId, Function.identity()));
@@ -78,7 +79,8 @@ public class ExamHomeworkServiceImpl implements ExamHomeworkService {
         for (HomeworkSubmitRequest.AnswerItem item : request.getAnswers()) {
             ExamQuestion question = questionMap.get(item.getQuestionId());
             if (question == null) {
-                throw new BusinessException("题目不存在: " + item.getQuestionId());
+                log.warn("QUESTION_NOT_FOUND 定位: {}", item.getQuestionId());
+                throw new BusinessException(ErrorMessageConstant.QUESTION_NOT_FOUND);
             }
             totalScore += question.getScore() == null ? 0 : question.getScore();
 
@@ -90,7 +92,8 @@ public class ExamHomeworkServiceImpl implements ExamHomeworkService {
                 existing.setAnswerContent(item.getAnswerContent());
                 existing.setSubmitTime(now);
                 if (submitMapper.updateById(existing) == 0) {
-                    throw new BusinessException("更新提交记录失败: questionId=" + item.getQuestionId());
+                    log.warn("HOMEWORK_SUBMIT_SAVE_FAILED 定位: {}", item.getQuestionId());
+                    throw new BusinessException(ErrorMessageConstant.HOMEWORK_SUBMIT_SAVE_FAILED);
                 }
             } else {
                 ExamHomeworkSubmit submit = new ExamHomeworkSubmit();
@@ -100,7 +103,8 @@ public class ExamHomeworkServiceImpl implements ExamHomeworkService {
                 submit.setAnswerContent(item.getAnswerContent());
                 submit.setSubmitTime(now);
                 if (submitMapper.insert(submit) == 0) {
-                    throw new BusinessException("保存提交记录失败: questionId=" + item.getQuestionId());
+                    log.warn("HOMEWORK_SUBMIT_SAVE_FAILED 定位: {}", item.getQuestionId());
+                    throw new BusinessException(ErrorMessageConstant.HOMEWORK_SUBMIT_SAVE_FAILED);
                 }
             }
         }
@@ -115,7 +119,7 @@ public class ExamHomeworkServiceImpl implements ExamHomeworkService {
             task.setTotalScore(totalScore);
             task.setStatus(ExamGradingTaskStatus.PENDING);
             if (gradingTaskMapper.insert(task) == 0) {
-                throw new BusinessException("创建批改任务失败");
+                throw new BusinessException(ErrorMessageConstant.GRADING_TASK_CREATE_FAILED);
             }
         } else {
             task.setTotalScore(totalScore);
@@ -124,7 +128,7 @@ public class ExamHomeworkServiceImpl implements ExamHomeworkService {
             task.setErrorMessage(null);
             task.setStatus(ExamGradingTaskStatus.PENDING);
             if (gradingTaskMapper.updateById(task) == 0) {
-                throw new BusinessException("重置批改任务失败");
+                throw new BusinessException(ErrorMessageConstant.GRADING_TASK_RESET_FAILED);
             }
         }
 
@@ -153,11 +157,11 @@ public class ExamHomeworkServiceImpl implements ExamHomeworkService {
         }
         Result<HomeworkSubmitCheckResponse> checkResult = teachHomeworkService.checkHomeworkSubmit(homeworkId);
         if (checkResult == null || checkResult.getCode() != ErrorCodeConstant.SUCCESS) {
-            throw new BusinessException(checkResult == null ? "作业校验失败" : checkResult.getMessage());
+            throw new BusinessException(checkResult == null ? ErrorMessageConstant.HOMEWORK_CHECK_FAILED : checkResult.getMessage());
         }
         HomeworkSubmitCheckResponse check = checkResult.getData();
         if (check != null && Boolean.FALSE.equals(check.getSubmittable())) {
-            throw new BusinessException(StringUtils.hasText(check.getReason()) ? check.getReason() : "作业当前不可提交");
+            throw new BusinessException(StringUtils.hasText(check.getReason()) ? check.getReason() : ErrorMessageConstant.HOMEWORK_NOT_SUBMITTABLE);
         }
     }
 

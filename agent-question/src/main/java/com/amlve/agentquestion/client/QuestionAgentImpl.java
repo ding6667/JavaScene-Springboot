@@ -1,5 +1,6 @@
 package com.amlve.agentquestion.client;
 
+import com.amlve.common.constant.ErrorMessageConstant;
 import com.amlve.agentquestion.bean.DifyClient;
 import com.amlve.agentquestionapi.dto.request.QuestionGenerateRequest;
 import com.amlve.agentquestionapi.dto.response.QuestionGenerateResponse;
@@ -96,11 +97,13 @@ public class QuestionAgentImpl implements QuestionAgent {
             String status = data.path("status").asText("");
             if (!"succeeded".equals(status)) {
                 String error = data.path("error").asText("未知错误");
-                throw new BusinessException("Dify 出题工作流执行失败: status=" + status + ", error=" + error);
+                log.error("Dify 出题工作流未执行成功: status={}, error={}", status, error);
+                throw new BusinessException(ErrorMessageConstant.AGENT_UNAVAILABLE);
             }
             JsonNode outputs = data.path("outputs");
             if (outputs.isMissingNode() || outputs.isNull()) {
-                throw new BusinessException("Dify 出题工作流响应缺少 outputs: " + response);
+                log.error("Dify 出题工作流响应缺少 outputs 节点");
+                throw new BusinessException(ErrorMessageConstant.AGENT_RESULT_UNREADABLE);
             }
             JsonNode outputNode = outputs.path("output");
             JsonNode source = outputNode.isObject() ? outputNode : outputs;
@@ -141,7 +144,7 @@ public class QuestionAgentImpl implements QuestionAgent {
         } catch (BusinessException e) {
             throw e;
         } catch (Exception e) {
-            throw new BusinessException("解析 Dify 出题工作流响应失败: " + e.getMessage(), e);
+            throw new BusinessException(ErrorMessageConstant.AGENT_RESULT_UNREADABLE, e);
         }
     }
 
@@ -169,7 +172,7 @@ public class QuestionAgentImpl implements QuestionAgent {
         try {
             return obj == null ? "" : MAPPER.writeValueAsString(obj);
         } catch (Exception e) {
-            throw new BusinessException("序列化出题参数失败: " + e.getMessage(), e);
+            throw new BusinessException(ErrorMessageConstant.AGENT_RESULT_UNREADABLE, e);
         }
     }
 

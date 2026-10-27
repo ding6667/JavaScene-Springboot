@@ -1,5 +1,6 @@
 package com.amlve.exam.service.impl;
 
+import com.amlve.common.constant.ErrorMessageConstant;
 import com.amlve.common.constant.ErrorCodeConstant;
 import com.amlve.common.request.Result;
 import com.amlve.exam.enumeration.QuestionDifficultyEnum;
@@ -38,7 +39,8 @@ public class ExamQuestionApiImpl implements ExamQuestionApi {
     public Result<QuestionDetailResponse> getQuestionDetail(Long questionId) {
         ExamQuestion question = questionMapper.selectById(questionId);
         if (question == null) {
-            return Result.error(ErrorCodeConstant.NOT_FOUND, "题目不存在: " + questionId);
+            log.warn("QUESTION_NOT_FOUND 定位: {}", questionId);
+            return Result.error(ErrorCodeConstant.NOT_FOUND, ErrorMessageConstant.QUESTION_NOT_FOUND);
         }
         return Result.success(toDetail(question));
     }
@@ -57,7 +59,8 @@ public class ExamQuestionApiImpl implements ExamQuestionApi {
     public Result<Void> updateStatistics(Long questionId, Boolean accepted) {
         ExamQuestion question = questionMapper.selectById(questionId);
         if (question == null) {
-            return Result.error(ErrorCodeConstant.NOT_FOUND, "题目不存在: " + questionId);
+            log.warn("QUESTION_NOT_FOUND 定位: {}", questionId);
+            return Result.error(ErrorCodeConstant.NOT_FOUND, ErrorMessageConstant.QUESTION_NOT_FOUND);
         }
         int submitCount = question.getSubmitCount() == null ? 0 : question.getSubmitCount();
         int acceptedCount = question.getAcceptedCount() == null ? 0 : question.getAcceptedCount();

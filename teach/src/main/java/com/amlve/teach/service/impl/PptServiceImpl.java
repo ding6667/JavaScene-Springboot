@@ -1,5 +1,6 @@
 package com.amlve.teach.service.impl;
 
+import com.amlve.common.constant.ErrorMessageConstant;
 import com.amlve.common.exception.BusinessException;
 import com.amlve.common.utils.SecurityUtils;
 import com.amlve.teach.dto.response.PptDownloadData;
@@ -41,16 +42,16 @@ public class PptServiceImpl implements PptService {
         // 1. 经备课记录校验归属（teach_ppt 无 teacher_id 列）
         TeachPrepareRecord record = teachPrepareRecordMapper.selectById(recordId);
         if (record == null || !SecurityUtils.getUserId().equals(record.getTeacherId())) {
-            throw new BusinessException("备课记录不存在或无权访问");
+            throw new BusinessException(ErrorMessageConstant.PREPARE_RECORD_NOT_FOUND);
         }
         if (!StringUtils.hasText(record.getPptxUrl())) {
-            throw new BusinessException("该备课记录未生成PPT，请先生成");
+            throw new BusinessException(ErrorMessageConstant.PREPARE_PPT_NOT_GENERATED);
         }
 
         // 2. 文件存在性校验（生成文件可能已被清理）
         String filePath = record.getPptxUrl();
         if (!Files.exists(Paths.get(filePath))) {
-            throw new BusinessException("文件已过期，请重新生成");
+            throw new BusinessException(ErrorMessageConstant.PPT_FILE_EXPIRED);
         }
 
         // 3. 读取文件内容
@@ -59,7 +60,7 @@ public class PptServiceImpl implements PptService {
             content = Files.readAllBytes(Paths.get(filePath));
         } catch (IOException e) {
             log.error("PPT文件读取失败: recordId={}, path={}", recordId, filePath, e);
-            throw new BusinessException("文件读取失败，请重试");
+            throw new BusinessException(ErrorMessageConstant.PPT_FILE_READ_FAILED);
         }
 
         // 4. 下载计数 +1（setSql 原子自增，避免并发下计数丢失）

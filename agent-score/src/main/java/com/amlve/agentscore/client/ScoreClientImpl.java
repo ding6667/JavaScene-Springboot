@@ -1,9 +1,11 @@
 package com.amlve.agentscore.client;
 
 import com.amlve.agentscore.bean.DifyClient;
+import com.amlve.agentscoreapi.enumeration.ErrorTypeEnum;
 import com.amlve.agentscoreapi.dto.request.ScoreEvaluateRequest;
 import com.amlve.agentscoreapi.dto.response.ScoreEvaluateResponse;
 import com.amlve.agentscoreapi.service.ScoreAgentClient;
+import com.amlve.common.constant.ErrorMessageConstant;
 import com.amlve.common.exception.BusinessException;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -19,9 +21,11 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * 评分智能体客户端实现。
- * 已配置 {@code dify.score-api-key} 时调用真实 Dify 批改工作流并解析响应；
- * 未配置时走 Mock 兜底，便于本地无 Dify 环境跑通链路。
+ * 评分智能体客户端实现：调用 Dify 批改工作流并解析响应。
+ * <p>
+ * 不再提供 Mock 兜底。Mock 会返回一个看起来合法的固定分数，批改结果错而不报错，
+ * 比直接失败更糟；三个调用方（作业批改、主观题判分、编程题判分）都已捕获异常并
+ * 降级为「本次不记分 + 记日志」，因此配置缺失会如实暴露。
  */
 @Slf4j
 @Component
@@ -31,8 +35,6 @@ public class ScoreClientImpl implements ScoreAgentClient {
     private static final ObjectMapper MAPPER = new ObjectMapper()
             .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
 
-    private static final int MOCK_SCORE = 80;
-
     private final DifyClient difyClient;
 
     @Value("${dify.score-api-key:}")
@@ -40,19 +42,22 @@ public class ScoreClientImpl implements ScoreAgentClient {
 
     @Override
     public ScoreEvaluateResponse evaluate(ScoreEvaluateRequest request) {
-        if (request == null) {
-            throw new IllegalArgumentException("评分请求不能为空");
-        }
-        if (request.getFullScore() == null || request.getFullScore().isBlank()) {
-            throw new IllegalArgumentException("题目满分不能为空");
-        }
+        // 入参由 exam / study 两个调用方现场构造，fullScore 一律来自 String.valueOf(题目分值)，
+        // 原先两道判空校验分支不可达，且抛 IllegalArgumentException 会被兜底成
+        // 「系统异常，请稍后重试」，消息反而到不了用户，故移除
         if (scoreApiKey == null || scoreApiKey.isBlank()) {
-            log.warn("未配置 dify.score-api-key，评分智能体走 Mock 兜底");
-            return mockResponse(request);
+            log.warn("评分智能体未配置密钥（dify.score-api-key），本次无法批改");
+            throw new BusinessException(ErrorMessageConstant.AI_GRADING_UNAVAILABLE);
         }
-        Map<String, Object> inputs = buildInputs(request);
-        String response = difyClient.runWorkflowBlocking(scoreApiKey, inputs);
-        return parseResponse(response, request);
+        // 传输层失败单独兜住：DifyClient 的异常消息带 HTTP 状态与原始响应体，属于排障信息，不能透传给学生
+        String response;
+        try {
+            response = difyClient.runWorkflowBlocking(scoreApiKey, buildInputs(request));
+        } catch (Exception e) {
+            log.warn("调用 Dify 批改工作流失败: {}", e.getMessage(), e);
+            throw new BusinessException(ErrorMessageConstant.AI_GRADING_UNAVAILABLE);
+        }
+        return parseResponse(response);
     }
 
     private Map<String, Object> buildInputs(ScoreEvaluateRequest request) {
@@ -69,14 +74,15 @@ public class ScoreClientImpl implements ScoreAgentClient {
         return inputs;
     }
 
-    private ScoreEvaluateResponse parseResponse(String response, ScoreEvaluateRequest request) {
+    private ScoreEvaluateResponse parseResponse(String response) {
         try {
             JsonNode root = MAPPER.readTree(response);
             JsonNode data = root.path("data");
             String status = data.path("status").asText("");
             if (!"succeeded".equals(status)) {
-                String error = data.path("error").asText("未知错误");
-                throw new BusinessException("Dify 批改工作流执行失败: status=" + status + ", error=" + error);
+                log.warn("Dify 批改工作流未执行成功: status={}, error={}",
+                        status, data.path("error").asText(""));
+                throw new BusinessException(ErrorMessageConstant.AI_GRADING_UNAVAILABLE);
             }
             JsonNode outputs = data.path("outputs");
             JsonNode source = outputs.path("output").isObject() ? outputs.path("output") : outputs;
@@ -95,7 +101,8 @@ public class ScoreClientImpl implements ScoreAgentClient {
         } catch (BusinessException e) {
             throw e;
         } catch (Exception e) {
-            throw new BusinessException("解析 Dify 批改工作流响应失败: " + e.getMessage(), e);
+            log.warn("解析 Dify 批改响应失败: {}", e.getMessage(), e);
+            throw new BusinessException(ErrorMessageConstant.AI_GRADING_UNREADABLE);
         }
     }
 
@@ -106,7 +113,7 @@ public class ScoreClientImpl implements ScoreAgentClient {
             for (JsonNode n : errorsNode) {
                 ScoreEvaluateResponse.ErrorItem item = new ScoreEvaluateResponse.ErrorItem();
                 item.setLocation(n.path("location").asText(null));
-                item.setErrorType(n.path("errorType").asText(null));
+                item.setErrorType(ErrorTypeEnum.normalize(n.path("errorType").asText(null)));
                 item.setErrorDescription(n.path("errorDescription").asText(null));
                 item.setReason(n.path("reason").asText(null));
                 item.setSuggestion(n.path("suggestion").asText(null));
@@ -114,34 +121,6 @@ public class ScoreClientImpl implements ScoreAgentClient {
             }
         }
         return items;
-    }
-
-    private ScoreEvaluateResponse mockResponse(ScoreEvaluateRequest request) {
-        ScoreEvaluateResponse response = new ScoreEvaluateResponse();
-        response.setScore(Math.min(MOCK_SCORE, parseFullScore(request.getFullScore())));
-        response.setIsCorrect(0);
-        response.setAnalysis("答案基本正确，当前使用固定批改结果。");
-        response.setSuggestion("请结合标准答案复习相关知识点。");
-
-        ScoreEvaluateResponse.ErrorItem item = new ScoreEvaluateResponse.ErrorItem();
-        item.setLocation("整体");
-        item.setErrorType("待完善");
-        item.setErrorDescription("当前为固定批改结果，暂未进行真实答案分析。");
-        item.setReason("评分智能体尚未接入真实批改服务。");
-        item.setSuggestion("后续接入真实评分模型后获取详细错误原因。");
-
-        ScoreEvaluateResponse.ErrorDetail errorDetail = new ScoreEvaluateResponse.ErrorDetail();
-        errorDetail.setErrors(List.of(item));
-        response.setErrorDetail(errorDetail);
-        return response;
-    }
-
-    private int parseFullScore(String fullScore) {
-        try {
-            return Integer.parseInt(fullScore);
-        } catch (Exception e) {
-            return MOCK_SCORE;
-        }
     }
 
     private String nullToEmpty(String value) {

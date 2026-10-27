@@ -1,5 +1,6 @@
 package com.amlve.system.service.impl;
 
+import com.amlve.system.constant.ErrorMessageConstant;
 import com.amlve.common.constant.ErrorCodeConstant;
 import com.amlve.common.exception.BusinessException;
 import com.amlve.common.utils.SecurityUtils;
@@ -112,7 +113,7 @@ public class ClassServiceImpl implements ClassService {
     @Transactional(rollbackFor = Exception.class)
     public void update(Long id, ClassSaveRequest request) {
         if (classMapper.selectById(id) == null) {
-            throw new BusinessException(ErrorCodeConstant.NOT_FOUND, "班级不存在");
+            throw new BusinessException(ErrorCodeConstant.NOT_FOUND, ErrorMessageConstant.CLASS_NOT_FOUND);
         }
         ClassInfo entity = buildEntity(request);
         entity.setId(id);
@@ -125,7 +126,7 @@ public class ClassServiceImpl implements ClassService {
     @Transactional(rollbackFor = Exception.class)
     public void delete(Long id) {
         if (classMapper.selectById(id) == null) {
-            throw new BusinessException(ErrorCodeConstant.NOT_FOUND, "班级不存在");
+            throw new BusinessException(ErrorCodeConstant.NOT_FOUND, ErrorMessageConstant.CLASS_NOT_FOUND);
         }
         Long studentCount = studentInfoMapper.selectCount(Wrappers.<SysStudentInfo>lambdaQuery()
                 .eq(SysStudentInfo::getClassId, id));
@@ -172,7 +173,7 @@ public class ClassServiceImpl implements ClassService {
     private ClassInfo requireVisibleClass(Long classId) {
         ClassInfo clazz = classMapper.selectById(classId);
         if (clazz == null) {
-            throw new BusinessException(ErrorCodeConstant.NOT_FOUND, "班级不存在");
+            throw new BusinessException(ErrorCodeConstant.NOT_FOUND, ErrorMessageConstant.CLASS_NOT_FOUND);
         }
         if (SecurityUtils.hasRole(RoleService.ADMIN)) {
             return clazz;
@@ -180,13 +181,13 @@ public class ClassServiceImpl implements ClassService {
         Long me = SecurityUtils.getUserId();
         if (SecurityUtils.hasRole(RoleService.TEACHER)) {
             if (!me.equals(clazz.getTeacherId())) {
-                throw new BusinessException(ErrorCodeConstant.ACCESS_DENIED, "该班级不属于当前教师");
+                throw new BusinessException(ErrorCodeConstant.ACCESS_DENIED, ErrorMessageConstant.CLASS_NOT_OWNED);
             }
             return clazz;
         }
         SysStudentInfo mine = myStudentInfo(me);
         if (mine == null || !classId.equals(mine.getClassId())) {
-            throw new BusinessException(ErrorCodeConstant.ACCESS_DENIED, "只能查看自己所在班级的学生");
+            throw new BusinessException(ErrorCodeConstant.ACCESS_DENIED, ErrorMessageConstant.CLASS_ONLY_OWN);
         }
         return clazz;
     }

@@ -4,6 +4,7 @@ import com.amlve.agentcodeapi.dto.request.CodeDebugRequest;
 import com.amlve.agentcodeapi.dto.response.CodeDebugResponse;
 import com.amlve.agentcodeapi.service.CodeAgentClient;
 import com.amlve.common.constant.ErrorCodeConstant;
+import com.amlve.common.constant.ErrorMessageConstant;
 import com.amlve.common.enums.CodeErrorTypeEnum;
 import com.amlve.common.enums.JudgeResultEnum;
 import com.amlve.common.enums.RunStatusEnum;
@@ -443,11 +444,13 @@ public class CodeRunServiceImpl implements CodeRunService {
             }
         }
         String testResultJson = toJson(result.getTestResult());
-        CodeDebugResponse debugResponse = callAgent(currentUserId, codeRunRequest, new AiContext(
+        Result<CodeDebugResponse> aiResult = callAgent(currentUserId, codeRunRequest, new AiContext(
                 status, result.getOutput(), result.getErrorMsg(), result.getErrorLine(),
                 testResultJson, result.getPassedCount(), result.getTotalCount()));
-        if (debugResponse != null) {
-            applyAiToJudgeResult(result, debugResponse);
+        if (aiResult != null && aiResult.getCode() == ErrorCodeConstant.SUCCESS && aiResult.getData() != null) {
+            applyAiToJudgeResult(result, aiResult.getData());
+        } else {
+            result.setErrorReason(aiFailureMessage(aiResult));
         }
     }
 
@@ -488,28 +491,37 @@ public class CodeRunServiceImpl implements CodeRunService {
                 response.setErrorLine(extracted);
             }
         }
-        CodeDebugResponse debugResponse = callAgent(userId, request, new AiContext(
+        Result<CodeDebugResponse> aiResult = callAgent(userId, request, new AiContext(
                 status, response.getOutput(), response.getErrorMsg(), response.getErrorLine(),
                 null, null, null));
-        if (debugResponse != null) {
-            applyAiToResponse(response, debugResponse);
+        if (aiResult != null && aiResult.getCode() == ErrorCodeConstant.SUCCESS && aiResult.getData() != null) {
+            applyAiToResponse(response, aiResult.getData());
+        } else {
+            response.setErrorReason(aiFailureMessage(aiResult));
         }
     }
 
-    /** 真正发起 AI 调试调用；任何异常只记日志，绝不影响判题/运行结果 */
-    private CodeDebugResponse callAgent(Long userId, CodeRunRequest request, AiContext ctx) {
+    /**
+     * 真正发起 AI 调试调用。异常在此兜住以免打断编译/运行主流程，
+     * 但失败消息必须原样带回去，让调用方写进学生可见的字段，不能静默变空
+     */
+    private Result<CodeDebugResponse> callAgent(Long userId, CodeRunRequest request, AiContext ctx) {
         try {
-            CodeDebugRequest debugRequest = buildDebugRequest(request, ctx);
-            Result<CodeDebugResponse> result = codeAgentClient.debug(debugRequest);
-            if (result != null && result.getCode() == ErrorCodeConstant.SUCCESS) {
-                return result.getData();
-            }
-            log.warn("AI 调试智能体返回失败: userId={}, message={}",
-                    userId, result == null ? "接口返回为空" : result.getMessage());
+            return codeAgentClient.debug(buildDebugRequest(request, ctx));
         } catch (Exception e) {
-            log.warn("AI 调试智能体调用失败，不影响运行结果返回: userId={}, error={}", userId, e.getMessage());
+            log.warn("AI 调试智能体调用异常，运行结果照常返回: userId={}, error={}", userId, e.getMessage(), e);
+            return Result.error(ErrorMessageConstant.AI_DEBUG_UNAVAILABLE);
         }
-        return null;
+    }
+
+    /**
+     * AI 分析未成功时，把面向用户的原因写进错误解释字段，避免前端一片空白、学生不知道是没做错还是服务挂了
+     */
+    private String aiFailureMessage(Result<CodeDebugResponse> result) {
+        if (result != null && result.getMessage() != null && !result.getMessage().isBlank()) {
+            return result.getMessage();
+        }
+        return ErrorMessageConstant.AI_DEBUG_UNAVAILABLE;
     }
 
     /** 运行/调试链路：AI 完整丰富字段一并回填响应（前端展示 + 落库数据源） */
@@ -1142,18 +1154,19 @@ public class CodeRunServiceImpl implements CodeRunService {
         requireMapper();
         StudyCodeRunRecord record = codeRunRecordMapper.selectById(recordId);
         if (record == null) {
-            throw new BusinessException(ErrorCodeConstant.NOT_FOUND, "运行记录不存在: " + recordId);
+            log.warn("RUN_RECORD_NOT_FOUND 定位: {}", recordId);
+            throw new BusinessException(ErrorCodeConstant.NOT_FOUND, ErrorMessageConstant.RUN_RECORD_NOT_FOUND);
         }
         // 只能查本人记录，越权访问返回 403
         if (!userId.equals(record.getUserId())) {
-            throw new BusinessException(ErrorCodeConstant.ACCESS_DENIED, "无权查看他人的运行记录");
+            throw new BusinessException(ErrorCodeConstant.ACCESS_DENIED, ErrorMessageConstant.RUN_RECORD_NOT_OWN);
         }
         return toDetailVO(record);
     }
 
     private void requireMapper() {
         if (codeRunRecordMapper == null) {
-            throw new BusinessException("运行记录存储未装配");
+            throw new BusinessException(ErrorMessageConstant.RUN_RECORD_STORAGE_UNAVAILABLE);
         }
     }
 

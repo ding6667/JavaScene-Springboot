@@ -1,5 +1,6 @@
 package com.amlve.agentprepare.client;
 
+import com.amlve.common.constant.ErrorMessageConstant;
 import com.amlve.agentprepare.bean.DifyClient;
 import com.amlve.agentprepareapi.service.PrepareAgentClient;
 import com.amlve.agentprepareapi.dto.request.PrepareRequest;
@@ -165,11 +166,13 @@ public class PrepareAgentClientImpl implements PrepareAgentClient {
             String status = dataNode.path("status").asText("");
             if (!"succeeded".equals(status)) {
                 String error = dataNode.path("error").asText("未知错误");
-                throw new BusinessException("Dify 备课工作流执行失败: status=" + status + ", error=" + error);
+                log.error("Dify 备课工作流未执行成功: status={}, error={}", status, error);
+                throw new BusinessException(ErrorMessageConstant.AGENT_UNAVAILABLE);
             }
             JsonNode outputs = dataNode.path("outputs");
             if (outputs.isMissingNode() || outputs.isNull()) {
-                throw new BusinessException("Dify 备课工作流响应缺少 outputs: " + response);
+                log.error("Dify 备课工作流响应缺少 outputs 节点");
+                throw new BusinessException(ErrorMessageConstant.AGENT_RESULT_UNREADABLE);
             }
             // 优先取结束节点变量 output，未命中时回落 outputs 直取（兼容工作流后续调整）
             JsonNode outputNode = outputs.path("output");
@@ -201,7 +204,7 @@ public class PrepareAgentClientImpl implements PrepareAgentClient {
         } catch (BusinessException e) {
             throw e;
         } catch (Exception e) {
-            throw new BusinessException("解析 Dify 备课工作流响应失败: " + e.getMessage(), e);
+            throw new BusinessException(ErrorMessageConstant.AGENT_RESULT_UNREADABLE, e);
         }
     }
 

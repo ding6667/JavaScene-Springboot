@@ -2,11 +2,13 @@ package com.amlve.system.service.impl;
 
 import com.amlve.common.exception.BusinessException;
 import com.amlve.system.constant.ErrorCodeConstant;
+import com.amlve.system.constant.ErrorMessageConstant;
 import com.amlve.system.mapper.SysRoleMapper;
 import com.amlve.system.service.RoleService;
 import com.amlve.system.tableEnt.SysRole;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
@@ -15,6 +17,7 @@ import java.util.Map;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class RoleServiceImpl implements RoleService {
@@ -24,12 +27,13 @@ public class RoleServiceImpl implements RoleService {
     @Override
     public SysRole require(Long roleId) {
         if (roleId == null) {
-            throw new BusinessException(ErrorCodeConstant.PARAM_INVALID, "角色不能为空");
+            throw new BusinessException(ErrorCodeConstant.PARAM_INVALID, ErrorMessageConstant.ROLE_NOT_SELECTED);
         }
         SysRole role = roleMapper.selectById(roleId);
         if (role == null) {
             // 映射不到一律拒绝。以前用枚举兜底，新增角色就得改代码；现在只要插一行 sys_role
-            throw new BusinessException(ErrorCodeConstant.PARAM_INVALID, "角色不存在: roleId=" + roleId);
+            log.warn("sys_role 中不存在该角色: roleId={}", roleId);
+            throw new BusinessException(ErrorCodeConstant.PARAM_INVALID, ErrorMessageConstant.ROLE_NOT_FOUND);
         }
         return role;
     }
@@ -47,12 +51,13 @@ public class RoleServiceImpl implements RoleService {
     @Override
     public Long idOf(String roleName) {
         if (!StringUtils.hasText(roleName)) {
-            throw new BusinessException(ErrorCodeConstant.PARAM_INVALID, "角色名不能为空");
+            throw new BusinessException(ErrorCodeConstant.PARAM_INVALID, ErrorMessageConstant.ROLE_NAME_NOT_FOUND);
         }
         SysRole role = roleMapper.selectOne(Wrappers.<SysRole>lambdaQuery()
                 .eq(SysRole::getRoleName, roleName));
         if (role == null) {
-            throw new BusinessException(ErrorCodeConstant.PARAM_INVALID, "角色不存在: " + roleName);
+            log.warn("按角色名查不到 sys_role 记录: roleName={}", roleName);
+            throw new BusinessException(ErrorCodeConstant.PARAM_INVALID, ErrorMessageConstant.ROLE_NAME_NOT_FOUND);
         }
         return role.getId();
     }

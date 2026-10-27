@@ -1,5 +1,6 @@
 package com.amlve.system.service.impl;
 
+import com.amlve.system.constant.ErrorMessageConstant;
 import com.amlve.common.constant.ErrorCodeConstant;
 import com.amlve.common.exception.BusinessException;
 import com.amlve.system.dto.request.TeacherInfoUpdateRequest;
@@ -43,10 +44,10 @@ public class TeacherInfoServiceImpl implements TeacherInfoService {
 
         if (firstFill) {
             if (!StringUtils.hasText(request.getTeacherNo())) {
-                throw new BusinessException(ErrorCodeConstant.PARAM_INVALID, "首次完善必须填写工号");
+                throw new BusinessException(ErrorCodeConstant.PARAM_INVALID, ErrorMessageConstant.TEACHER_NO_REQUIRED);
             }
             if (existsTeacherNo(request.getTeacherNo())) {
-                throw new BusinessException(ErrorCodeConstant.PARAM_INVALID, "工号已被占用");
+                throw new BusinessException(ErrorCodeConstant.PARAM_INVALID, ErrorMessageConstant.TEACHER_NO_TAKEN);
             }
             SysTeacherInfo entity = exist == null ? new SysTeacherInfo() : exist;
             entity.setUserId(userId);
@@ -67,7 +68,7 @@ public class TeacherInfoServiceImpl implements TeacherInfoService {
     public void createEmpty(Long userId) {
         if (teacherInfoMapper.selectCount(Wrappers.<SysTeacherInfo>lambdaQuery()
                 .eq(SysTeacherInfo::getUserId, userId)) > 0) {
-            throw new BusinessException(ErrorCodeConstant.PARAM_INVALID, "该用户已存在教师扩展记录");
+            throw new BusinessException(ErrorCodeConstant.PARAM_INVALID, ErrorMessageConstant.EXT_INFO_EXISTS);
         }
         SysTeacherInfo info = new SysTeacherInfo();
         info.setUserId(userId);

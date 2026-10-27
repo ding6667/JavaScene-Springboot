@@ -18,6 +18,9 @@ dify:
   prepare-api-key: "app-wrrVeZoifFKVH6ziCguuUANC"   # Dify应用的API密钥
   code-api-key: "app-K4VyLfHNI8hrrh8SVlxVwOjy"   # Dify应用的API密钥
   qa-api-key: "app-ebHSWuUaqrgbxSD15njOnKCi"   # Dify应用的API密钥
+  # 评分智能体（作业/主观题/编程题批改工作流）。留空则评分智能体调用直接失败，
+  # 不再有 Mock 兜底，必须填真实密钥
+  score-api-key: ""
   dataset-id: "114fec12-c227-4ce8-934a-9a4bc5294fe6"   # Dify应用的API密钥
   base-url: "http://localhost:5001/v1" # Dify API服务的地址
   file-base-url: "http://localhost:3000"  # Dify web服务的URL

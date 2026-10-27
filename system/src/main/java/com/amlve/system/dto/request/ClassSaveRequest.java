@@ -1,5 +1,6 @@
 package com.amlve.system.dto.request;
 
+import com.amlve.system.constant.ErrorMessageConstant;
 import jakarta.validation.constraints.NotBlank;
 import lombok.Data;
 
@@ -12,7 +13,7 @@ import lombok.Data;
 @Data
 public class ClassSaveRequest {
 
-    @NotBlank(message = "班级名称不能为空")
+    @NotBlank(message = ErrorMessageConstant.CLASS_NAME_EMPTY)
     private String className;
 
     /**

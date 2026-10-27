@@ -2,7 +2,6 @@ package com.amlve.teach.service.impl;
 
 import com.amlve.agentprepare.bean.DifyClient;
 import com.amlve.agentprepare.client.PrepareAgentClientImpl;
-import com.amlve.common.exception.BusinessException;
 import com.amlve.common.request.Result;
 import com.amlve.common.utils.FileFormatUtil;
 import com.amlve.knowledgeapi.dto.response.TeachingMaterialDTO;
@@ -25,6 +24,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.context.annotation.Import;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.scheduling.annotation.EnableAsync;
 
 import java.util.List;
 
@@ -41,6 +41,9 @@ import static org.mockito.Mockito.when;
  * 素材接口 Mock（实现归 knowledge 模块）；
  * agent-prepare 走真实 Dify（环境变量 DIFY_PREPARE_API_KEY 设置密钥时）或 Mock 兜底，
  * 断言对两种路径均成立（路径特有内容交给各层单测）。
+ * <p>
+ * 备课已改为异步：受理只校验并落 status=2 记录，材料由后台线程回写，
+ * 因此断言需要先等记录走到终态（等价于前端轮询 detail）。
  */
 @SpringBootTest(classes = TeachPrepareAgentIntegrationTest.SlimApp.class)
 class TeachPrepareAgentIntegrationTest {
@@ -49,10 +52,15 @@ class TeachPrepareAgentIntegrationTest {
     private static final Long CHAPTER_ID = 99001L;
     private static final Long TEACHER_ID = 1L;
 
+    /** 后台生成终态等待上限（真实 Dify 读取超时 120s + PPT 转换） */
+    private static final java.time.Duration GENERATION_TIMEOUT = java.time.Duration.ofMinutes(4);
+
     /**
-     * 精简上下文：只装配 teach 模块 + agent-prepare 真实实现（不加载其他模块，规避 bean 冲突）
+     * 精简上下文：只装配 teach 模块 + agent-prepare 真实实现（不加载其他模块，规避 bean 冲突）。
+     * {@code @EnableAsync} 与 bootstrap 的 WebApplication 保持一致，否则 generateAsync 退化为同步执行。
      */
     @SpringBootApplication(scanBasePackages = "com.amlve.teach")
+    @EnableAsync
     @Import({DifyClient.class, PrepareAgentClientImpl.class})
     static class SlimApp {
 
@@ -113,35 +121,27 @@ class TeachPrepareAgentIntegrationTest {
     }
 
     @Test
-    void generateTeachingMaterials_success_persistsRecord() {
+    void generateTeachingMaterials_acceptsThenPersistsRecordAsync() {
         // 素材接口返回模拟数据（实现归 knowledge 模块，不在本上下文内）
         when(knowledgeChapterApi.getTeachingMaterials(CHAPTER_ID)).thenReturn(Result.success(mockMaterial()));
 
-        PrepareRequest request = new PrepareRequest();
-        request.setChapterId(CHAPTER_ID);
-        request.setLessonPlan("1");
-        request.setPptx("1");
-        request.setHomework("1");
-        request.setLab("1");
-        request.setKeyPoints("1");
-        request.setUserMessage("重点讲解变量与循环");
+        PrepareResponse response = teachPrepareService.generateTeachingMaterials(buildRequest());
 
-        PrepareResponse response = teachPrepareService.generateTeachingMaterials(request);
-
-        // 响应断言：路径无关（真实 Dify 返回 LLM 生成内容，Mock 兜底返回模板内容，均非空）
+        // 受理响应：秒回记录ID + 生成中，不含五类材料
         assertThat(response.getRecordId()).isNotNull();
-        assertThat(response.getLessonPlan()).isNotBlank();
-        assertThat(response.getKeyPoints()).isNotBlank();
-        assertThat(response.getHomework()).isNotBlank();
-        assertThat(response.getLab()).isNotBlank();
+        assertThat(response.getChapterId()).isEqualTo(CHAPTER_ID);
+        assertThat(response.getStatus()).isEqualTo(2);
+        assertThat(response.getStatusDesc()).isEqualTo("生成中");
 
-        // 落库断言：teach_prepare_record 成功记录（status=1）
-        TeachPrepareRecord record = teachPrepareRecordMapper.selectById(response.getRecordId());
-        assertThat(record).isNotNull();
+        // 等后台线程把材料回写、状态推进到终态（前端轮询 detail 的同一步骤）
+        TeachPrepareRecord record = awaitTerminalRecord(response.getRecordId());
         assertThat(record.getStatus()).isEqualTo(1);
         assertThat(record.getTeacherId()).isEqualTo(TEACHER_ID);
         assertThat(record.getChapterId()).isEqualTo(CHAPTER_ID);
         assertThat(record.getLessonPlan()).isNotBlank();
+        assertThat(record.getKeyPoints()).isNotBlank();
+        assertThat(record.getHomework()).isNotBlank();
+        assertThat(record.getLab()).isNotBlank();
         assertThat(record.getPptxMd()).isNotBlank();
         assertThat(record.getErrorMsg()).isNull();
 
@@ -149,17 +149,16 @@ class TeachPrepareAgentIntegrationTest {
         Long pptCount = teachPptMapper.selectCount(
                 new LambdaQueryWrapper<TeachPpt>()
                         .eq(TeachPpt::getChapterId, CHAPTER_ID));
-        if (response.getPptxUrl() != null) {
+        if (record.getPptxUrl() != null) {
             assertThat(pptCount).isEqualTo(1);
         } else {
-            assertThat(record.getPptxUrl()).isNull();
             assertThat(pptCount).isEqualTo(0);
         }
     }
 
     @Test
-    void generateTeachingMaterials_failure_savesFailedRecord() {
-        // 素材查询异常 → 失败记录落库（status=0）后业务异常上抛
+    void generateTeachingMaterials_shouldNotPersistAnyRecord_whenValidationFails() {
+        // 素材查询异常：校验发生在落库之前，直接上抛且不留下半成品记录（失败终态由后台生成阶段负责）
         when(knowledgeChapterApi.getTeachingMaterials(CHAPTER_ID))
                 .thenThrow(new RuntimeException("knowledge 素材服务不可用"));
 
@@ -168,16 +167,44 @@ class TeachPrepareAgentIntegrationTest {
         request.setLessonPlan("1");
 
         assertThatThrownBy(() -> teachPrepareService.generateTeachingMaterials(request))
-                .isInstanceOf(BusinessException.class)
-                .hasMessageContaining("备课生成失败");
+                .isInstanceOf(RuntimeException.class)
+                .hasMessageContaining("knowledge 素材服务不可用");
 
-        List<TeachPrepareRecord> failed = teachPrepareRecordMapper.selectList(
+        List<TeachPrepareRecord> records = teachPrepareRecordMapper.selectList(
                 new LambdaQueryWrapper<TeachPrepareRecord>()
-                        .eq(TeachPrepareRecord::getChapterId, CHAPTER_ID)
-                        .eq(TeachPrepareRecord::getStatus, 0));
-        assertThat(failed).hasSize(1);
-        assertThat(failed.get(0).getTeacherId()).isEqualTo(TEACHER_ID);
-        assertThat(failed.get(0).getErrorMsg()).contains("素材服务不可用");
+                        .eq(TeachPrepareRecord::getChapterId, CHAPTER_ID));
+        assertThat(records).isEmpty();
+    }
+
+    /** 轮询等待备课记录离开"生成中"（status=2），等价于前端轮询 detail */
+    private TeachPrepareRecord awaitTerminalRecord(Long recordId) {
+        long deadline = System.currentTimeMillis() + GENERATION_TIMEOUT.toMillis();
+        while (System.currentTimeMillis() < deadline) {
+            TeachPrepareRecord record = teachPrepareRecordMapper.selectById(recordId);
+            if (record != null && !Integer.valueOf(2).equals(record.getStatus())) {
+                return record;
+            }
+            try {
+                Thread.sleep(500);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                break;
+            }
+        }
+        throw new AssertionError("备课后台生成超时，记录仍停在生成中: recordId=" + recordId);
+    }
+
+    /** 组装备课请求（五个生成开关全开） */
+    private PrepareRequest buildRequest() {
+        PrepareRequest request = new PrepareRequest();
+        request.setChapterId(CHAPTER_ID);
+        request.setLessonPlan("1");
+        request.setPptx("1");
+        request.setHomework("1");
+        request.setLab("1");
+        request.setKeyPoints("1");
+        request.setUserMessage("重点讲解变量与循环");
+        return request;
     }
 
     /** 模拟 knowledge 返回的章节素材（七字段，与真实结构一致） */

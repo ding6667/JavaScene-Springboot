@@ -38,13 +38,13 @@ class PrepareControllerTest {
     @MockBean
     private TeachPrepareService teachPrepareService;
 
-    /** 构造 Service Mock 响应 */
+    /** 构造 Service Mock 受理响应：只有记录ID与状态，五类材料需轮询详情接口 */
     private PrepareResponse mockResponse() {
         PrepareResponse response = new PrepareResponse();
         response.setChapterId(5L);
-        response.setLessonPlan("【教案模板 - 第5章】");
-        response.setPptxUrl("D:/temp/commonFile/2026/09/08/xxx.pptx");
         response.setRecordId(100L);
+        response.setStatus(2);
+        response.setStatusDesc("生成中");
         response.setGenerateTime(LocalDateTime.now());
         return response;
     }
@@ -61,9 +61,9 @@ class PrepareControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(200))
                 .andExpect(jsonPath("$.data.chapterId").value(5))
-                .andExpect(jsonPath("$.data.lessonPlan").value("【教案模板 - 第5章】"))
-                .andExpect(jsonPath("$.data.pptxUrl").isNotEmpty())
-                .andExpect(jsonPath("$.data.recordId").value(100));
+                .andExpect(jsonPath("$.data.recordId").value(100))
+                .andExpect(jsonPath("$.data.status").value(2))
+                .andExpect(jsonPath("$.data.statusDesc").value("生成中"));
     }
 
     @Test

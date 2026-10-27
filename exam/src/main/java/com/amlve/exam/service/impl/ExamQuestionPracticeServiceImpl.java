@@ -1,5 +1,6 @@
 package com.amlve.exam.service.impl;
 
+import com.amlve.common.constant.ErrorMessageConstant;
 import com.amlve.common.constant.ErrorCodeConstant;
 import com.amlve.common.exception.BusinessException;
 import com.amlve.common.request.PageResult;
@@ -84,7 +85,8 @@ public class ExamQuestionPracticeServiceImpl implements ExamQuestionPracticeServ
     public PracticeDetailVO getPracticeDetail(Long questionId) {
         ExamQuestion question = questionMapper.selectById(questionId);
         if (question == null) {
-            throw new BusinessException(ErrorCodeConstant.NOT_FOUND, "题目不存在: " + questionId);
+            log.warn("QUESTION_NOT_FOUND 定位: {}", questionId);
+            throw new BusinessException(ErrorCodeConstant.NOT_FOUND, ErrorMessageConstant.QUESTION_NOT_FOUND);
         }
         PracticeDetailVO vo = new PracticeDetailVO();
         vo.setId(question.getId());

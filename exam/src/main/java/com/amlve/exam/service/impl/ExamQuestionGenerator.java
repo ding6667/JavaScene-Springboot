@@ -1,5 +1,6 @@
 package com.amlve.exam.service.impl;
 
+import com.amlve.common.constant.ErrorMessageConstant;
 import com.amlve.agentquestionapi.dto.request.QuestionGenerateRequest;
 import com.amlve.agentquestionapi.dto.response.QuestionGenerateResponse;
 import com.amlve.agentquestionapi.service.QuestionAgent;
@@ -47,14 +48,15 @@ public class ExamQuestionGenerator {
         // 1. 查难度配置
         ExamQuestionDifficultyConfig config = difficultyConfigMapper.selectById(request.getDifficultyConfigId());
         if (config == null) {
-            throw new BusinessException("难度配置不存在: id=" + request.getDifficultyConfigId());
+            log.warn("DIFFICULTY_CONFIG_NOT_FOUND 定位: {}", request.getDifficultyConfigId());
+            throw new BusinessException(ErrorMessageConstant.DIFFICULTY_CONFIG_NOT_FOUND);
         }
 
         // 2. 计算知识点分配
         List<WeightConfigVO> weightConfigs = knowledgeService.getWeightConfigsByChapter(request.getChapterId()).getData();
         List<QuestionGenerateRequest.AllocationItem> allocation = computeAllocation(weightConfigs, request.getCount());
         if (allocation.isEmpty()) {
-            throw new BusinessException("该章节暂无知识点配置，无法出题");
+            throw new BusinessException(ErrorMessageConstant.CHAPTER_KNOWLEDGE_NOT_CONFIGURED);
         }
 
         // 3. 组装出题智能体请求

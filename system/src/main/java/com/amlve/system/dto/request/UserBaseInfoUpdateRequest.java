@@ -1,5 +1,6 @@
 package com.amlve.system.dto.request;
 
+import com.amlve.system.constant.ErrorMessageConstant;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.Pattern;
 import lombok.Data;
@@ -13,13 +14,13 @@ import lombok.Data;
 @Data
 public class UserBaseInfoUpdateRequest {
 
-    @Pattern(regexp = "^.{1,50}$", message = "姓名长度需在 1~50 之间")
+    @Pattern(regexp = "^.{1,50}$", message = ErrorMessageConstant.REAL_NAME_SIZE)
     private String realName;
 
-    @Email(message = "邮箱格式不正确")
+    @Email(message = ErrorMessageConstant.USER_EMAIL_INVALID)
     private String email;
 
-    @Pattern(regexp = "^1[3-9]\\d{9}$", message = "手机号格式不正确")
+    @Pattern(regexp = "^1[3-9]\\d{9}$", message = ErrorMessageConstant.PHONE_INVALID)
     private String phone;
 
     /**

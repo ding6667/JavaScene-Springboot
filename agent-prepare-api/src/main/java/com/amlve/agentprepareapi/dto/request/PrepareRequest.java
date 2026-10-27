@@ -1,12 +1,13 @@
 package com.amlve.agentprepareapi.dto.request;
 
+import com.amlve.common.constant.ErrorMessageConstant;
 import lombok.Data;
 import jakarta.validation.constraints.NotNull;
 
 @Data
 public class PrepareRequest {
 
-    @NotNull(message = "章节ID不能为空")
+    @NotNull(message = ErrorMessageConstant.CHAPTER_NOT_SELECTED)
     private Long chapterId;
 
     /**

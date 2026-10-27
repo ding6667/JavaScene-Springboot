@@ -96,6 +96,26 @@ class PrepareRecordControllerTest {
 
     @Test
     @WithMockUser(roles = "TEACHER")
+    void status_shouldReturnCode_whenTeacherPollsOwnRecord() throws Exception {
+        when(teachPrepareRecordService.getRecordStatus(eq(100L))).thenReturn(2);
+
+        mockMvc.perform(get("/api/teach/prepare/record/status")
+                        .param("id", "100"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(200))
+                .andExpect(jsonPath("$.data").value(2));
+    }
+
+    @Test
+    @WithMockUser(roles = "STUDENT")
+    void status_shouldReject403_whenStudentRole() throws Exception {
+        mockMvc.perform(get("/api/teach/prepare/record/status")
+                        .param("id", "100"))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    @WithMockUser(roles = "TEACHER")
     void export_shouldReturnFileStream_whenValid() throws Exception {
         LessonPlanExportData data = new LessonPlanExportData();
         data.setFileName("备课教案_100.docx");

@@ -85,7 +85,8 @@ public class MarkdownToPptxUtil {
      * 独立成方法便于单测断言命令结构。
      */
     java.util.List<String> buildCommand(String mdFilePath, String pptxPath) {
-        return java.util.List.of(marpCommand, "convert", mdFilePath, "-o", pptxPath);
+        return java.util.List.of(marpCommand, "-o", pptxPath, mdFilePath);
+
     }
 
     /**

@@ -16,8 +16,8 @@ import lombok.EqualsAndHashCode;
 @TableName("teach_prepare_record")
 public class TeachPrepareRecord extends BaseEntity {
 
-    /** 主键，数据库自增 */
-    @TableId(type = IdType.AUTO)
+    /** 主键，雪花ID（受理时即生成，可先返回给前端再后台回写） */
+    @TableId(type = IdType.ASSIGN_ID)
     private Long id;
 
     /** 关联教材章节ID */
@@ -50,7 +50,7 @@ public class TeachPrepareRecord extends BaseEntity {
     @TableField("pptx_url")
     private String pptxUrl;
 
-    /** 状态（1=成功，0=失败） */
+    /** 状态（1=成功，0=失败，2=生成中），取值见 PrepareRecordStatusEnum */
     private Integer status;
 
     /** 错误信息 */

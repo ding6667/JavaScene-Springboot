@@ -167,6 +167,23 @@ class TeachPrepareRecordServiceImplTest {
     }
 
     @Test
+    void getRecordStatus_shouldReturnCode_whenRecordOwned() {
+        when(teachPrepareRecordMapper.selectStatusByIdAndTeacher(RECORD_ID, TEACHER_ID)).thenReturn(2);
+
+        assertThat(service.getRecordStatus(RECORD_ID)).isEqualTo(2);
+    }
+
+    @Test
+    void getRecordStatus_shouldReject_whenRecordNotFoundOrNotOwned() {
+        // 归属条件在 SQL 里，查不到即视为不存在或越权
+        when(teachPrepareRecordMapper.selectStatusByIdAndTeacher(RECORD_ID, TEACHER_ID)).thenReturn(null);
+
+        assertThatThrownBy(() -> service.getRecordStatus(RECORD_ID))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("没有找到这条备课记录");
+    }
+
+    @Test
     void exportLessonPlan_shouldReturnWordBytes_whenValid() {
         TeachPrepareRecord record = ownedRecord();
         when(teachPrepareRecordMapper.selectById(RECORD_ID)).thenReturn(record);

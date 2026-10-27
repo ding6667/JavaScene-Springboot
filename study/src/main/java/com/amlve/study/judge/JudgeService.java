@@ -1,5 +1,6 @@
 package com.amlve.study.judge;
 
+import com.amlve.common.constant.ErrorMessageConstant;
 import com.amlve.common.enums.QuestionTypeEnum;
 import com.amlve.common.exception.BusinessException;
 import com.amlve.examapi.dto.response.QuestionDetailResponse;
@@ -34,21 +35,22 @@ public class JudgeService {
     public JudgeResult judge(QuestionDetailResponse question, String studentAnswer) {
         QuestionTypeEnum type = QuestionTypeEnum.fromCode(question.getType());
         if (type == null || !type.isObjective()) {
-            throw new BusinessException("题目类型不支持本地字符串比对, questionId = "
+            throw new BusinessException(ErrorMessageConstant.QUESTION_TYPE_UNSUPPORTED
                     + question.getId() + ", type = "
                     + question.getType());
         }
         String questionAnswer = question.getAnswer();
         if (questionAnswer == null || questionAnswer.isBlank()) {
             //该题目的标准答案缺失
-            throw new BusinessException("题目标准答案缺失,不支持判分 : questionId = " + question.getId());
+            log.warn("STANDARD_ANSWER_MISSING 定位: {}", question.getId());
+            throw new BusinessException(ErrorMessageConstant.STANDARD_ANSWER_MISSING);
         }
         return switch (type) {
             case CHOICE -> judgeChoice(questionAnswer, studentAnswer, question);
             case FILL_IN -> judgeFillIn(questionAnswer, studentAnswer, question);
             case JUDGE -> judgeJudge(questionAnswer, studentAnswer, question);
             case PROGRAM_READ -> judgeProgramRead(questionAnswer, studentAnswer, question);
-            default -> throw new BusinessException("题目类型不支持本地字符串比对, questionId = "
+            default -> throw new BusinessException(ErrorMessageConstant.QUESTION_TYPE_UNSUPPORTED
                     + question.getId() + ", type = "
                     + question.getType());
         };
@@ -67,7 +69,8 @@ public class JudgeService {
     private JudgeResult judgeJudge(String questionAnswer, String studentAnswer, QuestionDetailResponse question) {
         Boolean expected = AnswerNormalizer.toBoolean(questionAnswer);
         if (expected == null) {
-            throw new BusinessException("题目标准答案格式错误,不支持判分 : questionId = " + question.getId());
+            log.warn("STANDARD_ANSWER_INVALID 定位: {}", question.getId());
+            throw new BusinessException(ErrorMessageConstant.STANDARD_ANSWER_INVALID);
         }
         Boolean actual = AnswerNormalizer.toBoolean(studentAnswer);
         return JudgeResult.of(expected.equals(actual), question.getScore(),

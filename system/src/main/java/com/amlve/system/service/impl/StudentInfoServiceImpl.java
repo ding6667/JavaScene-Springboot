@@ -1,5 +1,6 @@
 package com.amlve.system.service.impl;
 
+import com.amlve.system.constant.ErrorMessageConstant;
 import com.amlve.common.constant.ErrorCodeConstant;
 import com.amlve.common.exception.BusinessException;
 import com.amlve.common.request.PageResult;
@@ -88,10 +89,10 @@ public class StudentInfoServiceImpl implements StudentInfoService {
 
         if (firstFill) {
             if (!StringUtils.hasText(request.getStudentNo())) {
-                throw new BusinessException(ErrorCodeConstant.PARAM_INVALID, "首次完善必须填写学号");
+                throw new BusinessException(ErrorCodeConstant.PARAM_INVALID, ErrorMessageConstant.STUDENT_NO_REQUIRED);
             }
             if (existsStudentNo(request.getStudentNo())) {
-                throw new BusinessException(ErrorCodeConstant.PARAM_INVALID, "学号已被占用");
+                throw new BusinessException(ErrorCodeConstant.PARAM_INVALID, ErrorMessageConstant.STUDENT_NO_TAKEN);
             }
             SysStudentInfo entity = exist == null ? new SysStudentInfo() : exist;
             entity.setUserId(userId);
@@ -122,7 +123,7 @@ public class StudentInfoServiceImpl implements StudentInfoService {
     public void createEmpty(Long userId) {
         if (studentInfoMapper.selectCount(Wrappers.<SysStudentInfo>lambdaQuery()
                 .eq(SysStudentInfo::getUserId, userId)) > 0) {
-            throw new BusinessException(ErrorCodeConstant.PARAM_INVALID, "该用户已存在学生扩展记录");
+            throw new BusinessException(ErrorCodeConstant.PARAM_INVALID, ErrorMessageConstant.EXT_INFO_EXISTS);
         }
         SysStudentInfo info = new SysStudentInfo();
         info.setUserId(userId);
@@ -187,7 +188,7 @@ public class StudentInfoServiceImpl implements StudentInfoService {
     public BatchImportResponse batchAdd(Long classId, org.springframework.web.multipart.MultipartFile file) {
         ClassInfo clazz = classMapper.selectById(classId);
         if (clazz == null) {
-            throw new BusinessException(ErrorCodeConstant.NOT_FOUND, "班级不存在");
+            throw new BusinessException(ErrorCodeConstant.NOT_FOUND, ErrorMessageConstant.CLASS_NOT_FOUND);
         }
 
         BatchImportResponse result = new BatchImportResponse();
@@ -201,7 +202,8 @@ public class StudentInfoServiceImpl implements StudentInfoService {
             String line = lines.get(i);
             result.setTotal(result.getTotal() + 1);
             if (result.getTotal() > MAX_BATCH_SIZE) {
-                result.addFail(lineNo, "-", "-", "单次导入不能超过 " + MAX_BATCH_SIZE + " 条，后续行已忽略");
+                log.warn("批量导入超出单次上限: classId={}, limit={}, 该行及之后未导入", classId, MAX_BATCH_SIZE);
+                result.addFail(lineNo, "-", "-", ErrorMessageConstant.IMPORT_OVER_LIMIT);
                 break;
             }
             try {
@@ -292,22 +294,22 @@ public class StudentInfoServiceImpl implements StudentInfoService {
                            BatchImportResponse result, Integer studentRoleId) {
         String[] parts = line.split("[,，\\t]");
         if (parts.length < 2) {
-            throw new BusinessException(ErrorCodeConstant.PARAM_INVALID, "格式应为 学号,姓名[,初始密码]");
+            throw new BusinessException(ErrorCodeConstant.PARAM_INVALID, ErrorMessageConstant.IMPORT_FORMAT_INVALID);
         }
         String studentNo = parts[0].trim();
         String realName = parts[1].trim();
         if (!StringUtils.hasText(studentNo) || !StringUtils.hasText(realName)) {
-            throw new BusinessException(ErrorCodeConstant.PARAM_INVALID, "学号与姓名均不能为空");
+            throw new BusinessException(ErrorCodeConstant.PARAM_INVALID, ErrorMessageConstant.IMPORT_FIELD_EMPTY);
         }
         // 批内查重不能依赖唯一键异常兜底：唯一键冲突会污染连接且报错不可读
         if (!seenInBatch.add(studentNo)) {
-            throw new BusinessException(ErrorCodeConstant.PARAM_INVALID, "批内学号重复");
+            throw new BusinessException(ErrorCodeConstant.PARAM_INVALID, ErrorMessageConstant.IMPORT_DUPLICATE_IN_FILE);
         }
         if (existsStudentNo(studentNo)) {
-            throw new BusinessException(ErrorCodeConstant.PARAM_INVALID, "学号已存在");
+            throw new BusinessException(ErrorCodeConstant.PARAM_INVALID, ErrorMessageConstant.IMPORT_STUDENT_NO_EXISTS);
         }
         if (userMapper.selectCount(Wrappers.<User>lambdaQuery().eq(User::getUsername, studentNo)) > 0) {
-            throw new BusinessException(ErrorCodeConstant.PARAM_INVALID, "登录账号(学号)已存在");
+            throw new BusinessException(ErrorCodeConstant.PARAM_INVALID, ErrorMessageConstant.IMPORT_USERNAME_EXISTS);
         }
 
         String password = parts.length > 2 && StringUtils.hasText(parts[2].trim())
@@ -334,7 +336,7 @@ public class StudentInfoServiceImpl implements StudentInfoService {
 
     private List<String> readLines(org.springframework.web.multipart.MultipartFile file) {
         if (file == null || file.isEmpty()) {
-            throw new BusinessException(ErrorCodeConstant.PARAM_INVALID, "导入文件不能为空");
+            throw new BusinessException(ErrorCodeConstant.PARAM_INVALID, ErrorMessageConstant.IMPORT_FILE_EMPTY);
         }
         List<String> lines = new ArrayList<>();
         try (BufferedReader reader = new BufferedReader(
@@ -348,7 +350,8 @@ public class StudentInfoServiceImpl implements StudentInfoService {
                 }
             }
         } catch (Exception e) {
-            throw new BusinessException(ErrorCodeConstant.PARAM_INVALID, "文件读取失败: " + e.getMessage());
+            throw new BusinessException(ErrorCodeConstant.PARAM_INVALID,
+                    ErrorMessageConstant.IMPORT_FILE_READ_FAILED, e);
         }
         return lines;
     }

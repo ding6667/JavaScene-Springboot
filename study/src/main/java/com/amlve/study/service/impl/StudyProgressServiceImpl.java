@@ -1,5 +1,6 @@
 package com.amlve.study.service.impl;
 
+import com.amlve.common.constant.ErrorMessageConstant;
 import com.amlve.common.constant.ErrorCodeConstant;
 import com.amlve.common.exception.BusinessException;
 import com.amlve.common.request.Result;
@@ -114,7 +115,7 @@ public class StudyProgressServiceImpl
         // 1. 该课程下的全部章节（已按 sortOrder 升序）
         Result<List<ChapterDTO>> chaptersResult = knowledgeChapterApi.listChaptersByCourse(courseId);
         if (chaptersResult == null || chaptersResult.getCode() != ErrorCodeConstant.SUCCESS) {
-            throw new BusinessException("查询课程章节失败: "
+            throw new BusinessException(ErrorMessageConstant.CHAPTER_QUERY_FAILED
                     + (chaptersResult == null ? "接口返回为空" : chaptersResult.getMessage()));
         }
         List<ChapterDTO> chapters = chaptersResult.getData();

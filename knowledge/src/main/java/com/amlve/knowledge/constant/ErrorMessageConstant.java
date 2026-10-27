@@ -39,4 +39,9 @@ public class ErrorMessageConstant {
     public static final String WEIGHT_POINT_CHAPTER_MISMATCH = "知识点不属于所选章节";
     public static final String WEIGHT_MAX_LESS_THAN_BASE = "最大出题数量不能小于基础出题数量";
     public static final String PERMISSION_DENIED_ADMIN = "无权限执行该操作，仅管理员可用";
+
+    /**
+     * 上传文件落临时目录失败。原始 IO 异常信息只进日志并写入上传记录，用户消息不给堆栈文本
+     */
+    public static final String FILE_TEMP_STORE_FAILED = "文件暂存失败，请稍后重试或更换文件";
 }
