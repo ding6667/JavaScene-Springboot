@@ -948,7 +948,7 @@ create index idx_teacher_id
 
 create table javascene.teach_prepare_record
 (
-    id          bigint auto_increment comment '主键ID'
+    id          bigint not null comment '主键ID'
         primary key,
     chapter_id  bigint                             not null comment '章节ID',
     teacher_id  bigint                             not null comment '教师ID',
@@ -958,7 +958,7 @@ create table javascene.teach_prepare_record
     lab         longtext                           null comment '上机实训方案（Markdown）',
     pptx_md     longtext                           null comment 'PPT原始Markdown内容',
     pptx_url    varchar(500)                       null comment 'PPT文件路径',
-    status      tinyint  default 1                 null comment '状态（1=成功，0=失败）',
+    status      tinyint  default 2                 null comment '状态（1=成功，0=失败，2=生成中）',
     error_msg   varchar(500)                       null comment '错误信息',
     create_time datetime default CURRENT_TIMESTAMP not null,
     update_time datetime default CURRENT_TIMESTAMP not null on update CURRENT_TIMESTAMP,

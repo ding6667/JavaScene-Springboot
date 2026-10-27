@@ -1,9 +1,11 @@
 package com.amlve.teach.service;
 
 import com.amlve.teach.dto.request.PptTemplateSaveRequest;
-import com.amlve.teach.dto.response.MarpThemeVO;
 import com.amlve.teach.dto.response.PptTemplateDetailVO;
 import com.amlve.teach.dto.response.PptTemplateResponse;
+import com.amlve.teach.dto.response.ThemeBriefResponse;
+import com.amlve.teach.dto.response.ThemeDetailResponse;
+import jakarta.validation.constraints.NotNull;
 
 import java.util.List;
 
@@ -32,5 +34,11 @@ public interface PptTemplateService {
     /**
      * 外观主题列表（4 套预置 CSS 主题，常量返回不查库）
      */
-    List<MarpThemeVO> listThemes();
+    List<ThemeBriefResponse> listThemes();
+
+    /**
+     * 外观主题详情（含 css_text 全文）
+     */
+    @NotNull(message = "主题编码不能为空")
+    ThemeDetailResponse getThemeDetail(String code);
 }

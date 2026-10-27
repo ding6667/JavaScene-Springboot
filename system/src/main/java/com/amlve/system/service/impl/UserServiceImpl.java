@@ -111,7 +111,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         // 1. 检查用户名是否已存在
         long count = userMapper.selectCount(new LambdaQueryWrapper<User>().eq(User::getUsername, username));
         if (count > 0) {
-            throw new BusinessException(ErrorCodeConstant.REGISTER_ERROR, "用户名已存在");
+            throw new BusinessException(ErrorCodeConstant.REGISTER_ERROR, ErrorMessageConstant.USER_USERNAME_EXIST);
         }
 
         // 2. 创建用户，密码使用 BCrypt 加密
@@ -255,7 +255,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         User user = requireUser(userId);
         if (!passwordEncoder.matches(request.getOldPassword(), user.getPassword())) {
             log.warn("修改密码失败，旧密码不匹配: userId={}", userId);
-            throw new BusinessException(ErrorCodeConstant.PARAM_INVALID, "旧密码不正确");
+            throw new BusinessException(ErrorCodeConstant.PARAM_INVALID, ErrorMessageConstant.OLD_PASSWORD_INCORRECT);
         }
         writeNewPassword(user.getId(), request.getNewPassword(), "password_changed");
     }
@@ -328,7 +328,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         }
         if (request.getEnabled() != null) {
             if (touchingSelf) {
-                throw new BusinessException(ErrorCodeConstant.BUSINESS_ERROR, "不能在本人的编辑接口里改账号状态，请用启用/禁用接口");
+                throw new BusinessException(ErrorCodeConstant.BUSINESS_ERROR, ErrorMessageConstant.SELF_STATUS_FORBIDDEN);
             }
             update.setEnabled(request.getEnabled());
         }
@@ -336,7 +336,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         if (roleChanged) {
             if (touchingSelf) {
                 // 管理员把自己降成学生 = 当场失去所有管理端权限，且没人能再把他改回来
-                throw new BusinessException(ErrorCodeConstant.BUSINESS_ERROR, "不能修改当前登录账号的角色");
+                throw new BusinessException(ErrorCodeConstant.BUSINESS_ERROR, ErrorMessageConstant.SELF_ROLE_FORBIDDEN);
             }
             SysRole role = roleService.require(request.getRoleId().longValue());
             if (roleService.isAdmin(exist.getRoleId()) && !roleService.isAdmin(role.getId().intValue())) {
@@ -379,7 +379,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         Long currentUserId = SecurityUtils.getUserId();
         if (currentUserId.equals(userId)) {
             // 禁用自己是把自己锁在系统外，且此后无人能再启用
-            throw new BusinessException(ErrorCodeConstant.BUSINESS_ERROR, "不能禁用或启用当前登录账号");
+            throw new BusinessException(ErrorCodeConstant.BUSINESS_ERROR, ErrorMessageConstant.SELF_STATUS_FORBIDDEN);
         }
         User exist = requireUser(userId);
         boolean disabling = Integer.valueOf(1).equals(exist.getEnabled());

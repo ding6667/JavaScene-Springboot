@@ -1,5 +1,6 @@
 package com.amlve.system.dto.request;
 
+import com.amlve.system.constant.ErrorMessageConstant;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -11,7 +12,7 @@ import lombok.Data;
 @Data
 public class UserAddRequest {
 
-    @NotBlank(message = "登录账号不能为空")
+    @NotBlank(message = ErrorMessageConstant.USERNAME_EMPTY)
     private String username;
 
     /**
@@ -19,10 +20,10 @@ public class UserAddRequest {
      */
     private String password;
 
-    @NotBlank(message = "真实姓名不能为空")
+    @NotBlank(message = ErrorMessageConstant.REAL_NAME_EMPTY)
     private String realName;
 
-    @Email(message = "邮箱格式不正确")
+    @Email(message = ErrorMessageConstant.USER_EMAIL_INVALID)
     private String email;
 
     private String phone;
@@ -30,7 +31,7 @@ public class UserAddRequest {
     /**
      * 角色ID：1=学生，2=教师，3=管理员
      */
-    @NotNull(message = "角色不能为空")
+    @NotNull(message = ErrorMessageConstant.ROLE_NOT_SELECTED)
     private Integer roleId;
 
     /**

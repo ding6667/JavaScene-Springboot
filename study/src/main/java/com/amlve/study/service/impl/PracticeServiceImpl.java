@@ -1,5 +1,6 @@
 package com.amlve.study.service.impl;
 
+import com.amlve.common.constant.ErrorMessageConstant;
 import com.amlve.agentscoreapi.dto.request.ScoreEvaluateRequest;
 import com.amlve.agentscoreapi.dto.response.ScoreEvaluateResponse;
 import com.amlve.agentscoreapi.service.ScoreAgentClient;
@@ -95,7 +96,8 @@ public class PracticeServiceImpl
         if (type == QuestionTypeEnum.SHORT_ANSWER) {
             return submitSubjective(request, question, currentUserId);
         }
-        throw new BusinessException("暂不支持的题型: " + question.getType());
+        log.warn("QUESTION_TYPE_UNSUPPORTED 定位: {}", question.getType());
+        throw new BusinessException(ErrorMessageConstant.QUESTION_TYPE_UNSUPPORTED);
     }
 
     // ===== 客观题 =====
@@ -140,7 +142,8 @@ public class PracticeServiceImpl
             if (mode == JudgeModeEnum.AI_GRADING) {
                 return submitSubjective(request, question, currentUserId);
             }
-            throw new BusinessException("该编程题没有测试用例,无法判分 : questionId = " + question.getId());
+            log.warn("PROGRAM_TESTCASE_MISSING 定位: {}", question.getId());
+            throw new BusinessException(ErrorMessageConstant.PROGRAM_TESTCASE_MISSING);
         }
 
         CodeRunRequest codeRunRequest = new CodeRunRequest();
@@ -483,10 +486,11 @@ public class PracticeServiceImpl
             questionDetail = examQuestionApi.getQuestionDetail(questionId);
         } catch (Exception e) {
             log.warn("获取题目详情失败，题目ID：{}", questionId, e);
-            throw new BusinessException("获取题目详情失败");
+            throw new BusinessException(ErrorMessageConstant.QUESTION_DETAIL_FETCH_FAILED);
         }
         if (questionDetail == null || questionDetail.getData() == null) {
-            throw new BusinessException("题目不存在: " + questionId);
+            log.warn("QUESTION_NOT_FOUND 定位: {}", questionId);
+            throw new BusinessException(ErrorMessageConstant.QUESTION_NOT_FOUND);
         }
         return questionDetail.getData();
     }

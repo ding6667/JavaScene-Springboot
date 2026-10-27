@@ -1,5 +1,6 @@
 package com.amlve.study;
 
+import com.amlve.common.constant.ErrorMessageConstant;
 import com.amlve.common.exception.BusinessException;
 import com.amlve.common.enums.QuestionTypeEnum;
 import com.amlve.examapi.dto.response.QuestionDetailResponse;
@@ -38,10 +39,11 @@ public class AnswerValidator {
     public void validate(QuestionDetailResponse question, String answer) {
         QuestionTypeEnum type = QuestionTypeEnum.fromCode(question.getType());
         if (type == null) {
-            throw new BusinessException("题目类型非法: " + question.getType());
+            log.warn("QUESTION_TYPE_INVALID 定位: {}", question.getType());
+            throw new BusinessException(ErrorMessageConstant.QUESTION_TYPE_INVALID);
         }
         if (answer == null || answer.isBlank()) {
-            throw new BusinessException("答案不能为空");
+            throw new BusinessException(ErrorMessageConstant.ANSWER_MISSING);
         }
 
         switch (type) {
@@ -58,12 +60,14 @@ public class AnswerValidator {
         List<String> options = question.getOptions();
         if (options == null || options.isEmpty()) {
             // 题目数据本身有问题，直接拒绝，避免把脏答案判成「错误」写进练习记录
-            throw new BusinessException("题目选项缺失，无法校验答案: questionId=" + question.getId());
+            log.warn("QUESTION_OPTIONS_MISSING 定位: {}", question.getId());
+            throw new BusinessException(ErrorMessageConstant.QUESTION_OPTIONS_MISSING);
         }
         Set<Character> legalKeys = legalOptionKeys(options);
         Set<Character> picked = parseOptionKeys(answer);
         if (picked.isEmpty()) {
-            throw new BusinessException("选择题答案格式非法: " + answer);
+            log.warn("CHOICE_ANSWER_INVALID 定位: {}", answer);
+            throw new BusinessException(ErrorMessageConstant.CHOICE_ANSWER_INVALID);
         }
         for (Character key : picked) {
             if (!legalKeys.contains(key)) {
@@ -116,7 +120,8 @@ public class AnswerValidator {
     private void validateJudge(String answer) {
         String value = answer.trim().toLowerCase(Locale.ROOT);
         if (!JUDGE_TRUE.contains(value) && !JUDGE_FALSE.contains(value)) {
-            throw new BusinessException("判断题答案只能是「对/错」或 true/false: " + answer);
+            log.warn("JUDGE_ANSWER_INVALID 定位: {}", answer);
+            throw new BusinessException(ErrorMessageConstant.JUDGE_ANSWER_INVALID);
         }
     }
 
@@ -124,7 +129,7 @@ public class AnswerValidator {
 
     private void validateProgramming(String answer) {
         if (answer.isBlank()) {
-            throw new BusinessException("编程题代码不能为空");
+            throw new BusinessException(ErrorMessageConstant.CODE_MISSING);
         }
         if (answer.length() > MAX_CODE_LENGTH) {
             throw new BusinessException("代码长度超出上限（" + MAX_CODE_LENGTH + " 字符）");

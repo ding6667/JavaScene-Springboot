@@ -1,5 +1,6 @@
 package com.amlve.exam.service.impl;
 
+import com.amlve.common.constant.ErrorMessageConstant;
 import com.amlve.agentscoreapi.dto.request.ScoreEvaluateRequest;
 import com.amlve.agentscoreapi.dto.response.ScoreEvaluateResponse;
 import com.amlve.agentscoreapi.service.ScoreAgentClient;
@@ -174,7 +175,7 @@ public class ExamGradingServiceImpl implements ExamGradingService {
                 .eq(ExamGradingTask::getUserId, userId));
         if (task == null) {
             // TODO 常量字段提取为静态变量，放入constant
-            throw new BusinessException("批改结果不存在");
+            throw new BusinessException(ErrorMessageConstant.GRADING_RESULT_NOT_FOUND);
         }
         GradingResultResponse response = new GradingResultResponse();
         response.setId(task.getId());

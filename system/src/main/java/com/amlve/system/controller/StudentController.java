@@ -1,5 +1,6 @@
 package com.amlve.system.controller;
 
+import com.amlve.system.constant.ErrorMessageConstant;
 import com.amlve.common.constant.ErrorCodeConstant;
 import com.amlve.common.exception.BusinessException;
 import com.amlve.common.request.PageResult;
@@ -112,7 +113,7 @@ public class StudentController {
             return own;
         }
         if (!own.contains(classId)) {
-            throw new BusinessException(ErrorCodeConstant.ACCESS_DENIED, "该班级不属于当前教师");
+            throw new BusinessException(ErrorCodeConstant.ACCESS_DENIED, ErrorMessageConstant.CLASS_NOT_OWNED);
         }
         return List.of(classId);
     }

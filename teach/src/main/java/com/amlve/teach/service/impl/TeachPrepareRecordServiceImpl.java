@@ -1,11 +1,13 @@
 package com.amlve.teach.service.impl;
 
+import com.amlve.common.constant.ErrorMessageConstant;
 import com.amlve.common.exception.BusinessException;
 import com.amlve.common.utils.FileFormatUtil;
 import com.amlve.common.utils.SecurityUtils;
 import com.amlve.teach.dto.response.LessonPlanExportData;
 import com.amlve.teach.dto.response.PrepareRecordDetailResponse;
 import com.amlve.teach.dto.response.PrepareRecordListResponse;
+import com.amlve.teach.enums.PrepareRecordStatusEnum;
 import com.amlve.teach.mapper.TeachPrepareRecordMapper;
 import com.amlve.teach.service.TeachPrepareRecordService;
 import com.amlve.teach.tableEnt.TeachPrepareRecord;
@@ -49,11 +51,11 @@ public class TeachPrepareRecordServiceImpl implements TeachPrepareRecordService 
     @Override
     public PrepareRecordListResponse listMyRecords(Long chapterId, Integer pageNum, Integer pageSize) {
         Long teacherId = SecurityUtils.getUserId();
-        // 分页查询本人成功记录，可选按章节过滤，按备课时间倒序
+        // 分页查询本人成功记录（生成中/失败记录不入列表），可选按章节过滤，按备课时间倒序
         Page<TeachPrepareRecord> page = new Page<>(pageNum, pageSize);
         LambdaQueryWrapper<TeachPrepareRecord> wrapper = new LambdaQueryWrapper<TeachPrepareRecord>()
                 .eq(TeachPrepareRecord::getTeacherId, teacherId)
-                .eq(TeachPrepareRecord::getStatus, 1)
+                .eq(TeachPrepareRecord::getStatus, PrepareRecordStatusEnum.SUCCESS.getCode())
                 .eq(chapterId != null, TeachPrepareRecord::getChapterId, chapterId)
                 .orderByDesc(TeachPrepareRecord::getCreateTime);
         Page<TeachPrepareRecord> result = teachPrepareRecordMapper.selectPage(page, wrapper);
@@ -95,15 +97,27 @@ public class TeachPrepareRecordServiceImpl implements TeachPrepareRecordService 
         response.setPptxUrl(record.getPptxUrl());
         // templateId 待 teach_ppt / teach_prepare_record 增加 template_id 列后落库，当前降级返回 null
         response.setTemplateId(null);
+        response.setStatus(record.getStatus());
+        response.setStatusDesc(PrepareRecordStatusEnum.nameOf(record.getStatus()));
+        response.setErrorMsg(record.getErrorMsg());
         response.setCreateTime(record.getCreateTime());
         return response;
+    }
+
+    @Override
+    public Integer getRecordStatus(Long recordId) {
+        Integer status = teachPrepareRecordMapper.selectStatusByIdAndTeacher(recordId, SecurityUtils.getUserId());
+        if (status == null) {
+            throw new BusinessException(ErrorMessageConstant.PREPARE_RECORD_NOT_FOUND);
+        }
+        return status;
     }
 
     @Override
     public LessonPlanExportData exportLessonPlan(Long recordId) {
         TeachPrepareRecord record = requireOwnedRecord(recordId);
         if (!StringUtils.hasText(record.getLessonPlan())) {
-            throw new BusinessException("教案内容为空，无法导出");
+            throw new BusinessException(ErrorMessageConstant.PREPARE_LESSON_PLAN_EMPTY);
         }
 
         // Markdown 转 Word 字节（common 的 FileFormatUtil，依赖 python 脚本执行环境）
@@ -132,7 +146,7 @@ public class TeachPrepareRecordServiceImpl implements TeachPrepareRecordService 
     private TeachPrepareRecord requireOwnedRecord(Long recordId) {
         TeachPrepareRecord record = teachPrepareRecordMapper.selectById(recordId);
         if (record == null || !SecurityUtils.getUserId().equals(record.getTeacherId())) {
-            throw new BusinessException("备课记录不存在或无权访问");
+            throw new BusinessException(ErrorMessageConstant.PREPARE_RECORD_NOT_FOUND);
         }
         return record;
     }

@@ -191,7 +191,8 @@ public class KnowledgeDatasetServiceImpl implements KnowledgeDatasetService,com.
             deleteQuietly(tempFile);
             deleteQuietly(tempDir == null ? null : tempDir.toFile());
             uploadRecordService.markFailed(record, null, null, "文件暂存失败: " + e.getMessage());
-            throw new BusinessException("文件暂存失败: " + e.getMessage(), e);
+            log.warn("FILE_TEMP_STORE_FAILED 定位: {}", e.getMessage());
+            throw new BusinessException(ErrorMessageConstant.FILE_TEMP_STORE_FAILED, e);
         }
 
         // lambda 只能捕获 effectively final 变量，把已落盘的路径固定下来交给后台线程

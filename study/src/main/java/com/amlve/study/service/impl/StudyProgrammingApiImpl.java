@@ -1,5 +1,6 @@
 package com.amlve.study.service.impl;
 
+import com.amlve.common.constant.ErrorMessageConstant;
 import com.amlve.agentscoreapi.service.ScoreAgentClient;
 import com.amlve.agentscoreapi.dto.request.ScoreEvaluateRequest;
 import com.amlve.agentscoreapi.dto.response.ScoreEvaluateResponse;
@@ -45,7 +46,7 @@ public class StudyProgrammingApiImpl implements StudyProgramming {
     @Override
     public Result<ProgrammingJudgeResponse> judgeProgramming(ProgrammingJudgeRequest request) {
         if (request == null || request.getQuestionId() == null || request.getUserId() == null) {
-            return Result.error("submitId / userId / questionId 不能为空");
+            return Result.error(ErrorMessageConstant.REQUEST_PARAM_MISSING);
         }
         QuestionDetailResponse question = getQuestion(request.getQuestionId());
         List<TestCase> cases = toTestCases(question.getTestCases());
@@ -55,7 +56,8 @@ public class StudyProgrammingApiImpl implements StudyProgramming {
             if (JudgeModeEnum.fromCode(question.getJudgeMode()) == JudgeModeEnum.AI_GRADING) {
                 return Result.success(judgeByScoreAgent(request, question));
             }
-            return Result.error("该编程题没有测试用例，无法判分: questionId=" + question.getId());
+            log.warn("PROGRAM_TESTCASE_MISSING 定位: {}", question.getId());
+            return Result.error(ErrorMessageConstant.PROGRAM_TESTCASE_MISSING);
         }
 
         CodeRunRequest codeRunRequest = new CodeRunRequest();
@@ -134,10 +136,11 @@ public class StudyProgrammingApiImpl implements StudyProgramming {
             questionDetail = examQuestionApi.getQuestionDetail(questionId);
         } catch (Exception e) {
             log.warn("获取题目详情失败，题目ID：{}", questionId, e);
-            throw new BusinessException("获取题目详情失败");
+            throw new BusinessException(ErrorMessageConstant.QUESTION_DETAIL_FETCH_FAILED);
         }
         if (questionDetail == null || questionDetail.getData() == null) {
-            throw new BusinessException("题目不存在: " + questionId);
+            log.warn("QUESTION_NOT_FOUND 定位: {}", questionId);
+            throw new BusinessException(ErrorMessageConstant.QUESTION_NOT_FOUND);
         }
         return questionDetail.getData();
     }

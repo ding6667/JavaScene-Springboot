@@ -1,5 +1,6 @@
 package com.amlve.agentquestionapi.dto.request;
 
+import com.amlve.common.constant.ErrorMessageConstant;
 import lombok.Data;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
@@ -10,7 +11,7 @@ import java.util.List;
 @Data
 public class QuestionGenerateRequest {
 
-    @NotNull(message = "章节ID不能为空")
+    @NotNull(message = ErrorMessageConstant.CHAPTER_NOT_SELECTED)
     private Long chapterId;
 
     /**
@@ -28,9 +29,9 @@ public class QuestionGenerateRequest {
      */
     private String questionType = "all";
 
-    @NotNull(message = "出题数量不能为空")
-    @Min(value = 1, message = "出题数量至少为1")
-    @Max(value = 20, message = "出题数量最多为20")
+    @NotNull(message = ErrorMessageConstant.QUESTION_COUNT_INVALID)
+    @Min(value = 1, message = ErrorMessageConstant.QUESTION_COUNT_INVALID)
+    @Max(value = 20, message = ErrorMessageConstant.QUESTION_COUNT_INVALID)
     private Integer count;
 
     /**

@@ -149,7 +149,8 @@ public class KnowledgeChapterServiceImpl implements KnowledgeChapterService,
 
         KnowledgeChapter chapter = chapterMapper.selectById(chapterId);
         if (chapter == null) {
-            throw new BusinessException("章节不存在: chapterId=" + chapterId);
+            log.warn("CHAPTER_NOT_FOUND 定位: {}", chapterId);
+            throw new BusinessException(ErrorMessageConstant.CHAPTER_NOT_FOUND);
         }
 
         String chapterSummary = chapter.getDescription();

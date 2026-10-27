@@ -1,5 +1,6 @@
 package com.amlve.system.service.impl;
 
+import com.amlve.system.constant.ErrorMessageConstant;
 import com.amlve.common.constant.ErrorCodeConstant;
 import com.amlve.common.exception.BusinessException;
 import com.amlve.system.mapper.SysAdminInfoMapper;
@@ -34,7 +35,7 @@ public class AdminInfoServiceImpl implements AdminInfoService {
     public void createEmpty(Long userId) {
         if (adminInfoMapper.selectCount(Wrappers.<SysAdminInfo>lambdaQuery()
                 .eq(SysAdminInfo::getUserId, userId)) > 0) {
-            throw new BusinessException(ErrorCodeConstant.PARAM_INVALID, "该用户已存在管理员扩展记录");
+            throw new BusinessException(ErrorCodeConstant.PARAM_INVALID, ErrorMessageConstant.EXT_INFO_EXISTS);
         }
         SysAdminInfo info = new SysAdminInfo();
         info.setUserId(userId);

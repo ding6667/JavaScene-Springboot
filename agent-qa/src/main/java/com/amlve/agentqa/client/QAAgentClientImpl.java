@@ -1,5 +1,6 @@
 package com.amlve.agentqa.client;
 
+import com.amlve.common.constant.ErrorMessageConstant;
 import com.amlve.agentqa.bean.DifyClient;
 import com.amlve.agentqa.constant.DifyConstant;
 import com.amlve.agentqaapi.service.QAAgentClient;
@@ -161,7 +162,7 @@ public class QAAgentClientImpl implements QAAgentClient {
     public Result<QaWorkflowAnswerVO> answer(String chapterId, String userQuery) {
         log.info("Dify 答疑工作流: chapterId={}, userQuery={}", chapterId, userQuery);
         if (qaApiKey == null || qaApiKey.isBlank()) {
-            throw new BusinessException("Dify 工作流 API 密钥未配置（dify.qa-api-key 或 dify.api-key）");
+            throw new BusinessException(ErrorMessageConstant.AGENT_UNAVAILABLE);
         }
         Map<String, Object> inputs = buildWorkflowInputs(chapterId, userQuery);
         String response = difyClient.runWorkflowBlocking(qaApiKey, inputs);
@@ -229,14 +230,14 @@ public class QAAgentClientImpl implements QAAgentClient {
                     if (!"succeeded".equals(status)) {
                         String error = root.path("data").path("error").asText("未知错误");
                         log.error("Dify 流式工作流执行失败: status={}, error={}", status, error);
-                        throw new BusinessException("Dify 工作流执行失败: " + error);
+                        throw new BusinessException(ErrorMessageConstant.AGENT_UNAVAILABLE);
                     }
                     return List.of();
                 }
                 case "error" -> {
                     String message = root.path("data").path("message").asText("未知错误");
                     log.error("Dify 流式事件返回错误: {}", message);
-                    throw new BusinessException("Dify 流式答疑失败: " + message);
+                    throw new BusinessException(ErrorMessageConstant.AGENT_UNAVAILABLE);
                 }
                 default -> {
                     return List.of();
@@ -245,7 +246,7 @@ public class QAAgentClientImpl implements QAAgentClient {
         } catch (BusinessException e) {
             throw e;
         } catch (Exception e) {
-            throw new BusinessException("解析 Dify 流式事件失败: " + e.getMessage(), e);
+            throw new BusinessException(ErrorMessageConstant.AGENT_RESULT_UNREADABLE, e);
         }
     }
 
@@ -268,11 +269,11 @@ public class QAAgentClientImpl implements QAAgentClient {
             String status = dataNode.path("status").asText("");
             if (!"succeeded".equals(status)) {
                 String error = dataNode.path("error").asText("未知错误");
-                throw new BusinessException("Dify 工作流执行失败: status=" + status + ", error=" + error);
+                throw new BusinessException(ErrorMessageConstant.AGENT_UNAVAILABLE);
             }
             JsonNode outputs = dataNode.path("outputs");
             if (outputs.isMissingNode() || outputs.isNull()) {
-                throw new BusinessException("Dify 工作流响应缺少 outputs: " + response);
+                throw new BusinessException(ErrorMessageConstant.AGENT_RESULT_UNREADABLE);
             }
             String answer = null;
             for (String key : new String[]{"answer", "text", "result"}) {
@@ -300,7 +301,7 @@ public class QAAgentClientImpl implements QAAgentClient {
         } catch (BusinessException e) {
             throw e;
         } catch (Exception e) {
-            throw new BusinessException("解析 Dify 工作流响应失败: " + e.getMessage(), e);
+            throw new BusinessException(ErrorMessageConstant.AGENT_RESULT_UNREADABLE, e);
         }
     }
 
@@ -340,7 +341,7 @@ public class QAAgentClientImpl implements QAAgentClient {
         if (result == null || result.getCode() != ErrorCodeConstant.SUCCESS) {
             String message = result == null ? "无响应" : result.getMessage();
             log.error("Dify 调用链内部失败: {}", message);
-            throw new BusinessException("Dify 知识库调用失败: " + message);
+            throw new BusinessException(ErrorMessageConstant.KNOWLEDGE_BASE_UNAVAILABLE);
         }
         return result.getData();
     }
@@ -353,13 +354,13 @@ public class QAAgentClientImpl implements QAAgentClient {
             JsonNode root = OBJECT_MAPPER.readTree(response);
             JsonNode documentIdNode = root.path("document").path("id");
             if (documentIdNode.isMissingNode() || documentIdNode.isNull()) {
-                throw new BusinessException("Dify 创建文档响应中缺少 document.id: " + response);
+                throw new BusinessException(ErrorMessageConstant.KNOWLEDGE_BASE_UNAVAILABLE);
             }
             return documentIdNode.asText();
         } catch (BusinessException e) {
             throw e;
         } catch (Exception e) {
-            throw new BusinessException("解析 Dify 创建文档响应失败: " + e.getMessage(), e);
+            throw new BusinessException(ErrorMessageConstant.KNOWLEDGE_BASE_UNAVAILABLE, e);
         }
     }
 
@@ -449,11 +450,14 @@ public class QAAgentClientImpl implements QAAgentClient {
      * 删除 Dify 侧异常文档并组装失败异常
      */
     private BusinessException cleanupAndFail(String datasetId, String documentId, String reason) {
+        // 拒绝原因只进日志：给用户看的文案里出现"缺少章节编号字段"这类内部规则没有意义，
+        // 但运维排查知识库残留时必须能看到
+        log.warn("知识库文档入库被拒绝: datasetId={}, documentId={}, reason={}", datasetId, documentId, reason);
         boolean deleted = datasetWebClient.deleteDocument(datasetId, documentId);
         if (!deleted) {
             log.warn("异常文档清理失败，需人工核对知识库残留: datasetId={}, documentId={}", datasetId, documentId);
         }
-        return new BusinessException("文档上传校验失败: " + reason);
+        return new BusinessException(ErrorMessageConstant.KNOWLEDGE_UPLOAD_REJECTED);
     }
 
     private void sleepBeforeNextPoll(String datasetId, String documentId) {
@@ -505,7 +509,7 @@ public class QAAgentClientImpl implements QAAgentClient {
             }
             return null;
         } catch (Exception e) {
-            throw new BusinessException("解析 Dify 索引状态响应失败: " + e.getMessage(), e);
+            throw new BusinessException(ErrorMessageConstant.AGENT_RESULT_UNREADABLE, e);
         }
     }
 
@@ -536,7 +540,7 @@ public class QAAgentClientImpl implements QAAgentClient {
             result.setRecords(records);
             return result;
         } catch (Exception e) {
-            throw new BusinessException("解析 Dify 检索响应失败: " + e.getMessage(), e);
+            throw new BusinessException(ErrorMessageConstant.AGENT_RESULT_UNREADABLE, e);
         }
     }
 }

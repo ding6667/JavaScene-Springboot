@@ -1,5 +1,6 @@
 package com.amlve.common.utils;
 
+import com.amlve.common.constant.ErrorMessageConstant;
 import com.amlve.common.exception.BusinessException;
 import com.amlve.common.constant.BusinessConstant;
 import lombok.AllArgsConstructor;
@@ -93,7 +94,7 @@ public class FileFormatUtil {
         String uid = UUID.randomUUID().toString();
 
         if (content == null || content.isEmpty()) {
-            throw new BusinessException("Markdown内容不能为空");
+            throw new BusinessException(ErrorMessageConstant.MARKDOWN_CONTENT_EMPTY);
         }
 
         try {
