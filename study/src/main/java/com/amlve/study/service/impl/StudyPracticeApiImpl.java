@@ -1,5 +1,6 @@
 package com.amlve.study.service.impl;
 
+import com.amlve.common.constant.ErrorMessageConstant;
 import com.amlve.common.request.Result;
 import com.amlve.study.mapper.PracticeMapper;
 import com.amlve.study.mapper.QuestionStatusMapper;
@@ -42,7 +43,7 @@ public class StudyPracticeApiImpl implements StudyPracticeApi {
     @Override
     public Result<PracticeStatusDTO> getQuestionStatus(Long userId, Long questionId) {
         if (userId == null || questionId == null) {
-            return Result.error("userId / questionId 不能为空");
+            return Result.error(ErrorMessageConstant.REQUEST_PARAM_MISSING);
         }
         StudyQuestionStatus status = selectStatus(userId, questionId);
         StudyPracticeRecord practice = selectPractice(userId, questionId);

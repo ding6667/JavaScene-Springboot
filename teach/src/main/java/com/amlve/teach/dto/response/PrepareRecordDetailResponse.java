@@ -37,6 +37,15 @@ public class PrepareRecordDetailResponse {
     /** 生成使用的PPT模板ID（待 teach_ppt 增加 template_id 列后落库，当前降级返回 null） */
     private Long templateId;
 
+    /** 状态（1=成功，0=失败，2=生成中），前端据此判断轮询是否结束 */
+    private Integer status;
+
+    /** 状态中文名 */
+    private String statusDesc;
+
+    /** 失败原因（status=0 时有值） */
+    private String errorMsg;
+
     /** 备课时间 */
     private LocalDateTime createTime;
 }

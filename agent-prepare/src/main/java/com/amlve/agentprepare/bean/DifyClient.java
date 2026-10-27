@@ -1,5 +1,6 @@
 package com.amlve.agentprepare.bean;
 
+import com.amlve.common.constant.ErrorMessageConstant;
 import com.amlve.common.exception.BusinessException;
 import io.netty.channel.ChannelOption;
 import jakarta.annotation.PostConstruct;
@@ -77,7 +78,7 @@ public class DifyClient {
                                 .flatMap(errorBody -> {
                                     log.error("Dify 客户端错误: status={}, body={}",
                                             response.statusCode(), errorBody);
-                                    return Mono.error(new BusinessException("Dify 备课工作流请求参数错误: " + errorBody));
+                                    return Mono.error(new BusinessException(ErrorMessageConstant.AGENT_UNAVAILABLE));
                                 })
                 )
                 .onStatus(HttpStatusCode::is5xxServerError, response ->
@@ -85,7 +86,7 @@ public class DifyClient {
                                 .flatMap(errorBody -> {
                                     log.error("Dify 服务端错误: status={}, body={}",
                                             response.statusCode(), errorBody);
-                                    return Mono.error(new BusinessException("Dify 服务暂时不可用: " + errorBody));
+                                    return Mono.error(new BusinessException(ErrorMessageConstant.AGENT_UNAVAILABLE));
                                 })
                 )
                 .bodyToMono(String.class)
@@ -116,7 +117,7 @@ public class DifyClient {
                                 .flatMap(errorBody -> {
                                     log.error("Dify 客户端错误: status={}, body={}",
                                             response.statusCode(), errorBody);
-                                    return Mono.error(new BusinessException("Dify 备课工作流请求参数错误: " + errorBody));
+                                    return Mono.error(new BusinessException(ErrorMessageConstant.AGENT_UNAVAILABLE));
                                 })
                 )
                 .onStatus(HttpStatusCode::is5xxServerError, response ->
@@ -124,7 +125,7 @@ public class DifyClient {
                                 .flatMap(errorBody -> {
                                     log.error("Dify 服务端错误: status={}, body={}",
                                             response.statusCode(), errorBody);
-                                    return Mono.error(new BusinessException("Dify 服务暂时不可用: " + errorBody));
+                                    return Mono.error(new BusinessException(ErrorMessageConstant.AGENT_UNAVAILABLE));
                                 })
                 )
                 .bodyToFlux(String.class)

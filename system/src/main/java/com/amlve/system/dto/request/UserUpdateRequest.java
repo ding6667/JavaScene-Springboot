@@ -2,71 +2,38 @@ package com.amlve.system.dto.request;
 
 import com.amlve.system.constant.ErrorMessageConstant;
 import jakarta.validation.constraints.Email;
-import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Size;
 import lombok.Data;
 
 /**
- * 更新用户请求（教师操作，字段可选更新，密码可选重置）
+ * 管理员修改用户请求。
+ * <p>
+ * 不含 userId：被操作用户只出现在路径 PUT /api/user/admin/{userId} 里，
+ * body 再带一份会出现「路径 id 与 body id 不一致」这类越权 bug。
+ * 也只含基础信息与角色、状态；学号/工号/班级等角色扩展属性走各自的扩展信息接口维护，
+ * 密码改走独立的重置接口，避免一个 DTO 同时承担两种权限口径
  */
 @Data
 public class UserUpdateRequest {
 
-    /**
-     * 用户ID
-     */
-    @NotNull(message = ErrorMessageConstant.USER_ID_NOT_EMPTY)
-    private Long id;
-
-    /**
-     * 真实姓名（可选）
-     */
     private String realName;
 
-    /**
-     * 邮箱（可选）
-     */
     @Email(message = ErrorMessageConstant.USER_EMAIL_INVALID)
     private String email;
 
-    /**
-     * 手机号（可选）
-     */
     private String phone;
 
     /**
-     * 学号（可选，学生角色）
+     * 头像URL
      */
-    private String studentNo;
+    private String avatar;
 
     /**
-     * 班级（可选，学生角色）
+     * 角色ID：1=学生，2=教师，3=管理员，管理员可调整
      */
-    private String className;
+    private Integer roleId;
 
     /**
-     * 专业（可选，学生角色）
-     */
-    private String major;
-
-    /**
-     * 职称（可选，教师角色）
-     */
-    private String title;
-
-    /**
-     * 角色名称（可选，STUDENT / TEACHER）
-     */
-    private String roleName;
-
-    /**
-     * 账号状态（可选）：0-禁用，1-启用
+     * 账号状态：0=禁用，1=启用
      */
     private Integer enabled;
-
-    /**
-     * 新密码（可选，传入则重置，服务端 BCrypt 加密）
-     */
-    @Size(min = 6, max = 32, message = ErrorMessageConstant.USER_PASSWORD_SIZE)
-    private String password;
 }

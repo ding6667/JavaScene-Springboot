@@ -2,11 +2,13 @@ package com.amlve.teach.service.impl;
 
 import com.amlve.common.exception.BusinessException;
 import com.amlve.teach.dto.request.PptTemplateSaveRequest;
-import com.amlve.teach.dto.response.MarpThemeVO;
 import com.amlve.teach.dto.response.PptTemplateDetailVO;
 import com.amlve.teach.dto.response.PptTemplateResponse;
+import com.amlve.teach.dto.response.ThemeBriefResponse;
 import com.amlve.teach.mapper.TeachPptTemplateMapper;
+import com.amlve.teach.mapper.TeachPptThemeMapper;
 import com.amlve.teach.tableEnt.TeachPptTemplate;
+import com.amlve.teach.tableEnt.TeachPptTheme;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -34,6 +36,9 @@ class PptTemplateServiceImplTest {
 
     @Mock
     private TeachPptTemplateMapper teachPptTemplateMapper;
+
+    @Mock
+    private TeachPptThemeMapper teachPptThemeMapper;
 
     @InjectMocks
     private PptTemplateServiceImpl service;
@@ -103,38 +108,6 @@ class PptTemplateServiceImplTest {
         assertThat(vo.getStructureMd()).contains("# 总结");
         assertThat(vo.getThemeCode()).isEqualTo("java-default");
         assertThat(vo.getIsSystem()).isEqualTo(1);
-        // 设计令牌按 themeCode 从预置常量解析
-        assertThat(vo.getDesignTokens())
-                .containsEntry("primaryColor", "#1c1917")
-                .containsEntry("backgroundColor", "#ffffff");
-    }
-
-    @Test
-    void getTemplateDetail_shouldPreferDbDesignTokens_overPresetTokens() {
-        TeachPptTemplate template = systemTemplate();
-        template.setDesignTokens(java.util.Map.of(
-                "primaryColor", "#111111",
-                "backgroundColor", "#eeeeee"));
-        when(teachPptTemplateMapper.selectById(TEMPLATE_ID)).thenReturn(template);
-
-        PptTemplateDetailVO vo = service.getTemplateDetail(TEMPLATE_ID);
-
-        assertThat(vo.getDesignTokens())
-                .containsEntry("primaryColor", "#111111")
-                .containsEntry("backgroundColor", "#eeeeee");
-    }
-
-    @Test
-    void getTemplateDetail_shouldFallbackToPresetTokens_whenDbTokensEmpty() {
-        TeachPptTemplate template = systemTemplate();
-        template.setDesignTokens(java.util.Map.of());
-        when(teachPptTemplateMapper.selectById(TEMPLATE_ID)).thenReturn(template);
-
-        PptTemplateDetailVO vo = service.getTemplateDetail(TEMPLATE_ID);
-
-        assertThat(vo.getDesignTokens())
-                .containsEntry("primaryColor", "#1c1917")
-                .containsEntry("backgroundColor", "#ffffff");
     }
 
     @Test
@@ -155,7 +128,7 @@ class PptTemplateServiceImplTest {
 
         assertThatThrownBy(() -> service.getTemplateDetail(20L))
                 .isInstanceOf(BusinessException.class)
-                .hasMessageContaining("无权访问");
+                .hasMessageContaining("没有访问权限");
     }
 
     @Test
@@ -164,7 +137,7 @@ class PptTemplateServiceImplTest {
 
         assertThatThrownBy(() -> service.getTemplateDetail(TEMPLATE_ID))
                 .isInstanceOf(BusinessException.class)
-                .hasMessageContaining("不存在");
+                .hasMessageContaining("没有找到这个模板");
     }
 
     @Test
@@ -229,7 +202,7 @@ class PptTemplateServiceImplTest {
 
         assertThatThrownBy(() -> service.saveTemplate(request))
                 .isInstanceOf(BusinessException.class)
-                .hasMessageContaining("系统模板不可修改");
+                .hasMessageContaining("系统内置模板不能修改");
     }
 
     @Test
@@ -246,16 +219,22 @@ class PptTemplateServiceImplTest {
 
         assertThatThrownBy(() -> service.saveTemplate(request))
                 .isInstanceOf(BusinessException.class)
-                .hasMessageContaining("无权访问");
+                .hasMessageContaining("没有访问权限");
     }
 
     @Test
     void listThemes_shouldReturnFourThemes() {
-        List<MarpThemeVO> themes = service.listThemes();
+        when(teachPptThemeMapper.selectList(any())).thenReturn(List.of(
+                new TeachPptTheme().setThemeCode("java-default").setName("标准教学蓝").setVersion(1),
+                new TeachPptTheme().setThemeCode("java-dark").setName("深色代码").setVersion(1),
+                new TeachPptTheme().setThemeCode("java-uncover").setName("浅色简约").setVersion(1),
+                new TeachPptTheme().setThemeCode("java-minimal").setName("极简白").setVersion(1)));
+
+        List<ThemeBriefResponse> themes = service.listThemes();
 
         assertThat(themes).hasSize(4);
-        assertThat(themes).extracting(MarpThemeVO::getCode)
+        assertThat(themes).extracting(ThemeBriefResponse::getThemeCode)
                 .containsExactly("java-default", "java-dark", "java-uncover", "java-minimal");
-        assertThat(themes).allMatch(t -> t.getName() != null && t.getDescription() != null);
+        assertThat(themes).allMatch(t -> t.getName() != null && t.getVersion() != null);
     }
 }

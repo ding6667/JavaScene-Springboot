@@ -1,22 +1,25 @@
 package com.amlve.teach.service.impl;
 
+import com.amlve.common.constant.ErrorMessageConstant;
+import cn.hutool.core.bean.BeanUtil;
 import com.amlve.common.exception.BusinessException;
 import com.amlve.common.utils.SecurityUtils;
-import com.amlve.teach.constant.MarpThemeConstants;
 import com.amlve.teach.dto.request.PptTemplateSaveRequest;
-import com.amlve.teach.dto.response.MarpThemeVO;
 import com.amlve.teach.dto.response.PptTemplateDetailVO;
 import com.amlve.teach.dto.response.PptTemplateResponse;
+import com.amlve.teach.dto.response.ThemeBriefResponse;
+import com.amlve.teach.dto.response.ThemeDetailResponse;
 import com.amlve.teach.mapper.TeachPptTemplateMapper;
+import com.amlve.teach.mapper.TeachPptThemeMapper;
 import com.amlve.teach.service.PptTemplateService;
 import com.amlve.teach.tableEnt.TeachPptTemplate;
+import com.amlve.teach.tableEnt.TeachPptTheme;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
-import java.util.Map;
 import java.util.stream.Collectors;
 
 /**
@@ -31,6 +34,8 @@ public class PptTemplateServiceImpl implements PptTemplateService {
 
     @Resource
     private TeachPptTemplateMapper teachPptTemplateMapper;
+    @Resource
+    private TeachPptThemeMapper teachPptThemeMapper;
 
     @Override
     public List<PptTemplateResponse> listTemplates() {
@@ -62,12 +67,12 @@ public class PptTemplateServiceImpl implements PptTemplateService {
     public PptTemplateDetailVO getTemplateDetail(Long templateId) {
         TeachPptTemplate template = teachPptTemplateMapper.selectById(templateId);
         if (template == null) {
-            throw new BusinessException("模板不存在");
+            throw new BusinessException(ErrorMessageConstant.TEMPLATE_NOT_FOUND);
         }
         // 自定义模板仅归属人可查；系统模板所有教师可查
         if (template.getIsSystem() == null || template.getIsSystem() != 1) {
             if (!SecurityUtils.getUserId().equals(template.getTeacherId())) {
-                throw new BusinessException("模板不存在或无权访问");
+                throw new BusinessException(ErrorMessageConstant.TEMPLATE_NOT_FOUND);
             }
         }
 
@@ -81,17 +86,7 @@ public class PptTemplateServiceImpl implements PptTemplateService {
         vo.setIsSystem(template.getIsSystem());
         vo.setTeacherId(template.getTeacherId());
         vo.setSortOrder(template.getSortOrder());
-        vo.setDesignTokens(resolveDesignTokens(template));
         return vo;
-    }
-
-    /** 设计令牌：优先取模板库内 design_tokens，未配置时回退 themeCode 对应的预置令牌 */
-    private Map<String, Object> resolveDesignTokens(TeachPptTemplate template) {
-        Map<String, Object> stored = template.getDesignTokens();
-        if (stored != null && !stored.isEmpty()) {
-            return stored;
-        }
-        return MarpThemeConstants.getDesignTokens(template.getThemeCode());
     }
 
     @Override
@@ -124,13 +119,13 @@ public class PptTemplateServiceImpl implements PptTemplateService {
     private Long updateTemplate(PptTemplateSaveRequest request) {
         TeachPptTemplate template = teachPptTemplateMapper.selectById(request.getId());
         if (template == null) {
-            throw new BusinessException("模板不存在");
+            throw new BusinessException(ErrorMessageConstant.TEMPLATE_NOT_FOUND);
         }
         if (template.getIsSystem() != null && template.getIsSystem() == 1) {
-            throw new BusinessException("系统模板不可修改");
+            throw new BusinessException(ErrorMessageConstant.TEMPLATE_SYSTEM_READONLY);
         }
         if (!SecurityUtils.getUserId().equals(template.getTeacherId())) {
-            throw new BusinessException("模板不存在或无权访问");
+            throw new BusinessException(ErrorMessageConstant.TEMPLATE_NOT_FOUND);
         }
 
         template.setName(request.getName());
@@ -143,7 +138,30 @@ public class PptTemplateServiceImpl implements PptTemplateService {
     }
 
     @Override
-    public List<MarpThemeVO> listThemes() {
-        return MarpThemeConstants.THEMES;
+    public List<ThemeBriefResponse> listThemes() {
+        List<TeachPptTheme> themes = teachPptThemeMapper.selectList(new LambdaQueryWrapper<TeachPptTheme>()
+                .eq(TeachPptTheme::getIsActive, 1)
+                .eq(TeachPptTheme::getDeleted, 0)
+                .orderByAsc(TeachPptTheme::getSortOrder));
+
+        return themes.stream().map(this::toThemeListItem).collect(Collectors.toList());
+    }
+
+    @Override
+    public ThemeDetailResponse getThemeDetail(String code) {
+        TeachPptTheme theme = teachPptThemeMapper.selectOne(new LambdaQueryWrapper<TeachPptTheme>()
+                .eq(TeachPptTheme::getThemeCode, code)
+                .eq(TeachPptTheme::getDeleted, 0));
+        if (theme == null) {
+            throw new BusinessException(ErrorMessageConstant.THEME_NOT_FOUND);
+        }
+        return BeanUtil.toBean(theme, ThemeDetailResponse.class);
+    }
+
+    /** 主题转换：version 字段 Integer → String */
+    private ThemeBriefResponse toThemeListItem(TeachPptTheme theme) {
+        ThemeBriefResponse response = BeanUtil.toBean(theme, ThemeBriefResponse.class);
+        response.setVersion(theme.getVersion() == null ? "1" : String.valueOf(theme.getVersion()));
+        return response;
     }
 }

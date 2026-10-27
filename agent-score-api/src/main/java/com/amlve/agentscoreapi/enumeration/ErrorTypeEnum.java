@@ -36,4 +36,23 @@ public enum ErrorTypeEnum {
         }
         return false;
     }
+
+    /**
+     * 归一化 Dify 返回的 errorType。
+     * <p>
+     * LLM 可能吐出拼写变体或中文描述，原样入库会让下游按枚举统计/筛选全部失配，
+     * 因此不认识或为空时统一落到 OTHER，而不是保留脏值
+     */
+    public static String normalize(String difyValue) {
+        if (difyValue == null || difyValue.isBlank()) {
+            return OTHER.name();
+        }
+        String upper = difyValue.trim().toUpperCase();
+        for (ErrorTypeEnum value : values()) {
+            if (value.name().equals(upper) || value.desc.equals(difyValue.trim())) {
+                return value.name();
+            }
+        }
+        return OTHER.name();
+    }
 }

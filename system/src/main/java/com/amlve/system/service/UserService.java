@@ -2,46 +2,85 @@ package com.amlve.system.service;
 
 import com.amlve.common.request.PageResult;
 import com.amlve.system.dto.request.AdminRegisterRequest;
-import com.amlve.system.dto.request.UserCreateRequest;
+import com.amlve.system.dto.request.PasswordChangeRequest;
+import com.amlve.system.dto.request.UserAddRequest;
+import com.amlve.system.dto.request.UserBaseInfoUpdateRequest;
+import com.amlve.system.dto.request.UserQueryRequest;
 import com.amlve.system.dto.request.UserUpdateRequest;
+import com.amlve.system.dto.response.LoginResponse;
+import com.amlve.system.dto.response.UserDetailResponse;
 import com.amlve.system.dto.response.UserInfoResponse;
+import com.amlve.system.dto.response.UserListResponse;
 
 public interface UserService {
-    String checkUser(String username, String password);
 
-    String register(String username, String password);
+    /**
+     * 登录，签发 token 并给出后端算好的落地页
+     *
+     * @param clientIp 本次登录来源IP，写入 sys_user.last_login_ip；取不到可传 null
+     */
+    LoginResponse checkUser(String username, String password, String clientIp);
+
+    /**
+     * 学生自助注册，注册即登录
+     */
+    LoginResponse register(String username, String password);
 
     /**
      * 管理员注册（系统后台，需初始化密钥 app.admin.init-key）
-     * @return 注册即登录的 JWT
      */
-    String registerAdmin(AdminRegisterRequest request);
+    LoginResponse registerAdmin(AdminRegisterRequest request);
 
     /**
-     * 获取用户信息
-     * @param userId 用户ID
-     * @return 用户信息（不含密码）
+     * 当前用户完整信息，含按角色挂载的扩展信息
      */
-    UserInfoResponse getUserInfo(Long userId);
+    UserInfoResponse getCurrentUser(Long userId);
 
     /**
-     * 新增用户（仅管理员）
+     * 管理员视角的用户详情
      */
-    UserInfoResponse createUser(UserCreateRequest request);
+    UserDetailResponse getUserDetail(Long userId);
 
     /**
-     * 更新用户（仅管理员）
+     * 本人更新基础信息，仅白名单字段生效
      */
-    UserInfoResponse updateUser(UserUpdateRequest request);
+    void updateBaseInfo(Long userId, UserBaseInfoUpdateRequest request);
 
     /**
-     * 删除用户（仅管理员，逻辑删除）
+     * 本人修改密码，需校验旧密码；成功后吊销该用户此前签发的全部 token
      */
-    void deleteUser(Long id);
+    void changePassword(Long userId, PasswordChangeRequest request);
 
     /**
-     * 分页查询用户列表（仅管理员）
-     * @param keyword 用户名/真实姓名模糊搜索，可为空
+     * 管理员重置密码为系统初始密码，返回该初始密码
      */
-    PageResult<UserInfoResponse> records(Long pageNum, Long pageSize, String keyword);
+    String resetPassword(Long userId);
+
+    /**
+     * 新增用户，按角色自动补建扩展记录
+     *
+     * @return 新用户ID
+     */
+    Long addUser(UserAddRequest request);
+
+    /**
+     * 更新用户。被操作用户由路径给出，不接受 body 里再传一份
+     */
+    void updateUser(Long userId, UserUpdateRequest request);
+
+    void deleteUser(Long userId);
+
+    /**
+     * 启用/禁用切换，不允许作用于操作人自己；禁用成功后吊销该用户全部 token
+     */
+    void toggleStatus(Long userId);
+
+    PageResult<UserListResponse> listUsers(UserQueryRequest request);
+
+    /**
+     * 判断「他人」是否为教师，供跨模块调用；当前登录用户请用 @PreAuthorize
+     */
+    boolean isTeacher(Long userId);
+
+    boolean isAdmin(Long userId);
 }

@@ -43,32 +43,28 @@ public class User extends BaseEntity {
     private String phone;
 
     /**
-     * 学号（学生角色）
+     * 头像URL
      */
-    private String studentNo;
-
-    /**
-     * 班级（学生角色，如 2024级软件工程1班）
-     */
-    private String className;
-
-    /**
-     * 专业（学生角色）
-     */
-    private String major;
-
-    /**
-     * 职称（教师角色，如 副教授）
-     */
-    private String title;
+    private String avatar;
 
     /**
      * 账号状态：0-禁用，1-启用
      */
     private Integer enabled;
 
+    /**
+     * 最后登录时间
+     */
+    private LocalDateTime lastLoginTime;
 
+    /**
+     * 最后登录IP
+     */
+    private String lastLoginIp;
+
+    /**
+     * 角色ID，关联 sys_role.id。角色名与描述一律从 sys_role 取，
+     * 本表不再冗余 role_name
+     */
     private Integer roleId;
-
-    private String roleName;
 }

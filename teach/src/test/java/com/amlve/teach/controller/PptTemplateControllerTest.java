@@ -2,7 +2,7 @@ package com.amlve.teach.controller;
 
 import com.amlve.teach.config.MethodSecurityTestConfig;
 import com.amlve.teach.dto.request.PptTemplateSaveRequest;
-import com.amlve.teach.dto.response.MarpThemeVO;
+import com.amlve.teach.dto.response.ThemeBriefResponse;
 import com.amlve.teach.dto.response.PptTemplateDetailVO;
 import com.amlve.teach.dto.response.PptTemplateResponse;
 import com.amlve.teach.service.PptTemplateService;
@@ -43,16 +43,16 @@ class PptTemplateControllerTest {
     @Test
     @WithMockUser(roles = "TEACHER")
     void themes_shouldReturnFourThemes() throws Exception {
-        MarpThemeVO theme = new MarpThemeVO();
-        theme.setCode("java-default");
+        ThemeBriefResponse theme = new ThemeBriefResponse();
+        theme.setThemeCode("java-default");
         theme.setName("标准教学蓝");
-        theme.setDescription("白底深蓝主色");
+        theme.setVersion("1");
         when(pptTemplateService.listThemes()).thenReturn(List.of(theme));
 
-        mockMvc.perform(get("/api/teach/ppt/template"))
+        mockMvc.perform(get("/api/teach/ppt/template/themes"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(200))
-                .andExpect(jsonPath("$.data[0].code").value("java-default"));
+                .andExpect(jsonPath("$.data[0].themeCode").value("java-default"));
     }
 
     @Test

@@ -149,7 +149,7 @@ class TeachPrepareRecordServiceImplTest {
         // 越权访问他人备课记录：必须抛业务异常
         assertThatThrownBy(() -> service.getRecordDetail(RECORD_ID))
                 .isInstanceOf(BusinessException.class)
-                .hasMessageContaining("无权访问");
+                .hasMessageContaining("没有访问权限");
     }
 
     @Test
@@ -158,7 +158,7 @@ class TeachPrepareRecordServiceImplTest {
 
         assertThatThrownBy(() -> service.getRecordDetail(RECORD_ID))
                 .isInstanceOf(BusinessException.class)
-                .hasMessageContaining("不存在");
+                .hasMessageContaining("没有找到");
     }
 
     @Test
@@ -170,6 +170,23 @@ class TeachPrepareRecordServiceImplTest {
         assertThatThrownBy(() -> service.exportLessonPlan(RECORD_ID))
                 .isInstanceOf(BusinessException.class)
                 .hasMessageContaining("教案内容为空");
+    }
+
+    @Test
+    void getRecordStatus_shouldReturnCode_whenRecordOwned() {
+        when(teachPrepareRecordMapper.selectStatusByIdAndTeacher(RECORD_ID, TEACHER_ID)).thenReturn(2);
+
+        assertThat(service.getRecordStatus(RECORD_ID)).isEqualTo(2);
+    }
+
+    @Test
+    void getRecordStatus_shouldReject_whenRecordNotFoundOrNotOwned() {
+        // 归属条件在 SQL 里，查不到即视为不存在或越权
+        when(teachPrepareRecordMapper.selectStatusByIdAndTeacher(RECORD_ID, TEACHER_ID)).thenReturn(null);
+
+        assertThatThrownBy(() -> service.getRecordStatus(RECORD_ID))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("没有找到这条备课记录");
     }
 
     @Test

@@ -28,6 +28,16 @@ public interface TeachPrepareRecordService {
     PrepareRecordDetailResponse getRecordDetail(Long recordId);
 
     /**
+     * 查询备课记录状态，供前端轮询备课是否生成完成。
+     * <p>
+     * 只取 status 单列，不加载五类材料长文本。
+     *
+     * @param recordId 备课记录ID
+     * @return 状态码：2=生成中，1=成功，0=失败（见 PrepareRecordStatusEnum）
+     */
+    Integer getRecordStatus(Long recordId);
+
+    /**
      * 导出备课记录的教案为 Word 文件字节
      *
      * @param recordId 备课记录ID

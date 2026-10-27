@@ -1,5 +1,6 @@
 package com.amlve.agentqa.client;
 
+import com.amlve.common.constant.ErrorMessageConstant;
 import com.amlve.agentqa.constant.DifyConstant;
 import com.amlve.common.exception.BusinessException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -79,7 +80,7 @@ public class DatasetWebClient {
         try {
             dataJson = OBJECT_MAPPER.writeValueAsString(dataMap);
         } catch (IOException e) {
-            throw new BusinessException("构建 Dify 文档创建请求失败", e);
+            throw new BusinessException(ErrorMessageConstant.KNOWLEDGE_BASE_UNAVAILABLE, e);
         }
 
         MultipartBodyBuilder builder = new MultipartBodyBuilder();
@@ -103,7 +104,7 @@ public class DatasetWebClient {
         } catch (BusinessException e) {
             throw e;
         } catch (Exception e) {
-            throw new BusinessException("Dify 文件上传失败: " + e.getMessage(), e);
+            throw new BusinessException(ErrorMessageConstant.AGENT_UNAVAILABLE, e);
         }
     }
 
@@ -151,7 +152,7 @@ public class DatasetWebClient {
             OBJECT_MAPPER.readTree(response).path("doc_metadata").forEach(node ->
                     fieldIds.put(node.path("name").asText(), node.path("id").asText()));
         } catch (IOException e) {
-            throw new BusinessException("解析 Dify 元数据字段列表失败: " + e.getMessage(), e);
+            throw new BusinessException(ErrorMessageConstant.KNOWLEDGE_BASE_UNAVAILABLE, e);
         }
         for (Map.Entry<String, Object> entry : metadata.entrySet()) {
             if (!fieldIds.containsKey(entry.getKey())) {
@@ -162,7 +163,7 @@ public class DatasetWebClient {
                 try {
                     fieldIds.put(entry.getKey(), OBJECT_MAPPER.readTree(created).path("id").asText());
                 } catch (IOException e) {
-                    throw new BusinessException("解析 Dify 元数据字段创建响应失败: " + e.getMessage(), e);
+                    throw new BusinessException(ErrorMessageConstant.KNOWLEDGE_BASE_UNAVAILABLE, e);
                 }
             }
         }
@@ -252,7 +253,7 @@ public class DatasetWebClient {
         } catch (BusinessException e) {
             throw e;
         } catch (Exception e) {
-            throw new BusinessException("Dify API 调用失败: " + e.getMessage(), e);
+            throw new BusinessException(ErrorMessageConstant.AGENT_UNAVAILABLE, e);
         }
     }
 
@@ -273,7 +274,7 @@ public class DatasetWebClient {
         } catch (BusinessException e) {
             throw e;
         } catch (Exception e) {
-            throw new BusinessException("Dify API 调用失败: " + e.getMessage(), e);
+            throw new BusinessException(ErrorMessageConstant.AGENT_UNAVAILABLE, e);
         }
     }
 

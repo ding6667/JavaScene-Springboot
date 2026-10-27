@@ -320,7 +320,7 @@ class TeachServiceImplTest {
 
         assertThatThrownBy(() -> teachService.getMyHomeworkDetail(100L))
                 .isInstanceOf(BusinessException.class)
-                .hasMessageContaining("不存在");
+                .hasMessageContaining("没有找到");
     }
 
     // ==================== 关闭 ====================

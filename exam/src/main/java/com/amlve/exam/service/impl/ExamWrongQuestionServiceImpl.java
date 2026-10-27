@@ -1,5 +1,6 @@
 package com.amlve.exam.service.impl;
 
+import com.amlve.common.constant.ErrorMessageConstant;
 import com.amlve.common.exception.BusinessException;
 import com.amlve.exam.mapper.ExamQuestionMapper;
 import com.amlve.exam.mapper.ExamWrongQuestionMapper;
@@ -106,7 +107,7 @@ public class ExamWrongQuestionServiceImpl implements ExamWrongQuestionService {
                 .eq(ExamWrongQuestion::getUserId, userId)
                 .eq(ExamWrongQuestion::getQuestionId, questionId));
         if (record == null) {
-            throw new BusinessException("错题记录不存在");
+            throw new BusinessException(ErrorMessageConstant.WRONG_QUESTION_NOT_FOUND);
         }
         record.setMastered(MASTERED);
         wrongQuestionMapper.updateById(record);

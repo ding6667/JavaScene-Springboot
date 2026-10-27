@@ -1,5 +1,6 @@
 package com.amlve.agentqaapi.dto.request;
 
+import com.amlve.common.constant.ErrorMessageConstant;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 import lombok.Data;
@@ -13,8 +14,8 @@ public class QARequest {
     /**
      * 问题内容
      */
-    @NotBlank(message = "问题内容不能为空")
-    @Size(max = 2000, message = "问题内容不能超过 2000 字")
+    @NotBlank(message = ErrorMessageConstant.QA_QUESTION_EMPTY)
+    @Size(max = 2000, message = ErrorMessageConstant.QA_QUESTION_TOO_LONG)
     private String question;
 
     /**
@@ -26,6 +27,6 @@ public class QARequest {
      * 会话ID（可选）。首次提问不传，由后端生成 UUID 并在响应里回传，
      * 后续同一轮对话带上它，round_no 才能连续
      */
-    @Size(max = 64, message = "会话ID长度不能超过 64")
+    @Size(max = 64, message = ErrorMessageConstant.QA_SESSION_STALE)
     private String sessionId;
 }

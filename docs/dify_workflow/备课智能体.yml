@@ -1,0 +1,683 @@
+app:
+  description: 根据指定教材章节自动生成教案、PPT课件、重难点、课后习题与上机实训方案（v2）
+  icon: 🤖
+  icon_background: '#FFEAD5'
+  icon_type: emoji
+  mode: workflow
+  name: 教师备课工作流
+  use_icon_as_answer_icon: false
+dependencies:
+- current_identifier: null
+  type: marketplace
+  value:
+    marketplace_plugin_unique_identifier: langgenius/deepseek:0.0.21@5873fe73395aeb49ba26035059eb4e0ec5af01bb66d0545b031f8917b12e8c29
+    version: null
+kind: app
+version: 0.7.0
+workflow:
+  conversation_variables: []
+  environment_variables: []
+  features:
+    file_upload: {}
+    retriever_resource:
+      enabled: true
+    sensitive_word_avoidance:
+      enabled: false
+    text_to_speech:
+      enabled: false
+      language: ''
+      voice: ''
+  graph:
+    edges:
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: start
+        targetType: code
+      id: 1788772390005-source-1788785366444-target
+      source: '1788772390005'
+      sourceHandle: source
+      target: '1788785366444'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: code
+        targetType: llm
+      id: 1788785366444-source-1788785782178-target
+      source: '1788785366444'
+      sourceHandle: source
+      target: '1788785782178'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: llm
+        targetType: llm
+      id: 1788785782178-source-1788860010001-target
+      source: '1788785782178'
+      sourceHandle: source
+      target: '1788860010001'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: llm
+        targetType: llm
+      id: 1788860010001-source-1788860010002-target
+      source: '1788860010001'
+      sourceHandle: source
+      target: '1788860010002'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: llm
+        targetType: code
+      id: 1788860010002-source-1788860010003-target
+      source: '1788860010002'
+      sourceHandle: source
+      target: '1788860010003'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: code
+        targetType: end
+      id: 1788860010003-source-1788851448034-target
+      source: '1788860010003'
+      sourceHandle: source
+      target: '1788851448034'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    nodes:
+    - data:
+        selected: false
+        title: 用户输入
+        type: start
+        variables:
+        - default: ''
+          hint: ''
+          label: settings
+          options: []
+          placeholder: ''
+          required: true
+          type: json_object
+          variable: settings
+        - default: ''
+          hint: ''
+          label: reference
+          options: []
+          placeholder: ''
+          required: true
+          type: json_object
+          variable: reference
+        - default: ''
+          hint: ''
+          label: user_message
+          options: []
+          placeholder: ''
+          required: true
+          type: text-input
+          variable: user_message
+        - default: ''
+          hint: ''
+          label: ppt_config
+          options: []
+          placeholder: ''
+          required: false
+          type: json_object
+          variable: ppt_config
+        - default: ''
+          hint: ''
+          label: lesson_plan_config
+          options: []
+          placeholder: ''
+          required: false
+          type: json_object
+          variable: lesson_plan_config
+        - default: ''
+          hint: ''
+          label: homework_config
+          options: []
+          placeholder: ''
+          required: false
+          type: json_object
+          variable: homework_config
+        - default: ''
+          hint: ''
+          label: styleTokens
+          options: []
+          placeholder: ''
+          required: false
+          type: text-input
+          variable: styleTokens
+      height: 160
+      id: '1788772390005'
+      position:
+        x: 79
+        y: 282
+      positionAbsolute:
+        x: 79
+        y: 282
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 242
+      zIndex: 0
+    - data:
+        author: 猪培根
+        desc: ''
+        height: 681
+        selected: false
+        showAuthor: true
+        text: '{"root":{"children":[{"children":[{"detail":0,"format":0,"mode":"normal","style":"","text":"{","type":"text","version":1}],"direction":null,"format":"","indent":0,"type":"paragraph","version":1,"textFormat":0,"textStyle":""},{"children":[{"detail":0,"format":0,"mode":"normal","style":"","text":"  // ==================== 设置项（5个开关） ====================","type":"text","version":1}],"direction":null,"format":"","indent":0,"type":"paragraph","version":1,"textFormat":0,"textStyle":""},{"children":[{"detail":0,"format":0,"mode":"normal","style":"","text":"  \"settings\": {","type":"text","version":1}],"direction":null,"format":"","indent":0,"type":"paragraph","version":1,"textFormat":0,"textStyle":""},{"children":[{"detail":0,"format":0,"mode":"normal","style":"","text":"    // 是否开启 PPT 生成功能（1=开启，0=关闭）","type":"text","version":1}],"direction":null,"format":"","indent":0,"type":"paragraph","version":1,"textFormat":0,"textStyle":""},{"children":[{"detail":0,"format":0,"mode":"normal","style":"","text":"    \"pptx\": \"1\",","type":"text","version":1}],"direction":null,"format":"","indent":0,"type":"paragraph","version":1,"textFormat":0,"textStyle":""},{"children":[],"direction":null,"format":"","indent":0,"type":"paragraph","version":1,"textFormat":0,"textStyle":""},{"children":[{"detail":0,"format":0,"mode":"normal","style":"","text":"    // 是否开启详细教案生成（1=开启，0=关闭）","type":"text","version":1}],"direction":null,"format":"","indent":0,"type":"paragraph","version":1,"textFormat":0,"textStyle":""},{"children":[{"detail":0,"format":0,"mode":"normal","style":"","text":"    \"lesson_plan\": \"1\",","type":"text","version":1}],"direction":null,"format":"","indent":0,"type":"paragraph","version":1,"textFormat":0,"textStyle":""},{"children":[],"direction":null,"format":"","indent":0,"type":"paragraph","version":1,"textFormat":0,"textStyle":""},{"children":[{"detail":0,"format":0,"mode":"normal","style":"","text":"    // 是否开启课后练习题生成（1=开启，0=关闭）","type":"text","version":1}],"direction":null,"format":"","indent":0,"type":"paragraph","version":1,"textFormat":0,"textStyle":""},{"children":[{"detail":0,"format":0,"mode":"normal","style":"","text":"    \"homework\": \"1\",","type":"text","version":1}],"direction":null,"format":"","indent":0,"type":"paragraph","version":1,"textFormat":0,"textStyle":""},{"children":[],"direction":null,"format":"","indent":0,"type":"paragraph","version":1,"textFormat":0,"textStyle":""},{"children":[{"detail":0,"format":0,"mode":"normal","style":"","text":"    // 是否开启上机实训方案生成（1=开启，0=关闭）","type":"text","version":1}],"direction":null,"format":"","indent":0,"type":"paragraph","version":1,"textFormat":0,"textStyle":""},{"children":[{"detail":0,"format":0,"mode":"normal","style":"","text":"    \"lab\": \"1\",","type":"text","version":1},{"type":"linebreak","version":1}],"direction":null,"format":"","indent":0,"type":"paragraph","version":1,"textFormat":0,"textStyle":""},{"children":[{"detail":0,"format":0,"mode":"normal","style":"","text":"    // 是否开启重难点自动提炼（1=开启，0=关闭）","type":"text","version":1}],"direction":null,"format":"","indent":0,"type":"paragraph","version":1,"textFormat":0,"textStyle":""},{"children":[{"detail":0,"format":0,"mode":"normal","style":"","text":"    \"key_points\": \"1\"","type":"text","version":1}],"direction":null,"format":"","indent":0,"type":"paragraph","version":1,"textFormat":0,"textStyle":""},{"children":[{"detail":0,"format":0,"mode":"normal","style":"","text":"  },","type":"text","version":1}],"direction":null,"format":"","indent":0,"type":"paragraph","version":1,"textFormat":0,"textStyle":""},{"children":[{"type":"linebreak","version":1}],"direction":null,"format":"","indent":0,"type":"paragraph","version":1,"textFormat":0,"textStyle":""},{"children":[{"detail":0,"format":0,"mode":"normal","style":"","text":"  // ==================== 参考内容（若干） ====================所有字段值都是字符串形式，这些列表请在后端查库表封装好后转为字符串放入请求参数中","type":"text","version":1}],"direction":null,"format":"","indent":0,"type":"paragraph","version":1,"textFormat":0,"textStyle":""},{"children":[{"detail":0,"format":0,"mode":"normal","style":"","text":"  \"reference\": {","type":"text","version":1}],"direction":null,"format":"","indent":0,"type":"paragraph","version":1,"textFormat":0,"textStyle":""},{"children":[{"detail":0,"format":0,"mode":"normal","style":"","text":"    // 章节总结：本章核心内容的概括性文字","type":"text","version":1}],"direction":null,"format":"","indent":0,"type":"paragraph","version":1,"textFormat":0,"textStyle":""},{"children":[{"detail":0,"format":0,"mode":"normal","style":"","text":"    \"chapter_summary\": \"本章介绍了Java的类与对象，重点包括类的定义、对象的创建、构造方法、封装性等。\",","type":"text","version":1}],"direction":null,"format":"","indent":0,"type":"paragraph","version":1,"textFormat":0,"textStyle":""},{"children":[{"type":"linebreak","version":1}],"direction":null,"format":"","indent":0,"type":"paragraph","version":1,"textFormat":0,"textStyle":""},{"children":[{"detail":0,"format":0,"mode":"normal","style":"","text":"    // 概念定义列表：本章涉及的核心概念及其精确定义","type":"text","version":1}],"direction":null,"format":"","indent":0,"type":"paragraph","version":1,"textFormat":0,"textStyle":""},{"children":[{"detail":0,"format":0,"mode":"normal","style":"","text":"    \"concept_definitions\": \"[","type":"text","version":1}],"direction":null,"format":"","indent":0,"type":"paragraph","version":1,"textFormat":0,"textStyle":""},{"children":[{"detail":0,"format":0,"mode":"normal","style":"","text":"      {","type":"text","version":1}],"direction":null,"format":"","indent":0,"type":"paragraph","version":1,"textFormat":0,"textStyle":""},{"children":[{"detail":0,"format":0,"mode":"normal","style":"","text":"        \"name\": \"类\",","type":"text","version":1}],"direction":null,"format":"","indent":0,"type":"paragraph","version":1,"textFormat":0,"textStyle":""},{"children":[{"detail":0,"format":0,"mode":"normal","style":"","text":"        \"definition\": \"类是Java中一种抽象的数据类型，用于描述具有相同属性和行为的对象的集合。\",","type":"text","version":1}],"direction":null,"format":"","indent":0,"type":"paragraph","version":1,"textFormat":0,"textStyle":""},{"children":[{"detail":0,"format":0,"mode":"normal","style":"","text":"        \"example\": \"public class Student { ... }\"","type":"text","version":1}],"direction":null,"format":"","indent":0,"type":"paragraph","version":1,"textFormat":0,"textStyle":""},{"children":[{"detail":0,"format":0,"mode":"normal","style":"","text":"      },","type":"text","version":1}],"direction":null,"format":"","indent":0,"type":"paragraph","version":1,"textFormat":0,"textStyle":""},{"children":[{"detail":0,"format":0,"mode":"normal","style":"","text":"      {","type":"text","version":1}],"direction":null,"format":"","indent":0,"type":"paragraph","version":1,"textFormat":0,"textStyle":""},{"children":[{"detail":0,"format":0,"mode":"normal","style":"","text":"        \"name\": \"对象\",","type":"text","version":1}],"direction":null,"format":"","indent":0,"type":"paragraph","version":1,"textFormat":0,"textStyle":""},{"children":[{"detail":0,"format":0,"mode":"normal","style":"","text":"        \"definition\": \"对象是类的具体实例，拥有类中定义的属性（字段）和行为（方法）。\",","type":"text","version":1}],"direction":null,"format":"","indent":0,"type":"paragraph","version":1,"textFormat":0,"textStyle":""},{"children":[{"detail":0,"format":0,"mode":"normal","style":"","text":"        \"example\": \"Student stu = new Student();\"","type":"text","version":1}],"direction":null,"format":"","indent":0,"type":"paragraph","version":1,"textFormat":0,"textStyle":""},{"children":[{"detail":0,"format":0,"mode":"normal","style":"","text":"      },","type":"text","version":1}],"direction":null,"format":"","indent":0,"type":"paragraph","version":1,"textFormat":0,"textStyle":""},{"children":[{"detail":0,"format":0,"mode":"normal","style":"","text":"      {","type":"text","version":1}],"direction":null,"format":"","indent":0,"type":"paragraph","version":1,"textFormat":0,"textStyle":""},{"children":[{"detail":0,"format":0,"mode":"normal","style":"","text":"        \"name\": \"封装\",","type":"text","version":1}],"direction":null,"format":"","indent":0,"type":"paragraph","version":1,"textFormat":0,"textStyle":""},{"children":[{"detail":0,"format":0,"mode":"normal","style":"","text":"        \"definition\": \"封装是将数据（属性）和操作数据的方法绑定在一起，并隐藏内部实现细节。\",","type":"text","version":1}],"direction":null,"format":"","indent":0,"type":"paragraph","version":1,"textFormat":0,"textStyle":""},{"children":[{"detail":0,"format":0,"mode":"normal","style":"","text":"        \"example\": \"使用private修饰属性，提供public的getter/setter方法。\"","type":"text","version":1}],"direction":null,"format":"","indent":0,"type":"paragraph","version":1,"textFormat":0,"textStyle":""},{"children":[{"detail":0,"format":0,"mode":"normal","style":"","text":"      }","type":"text","version":1}],"direction":null,"format":"","indent":0,"type":"paragraph","version":1,"textFormat":0,"textStyle":""},{"children":[{"detail":0,"format":0,"mode":"normal","style":"","text":"    ]\",","type":"text","version":1}],"direction":null,"format":"","indent":0,"type":"paragraph","version":1,"textFormat":0,"textStyle":""},{"children":[{"type":"linebreak","version":1}],"direction":null,"format":"","indent":0,"type":"paragraph","version":1,"textFormat":0,"textStyle":""},{"children":[{"detail":0,"format":0,"mode":"normal","style":"","text":"    // 代码示例列表：本章典型代码片段","type":"text","version":1}],"direction":null,"format":"","indent":0,"type":"paragraph","version":1,"textFormat":0,"textStyle":""},{"children":[{"detail":0,"format":0,"mode":"normal","style":"","text":"    \"code_examples\": \"[","type":"text","version":1}],"direction":null,"format":"","indent":0,"type":"paragraph","version":1,"textFormat":0,"textStyle":""},{"children":[{"detail":0,"format":0,"mode":"normal","style":"","text":"      {","type":"text","version":1}],"direction":null,"format":"","indent":0,"type":"paragraph","version":1,"textFormat":0,"textStyle":""},{"children":[{"detail":0,"format":0,"mode":"normal","style":"","text":"        \"title\": \"定义类并创建对象\",","type":"text","version":1}],"direction":null,"format":"","indent":0,"type":"paragraph","version":1,"textFormat":0,"textStyle":""},{"children":[{"detail":0,"format":0,"mode":"normal","style":"","text":"        \"language\": \"java\",","type":"text","version":1}],"direction":null,"format":"","indent":0,"type":"paragraph","version":1,"textFormat":0,"textStyle":""},{"children":[{"detail":0,"format":0,"mode":"normal","style":"","text":"        \"code\": \"public class Student {\\n    private String name;\\n    public Student(String name) {\\n        this.name = name;\\n    }\\n    public void sayHello() {\\n        System.out.println(\\\"Hello, \\\" + name);\\n    }\\n}\\n\\n// 使用\\nStudent stu = new Student(\\\"张三\\\");\\nstu.sayHello();\"","type":"text","version":1}],"direction":null,"format":"","indent":0,"type":"paragraph","version":1,"textFormat":0,"textStyle":""},{"children":[{"detail":0,"format":0,"mode":"normal","style":"","text":"      }","type":"text","version":1}],"direction":null,"format":"","indent":0,"type":"paragraph","version":1,"textFormat":0,"textStyle":""},{"children":[{"detail":0,"format":0,"mode":"normal","style":"","text":"    ]\",","type":"text","version":1}],"direction":null,"format":"","indent":0,"type":"paragraph","version":1,"textFormat":0,"textStyle":""},{"children":[{"type":"linebreak","version":1}],"direction":null,"format":"","indent":0,"type":"paragraph","version":1,"textFormat":0,"textStyle":""},{"children":[{"detail":0,"format":0,"mode":"normal","style":"","text":"    // 易错点列表：本章常见错误及原因","type":"text","version":1}],"direction":null,"format":"","indent":0,"type":"paragraph","version":1,"textFormat":0,"textStyle":""},{"children":[{"detail":0,"format":0,"mode":"normal","style":"","text":"    \"common_mistakes\": \"[","type":"text","version":1}],"direction":null,"format":"","indent":0,"type":"paragraph","version":1,"textFormat":0,"textStyle":""},{"children":[{"detail":0,"format":0,"mode":"normal","style":"","text":"      {","type":"text","version":1}],"direction":null,"format":"","indent":0,"type":"paragraph","version":1,"textFormat":0,"textStyle":""},{"children":[{"detail":0,"format":0,"mode":"normal","style":"","text":"        \"mistake\": \"忘记写构造方法，导致对象初始化失败\",","type":"text","version":1}],"direction":null,"format":"","indent":0,"type":"paragraph","version":1,"textFormat":0,"textStyle":""},{"children":[{"detail":0,"format":0,"mode":"normal","style":"","text":"        \"solution\": \"如果没有显式定义构造方法，系统会提供默认无参构造方法；若定义了带参构造，则需显式定义无参构造（如果需要）。\"","type":"text","version":1}],"direction":null,"format":"","indent":0,"type":"paragraph","version":1,"textFormat":0,"textStyle":""},{"children":[{"detail":0,"format":0,"mode":"normal","style":"","text":"      },","type":"text","version":1}],"direction":null,"format":"","indent":0,"type":"paragraph","version":1,"textFormat":0,"textStyle":""},{"children":[{"detail":0,"format":0,"mode":"normal","style":"","text":"      {","type":"text","version":1}],"direction":null,"format":"","indent":0,"type":"paragraph","version":1,"textFormat":0,"textStyle":""},{"children":[{"detail":0,"format":0,"mode":"normal","style":"","text":"        \"mistake\": \"使用 `==` 比较字符串内容\",","type":"text","version":1}],"direction":null,"format":"","indent":0,"type":"paragraph","version":1,"textFormat":0,"textStyle":""},{"children":[{"detail":0,"format":0,"mode":"normal","style":"","text":"        \"solution\": \"字符串内容比较应使用 `equals()` 方法，`==` 比较的是引用地址。\"","type":"text","version":1}],"direction":null,"format":"","indent":0,"type":"paragraph","version":1,"textFormat":0,"textStyle":""},{"children":[{"detail":0,"format":0,"mode":"normal","style":"","text":"      }","type":"text","version":1}],"direction":null,"format":"","indent":0,"type":"paragraph","version":1,"textFormat":0,"textStyle":""},{"children":[{"detail":0,"format":0,"mode":"normal","style":"","text":"    ]\",","type":"text","version":1}],"direction":null,"format":"","indent":0,"type":"paragraph","version":1,"textFormat":0,"textStyle":""},{"children":[{"type":"linebreak","version":1}],"direction":null,"format":"","indent":0,"type":"paragraph","version":1,"textFormat":0,"textStyle":""},{"children":[{"detail":0,"format":0,"mode":"normal","style":"","text":"    // 教材页码参考：本章关键内容所在的教材页码","type":"text","version":1}],"direction":null,"format":"","indent":0,"type":"paragraph","version":1,"textFormat":0,"textStyle":""},{"children":[{"detail":0,"format":0,"mode":"normal","style":"","text":"    \"page_references\": \"{","type":"text","version":1}],"direction":null,"format":"","indent":0,"type":"paragraph","version":1,"textFormat":0,"textStyle":""},{"children":[{"detail":0,"format":0,"mode":"normal","style":"","text":"      \"类的定义\": \"P.110-115\",","type":"text","version":1}],"direction":null,"format":"","indent":0,"type":"paragraph","version":1,"textFormat":0,"textStyle":""},{"children":[{"detail":0,"format":0,"mode":"normal","style":"","text":"      \"对象的创建\": \"P.116-120\",","type":"text","version":1}],"direction":null,"format":"","indent":0,"type":"paragraph","version":1,"textFormat":0,"textStyle":""},{"children":[{"detail":0,"format":0,"mode":"normal","style":"","text":"      \"封装\": \"P.123-125\"","type":"text","version":1}],"direction":null,"format":"","indent":0,"type":"paragraph","version":1,"textFormat":0,"textStyle":""},{"children":[{"detail":0,"format":0,"mode":"normal","style":"","text":"    }\",","type":"text","version":1}],"direction":null,"format":"","indent":0,"type":"paragraph","version":1,"textFormat":0,"textStyle":""},{"children":[{"type":"linebreak","version":1}],"direction":null,"format":"","indent":0,"type":"paragraph","version":1,"textFormat":0,"textStyle":""},{"children":[{"detail":0,"format":0,"mode":"normal","style":"","text":"    // 课后习题（如果开启 homework，可用于生成作业）","type":"text","version":1}],"direction":null,"format":"","indent":0,"type":"paragraph","version":1,"textFormat":0,"textStyle":""},{"children":[{"detail":0,"format":0,"mode":"normal","style":"","text":"    \"exercises\": \"[","type":"text","version":1}],"direction":null,"format":"","indent":0,"type":"paragraph","version":1,"textFormat":0,"textStyle":""},{"children":[{"detail":0,"format":0,"mode":"normal","style":"","text":"      {","type":"text","version":1}],"direction":null,"format":"","indent":0,"type":"paragraph","version":1,"textFormat":0,"textStyle":""},{"children":[{"detail":0,"format":0,"mode":"normal","style":"","text":"        \"type\": \"choice\",","type":"text","version":1}],"direction":null,"format":"","indent":0,"type":"paragraph","version":1,"textFormat":0,"textStyle":""},{"children":[{"detail":0,"format":0,"mode":"normal","style":"","text":"        \"question\": \"下列关于类的说法，正确的是？\",","type":"text","version":1}],"direction":null,"format":"","indent":0,"type":"paragraph","version":1,"textFormat":0,"textStyle":""},{"children":[{"detail":0,"format":0,"mode":"normal","style":"","text":"        \"options\": [\"A. 类可以包含多个构造方法\", \"B. 类必须包含main方法\", \"C. 类中的变量不允许初始化\", \"D. 类只能被实例化一次\"],","type":"text","version":1}],"direction":null,"format":"","indent":0,"type":"paragraph","version":1,"textFormat":0,"textStyle":""},{"children":[{"detail":0,"format":0,"mode":"normal","style":"","text":"        \"answer\": \"A\",","type":"text","version":1}],"direction":null,"format":"","indent":0,"type":"paragraph","version":1,"textFormat":0,"textStyle":""},{"children":[{"detail":0,"format":0,"mode":"normal","style":"","text":"        \"analysis\": \"类可以包含多个构造方法（重载），不必须包含main方法，变量可以初始化，类可以被多次实例化。\"","type":"text","version":1}],"direction":null,"format":"","indent":0,"type":"paragraph","version":1,"textFormat":0,"textStyle":""},{"children":[{"detail":0,"format":0,"mode":"normal","style":"","text":"      }","type":"text","version":1}],"direction":null,"format":"","indent":0,"type":"paragraph","version":1,"textFormat":0,"textStyle":""},{"children":[{"detail":0,"format":0,"mode":"normal","style":"","text":"    ]\",","type":"text","version":1}],"direction":null,"format":"","indent":0,"type":"paragraph","version":1,"textFormat":0,"textStyle":""},{"children":[{"type":"linebreak","version":1}],"direction":null,"format":"","indent":0,"type":"paragraph","version":1,"textFormat":0,"textStyle":""},{"children":[{"detail":0,"format":0,"mode":"normal","style":"","text":"    // 上机实训任务（如果开启 lab，可用于生成实验指导书）","type":"text","version":1}],"direction":null,"format":"","indent":0,"type":"paragraph","version":1,"textFormat":0,"textStyle":""},{"children":[{"detail":0,"format":0,"mode":"normal","style":"","text":"    \"lab_tasks\": \"[","type":"text","version":1}],"direction":null,"format":"","indent":0,"type":"paragraph","version":1,"textFormat":0,"textStyle":""},{"children":[{"detail":0,"format":0,"mode":"normal","style":"","text":"      {","type":"text","version":1}],"direction":null,"format":"","indent":0,"type":"paragraph","version":1,"textFormat":0,"textStyle":""},{"children":[{"detail":0,"format":0,"mode":"normal","style":"","text":"        \"title\": \"封装练习\",","type":"text","version":1}],"direction":null,"format":"","indent":0,"type":"paragraph","version":1,"textFormat":0,"textStyle":""},{"children":[{"detail":0,"format":0,"mode":"normal","style":"","text":"        \"description\": \"设计一个银行账户类，包含账号、余额属性，实现存款和取款方法，并确保余额不能为负。\",","type":"text","version":1}],"direction":null,"format":"","indent":0,"type":"paragraph","version":1,"textFormat":0,"textStyle":""},{"children":[{"detail":0,"format":0,"mode":"normal","style":"","text":"        \"hints\": [\"使用private修饰属性\", \"在取款方法中做余额检查\"]","type":"text","version":1}],"direction":null,"format":"","indent":0,"type":"paragraph","version":1,"textFormat":0,"textStyle":""},{"children":[{"detail":0,"format":0,"mode":"normal","style":"","text":"      }","type":"text","version":1}],"direction":null,"format":"","indent":0,"type":"paragraph","version":1,"textFormat":0,"textStyle":""},{"children":[{"detail":0,"format":0,"mode":"normal","style":"","text":"    ]\"","type":"text","version":1}],"direction":null,"format":"","indent":0,"type":"paragraph","version":1,"textFormat":0,"textStyle":""},{"children":[{"detail":0,"format":0,"mode":"normal","style":"","text":"  }，","type":"text","version":1}],"direction":null,"format":"","indent":0,"type":"paragraph","version":1,"textFormat":0,"textStyle":""},{"children":[{"detail":0,"format":0,"mode":"normal","style":"","text":"     \"user_message\": \"\"","type":"text","version":1}],"direction":null,"format":"","indent":0,"type":"paragraph","version":1,"textFormat":0,"textStyle":""},{"children":[{"detail":0,"format":0,"mode":"normal","style":"","text":"}","type":"text","version":1}],"direction":null,"format":"","indent":0,"type":"paragraph","version":1,"textFormat":0,"textStyle":""}],"direction":null,"format":"","indent":0,"type":"root","version":1}}'
+        theme: blue
+        title: ''
+        type: ''
+        width: 941
+      height: 681
+      id: '1788772645722'
+      position:
+        x: -468.2341535947361
+        y: -480.56001817593403
+      positionAbsolute:
+        x: -468.2341535947361
+        y: -480.56001817593403
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom-note
+      width: 941
+      zIndex: 0
+    - data:
+        code: "import json\n\n\ndef _obj(value):\n    \"\"\"入参兼容 dict 与 JSON 字符串，异常时返回空字典\"\"\"\n    if isinstance(value, dict):\n        return value\n    if isinstance(value, str):\n        try:\n            data = json.loads(value)\n            return data if isinstance(data, dict) else {}\n        except Exception:\n            return {}\n    return {}\n\n\ndef _text(value):\n    \"\"\"统一转字符串：列表/字典序列化为 JSON，None -> 空串\"\"\"\n    if value is None:\n        return \"\"\n    if isinstance(value, str):\n        return value\n    return json.dumps(value, ensure_ascii=False)\n\n\ndef _list(value):\n    if isinstance(value, list):\n        return value\n    if isinstance(value, str):\n        try:\n            data = json.loads(value)\n            return data if isinstance(data, list) else []\n        except Exception:\n            return []\n    return []\n\n\ndef _flag(value, default=\"1\"):\n    if value is None or value == \"\":\n        return default\n    return str(value)\n\n\ndef _page_of(pages, name):\n    \"\"\"页码匹配：精确优先，其次双向包含，未命中返回空串\"\"\"\n    if name in pages:\n        return _text(pages.get(name))\n    for key, val in pages.items():\n        if key and name and (key in name or name in key):\n            return _text(val)\n    return \"\"\n\n\ndef _page_text(value):\n    \"\"\"页码统一为 P.xxx；教材页码可能是整数或已有前缀的字符串\"\"\"\n    if value is None or value == \"\":\n        return \"\"\n    text = _text(value).strip()\n    if not text:\n        return \"\"\n    upper = text.upper()\n    if upper.startswith(\"P\"):\n        return text\n    return \"P.\" + text\n\n\ndef main(settings: dict, reference: dict, ppt_config: dict,\n         lesson_plan_config: dict, homework_config: dict,\n         styleTokens: str) -> dict:\n    \"\"\"提取开关与素材、解析三个生成配置，并把素材重组为 PPT 页面素材包。\"\"\"\n\n    settings = _obj(settings)\n    reference = _obj(reference)\n    ppt_config = _obj(ppt_config)\n    lesson_plan_config = _obj(lesson_plan_config)\n    homework_config = _obj(homework_config)\n\n    # ---------- 五个生成开关 ----------\n    switches = {\n        \"pptx\": _flag(settings.get(\"pptx\"), \"0\"),\n        \"lesson_plan\": _flag(settings.get(\"lesson_plan\"), \"0\"),\n        \"homework\": _flag(settings.get(\"homework\"), \"0\"),\n        \"lab\": _flag(settings.get(\"lab\"), \"0\"),\n        \"key_points\": _flag(settings.get(\"key_points\"), \"0\"),\n    }\n\n    # ---------- 七类素材 ----------\n    material = {\n        \"chapter_summary\": _text(reference.get(\"chapter_summary\")),\n        \"concept_definitions\": _text(reference.get(\"concept_definitions\")),\n        \"code_examples\": _text(reference.get(\"code_examples\")),\n        \"common_mistakes\": _text(reference.get(\"common_mistakes\")),\n        \"page_references\": _text(reference.get(\"page_references\")),\n        \"exercises\": _text(reference.get(\"exercises\")),\n        \"lab_tasks\": _text(reference.get(\"lab_tasks\")),\n    }\n\n    # ---------- 三个生成配置（缺省兜底） ----------\n    ppt_cfg = {\n        \"structure\": _text(ppt_config.get(\"structure\")),\n        \"pageRange\": _text(ppt_config.get(\"pageRange\")) or \"10-14\",\n        \"includeOutline\": _flag(ppt_config.get(\"includeOutline\"), \"1\"),\n        \"includeSummary\": _flag(ppt_config.get(\"includeSummary\"), \"1\"),\n        \"codeBlockMax\": _flag(ppt_config.get(\"codeBlockMax\"), \"2\"),\n    }\n    lesson_cfg = {\n        \"courseType\": _text(lesson_plan_config.get(\"courseType\")) or \"new\",\n        \"duration\": _text(lesson_plan_config.get(\"duration\")) or \"45\",\n        \"detailLevel\": _text(lesson_plan_config.get(\"detailLevel\")) or \"medium\",\n        \"includeBoardDesign\": _flag(lesson_plan_config.get(\"includeBoardDesign\"), \"1\"),\n        \"includeExercise\": _flag(lesson_plan_config.get(\"includeExercise\"), \"1\"),\n    }\n    hw_cfg = {\n        \"questionCount\": _text(homework_config.get(\"questionCount\")) or \"5\",\n        \"difficultyDistribution\": _text(homework_config.get(\"difficultyDistribution\")) or \"2,2,1\",\n        \"questionBank\": _text(homework_config.get(\"questionBank\")),\n    }\n\n    # ---------- 视觉风格令牌（白名单，空对象表示未传） ----------\n    style = _obj(styleTokens)\n    allowed = [\"primaryColor\", \"backgroundColor\", \"textColor\", \"fontFamily\",\n               \"headingWeight\", \"codeBgColor\", \"styleDescription\"]\n    style_cfg = {k: _text(style.get(k)) for k in allowed if style.get(k)}\n\n    # ---------- PPT 页面素材包：按知识点分组，LLM 逐页填充 ----------\n    concepts = _list(material[\"concept_definitions\"])\n    codes = _list(material[\"code_examples\"])\n    mistakes = _list(material[\"common_mistakes\"])\n    pages = _obj(material[\"page_references\"])\n\n    pack = []\n    for i, concept in enumerate(concepts):\n        if not isinstance(concept, dict):\n            concept = {\"name\": concept}\n        name = _text(concept.get(\"name\")) or (\"知识点\" + str(i + 1))\n        code_item = codes[i] if i < len(codes) else {}\n        if not isinstance(code_item, dict):\n            code_item = {\"code\": code_item}\n        pack.append({\n            \"concept\": name,\n            \"definition\": _text(concept.get(\"definition\")),\n            \"example\": _text(concept.get(\"example\")),\n            \"code_title\": _text(code_item.get(\"title\")),\n            \"code\": _text(code_item.get(\"code\")),\n            \"page\": _page_text(concept.get(\"page\")) or _page_of(pages, name),\n            \"code_page\": _page_text(code_item.get(\"page\")),\n        })\n\n    # 随堂练习只取少量题目，避免整章习题（可能上百题）挤占 PPT 提示词体积\n    material_pack = {\n        \"chapter_summary\": material[\"chapter_summary\"],\n        \"knowledge_points\": pack,\n        \"extra_codes\": codes[len(concepts):],\n        \"common_mistakes\": mistakes,\n        \"page_references\": pages,\n        \"exercises\": _list(material[\"exercises\"])[:6],\n    }\n\n    return {\n        \"switches_json\": json.dumps(switches, ensure_ascii=False),\n        \"material_json\": json.dumps(material, ensure_ascii=False),\n        \"material_pack_json\": json.dumps(material_pack, ensure_ascii=False),\n        \"ppt_cfg_json\": json.dumps(ppt_cfg, ensure_ascii=False),\n        \"lesson_cfg_json\": json.dumps(lesson_cfg, ensure_ascii=False),\n        \"hw_cfg_json\": json.dumps(hw_cfg, ensure_ascii=False),\n        \"style_json\": json.dumps(style_cfg, ensure_ascii=False),\n    }"
+        code_language: python3
+        outputs:
+          switches_json:
+            children: null
+            type: string
+          material_json:
+            children: null
+            type: string
+          material_pack_json:
+            children: null
+            type: string
+          ppt_cfg_json:
+            children: null
+            type: string
+          lesson_cfg_json:
+            children: null
+            type: string
+          hw_cfg_json:
+            children: null
+            type: string
+          style_json:
+            children: null
+            type: string
+        selected: false
+        title: 素材重组与配置解析
+        type: code
+        variables:
+        - value_selector:
+          - '1788772390005'
+          - settings
+          value_type: object
+          variable: settings
+        - value_selector:
+          - '1788772390005'
+          - reference
+          value_type: object
+          variable: reference
+        - value_selector:
+          - '1788772390005'
+          - ppt_config
+          value_type: object
+          variable: ppt_config
+        - value_selector:
+          - '1788772390005'
+          - lesson_plan_config
+          value_type: object
+          variable: lesson_plan_config
+        - value_selector:
+          - '1788772390005'
+          - homework_config
+          value_type: object
+          variable: homework_config
+        - value_selector:
+          - '1788772390005'
+          - styleTokens
+          value_type: string
+          variable: styleTokens
+        desc: ''
+      height: 51
+      id: '1788785366444'
+      position:
+        x: 381
+        y: 282
+      positionAbsolute:
+        x: 381
+        y: 282
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 241
+      zIndex: 0
+    - data:
+        context:
+          enabled: false
+          variable_selector: []
+        model:
+          completion_params:
+            temperature: 0.5
+          mode: chat
+          name: deepseek-v4-flash
+          provider: langgenius/deepseek/deepseek
+        prompt_template:
+        - id: 97e2b6b1-d150-4389-9662-f0da45b6a66c
+          role: system
+          text: '# 角色
+
+
+            你是一名资深 Java 课件设计师兼一线教师。你的任务：根据【PPT配置】中的 MD 骨架与【页面素材包】，产出可直接上课的 PPT 源码（Marp Markdown）。这不是大纲，是成品——学生拿到手能自学的完整课件。
+
+
+            # 输入
+
+
+            - 【PPT配置】（structure=MD骨架、pageRange=页数范围、includeOutline/includeSummary=是否含目录/小结、codeBlockMax=代码演示页最少数量）：
+
+            {{#1788785366444.ppt_cfg_json#}}
+
+
+            - 【页面素材包】（内容唯一来源，禁止编造教材外内容）：
+
+            {{#1788785366444.material_pack_json#}}
+
+
+            - 【视觉风格令牌】（可能为 {}；只影响语气与侧重，禁止输出任何 CSS/HTML/style）：
+
+            {{#1788785366444.style_json#}}
+
+
+            - 【用户额外指令】（优先级最高）：
+
+            {{#1788772390005.user_message#}}
+
+
+            # 骨架使用规则
+
+
+            1. structure 非空：严格按骨架的页面顺序与标题层级生成，骨架页全部保留（禁止删页）；骨架中的占位内容（第X章、知识点1、P.xx、示例标题等）必须替换为素材包真实内容，输出中不得残留占位符。
+
+            2. structure 为空：按下方页面类型版式系统自行编排。
+
+            3. 总页数必须落入 pageRange（默认 10-14）。骨架页数少于 pageRange 下限时，在相关知识点后按页面类型系统补充概念页、代码演示页或易错点页；多于上限时合并同类概念页，但不得删除封面、目录、小结页。
+
+            4. includeOutline="0" 时不生成目录页；includeSummary="0" 时不生成小结页。
+
+
+            # 页面类型版式系统（骨架未指定时使用）
+
+
+            | 页面类型 | 版式规范 | 数量 |
+
+            |---|---|---|
+
+            | 封面页 | `# 第X章 章节名` + 空行 + 副标题"Java程序设计基础" + `<!-- _class: lead -->` | 1 页 |
+
+            | 目录页 | `# 本节课内容` + 有序列表 3-6 项，每项"知识点名（P.页码）" | 1 页 |
+
+            | 概念定义页 | `## 概念名` + 2-3 行完整定义 + 一行生活化类比 + 要点列表 3-5 条 | 每核心概念 1 页 |
+
+            | 语法/规则页 | `## 语法点` + 语法格式（行内代码）+ 规则要点 3-5 条 + 最小示例 | 按需 |
+
+            | 代码演示页 | `## 标题` + 1-2 行说明 + 代码块（java，≤18 行）+ 逐点讲解 2-4 条（"第N行：…"）+ 页脚"📖 P.页码" | ≥ codeBlockMax |
+
+            | 对比页 | `## A vs B` + 三列表格（对比项/A/B）+ 底部一句话结论 | 1-2 页 |
+
+            | 易错点页 | `## 易错点：XXX` + ❌错误写法（代码块）+ ✅正确写法 + ⚠️一行原因 | 1-2 页（素材必取） |
+
+            | 随堂练习页 | `## 随堂练习` + 2-3 道小题（选择/填空/看代码说结果） | 1-2 页 |
+
+            | 总结页 | `## 本章小结` + 知识点回顾列表 + 一句金句 + 下节预告 | 1 页 |
+
+
+            标题层级以骨架为准；骨架为空时每页用 `#` 作主标题。
+
+
+            注意：material_pack_json.knowledge_points 是素材池而非页数清单。只选取 3-6 个核心知识点成页，其余内容按需并入对比页、易错点页或随堂练习页，禁止逐条概念铺页导致超出 pageRange。
+
+
+            # 内容深度红线（解决"太简单"）
+
+
+            1. 每个内容页必须包含 2-4 行完整句子讲解（成句成段，禁止只丢名词列表）；PPT 要脱离教师也能自解释。
+
+            2. 列表项一律"**要点**：一句展开"，禁止光秃词组。
+
+            3. 代码演示页必须配逐行讲解；关键代码用 `行内代码` 高亮引用。
+
+            4. 概念页必须有生活化类比（如"类=图纸，对象=按图纸盖的房子"）。
+
+            5. common_mistakes 至少取 1 个生成易错点页；knowledge_points 中每组 code 至少用进 1 个代码演示页。
+
+            6. 每个知识点页脚标注教材页码（优先用该知识点的 page 字段，其次 page_references）。
+
+
+            # 排版规范（解决"排版粗糙"）
+
+
+            1. `---` 单独成行分页；页数遵循 pageRange（默认 10-14 页），不得低于骨架页数，禁止删页。
+
+            2. 允许且仅允许两类 Marp 布局指令：封面页 `<!-- _class: lead -->`；对比页可选 `<div class="columns">` 分栏（div 必须闭合）。其余任何 HTML 一律禁止。
+
+            3. 一页只讲一件事；正文（不含代码块）≤12 行；要点 3-5 条。
+
+            4. 代码块必须标注 java 且 ≤18 行；表格列数 ≤4。
+
+            5. 骨架中的"第X章""知识点1"等占位符在输出中必须为 0 残留。
+
+
+            # 视觉风格
+
+
+            - 令牌为 {} 时按中性风格输出。
+
+            - 风格描述含"暗黑"：突出代码演示与运行结果说明；含"极简"：精简文字、多用对比表格；含"活泼"：多用生活化类比与短句。
+
+            - 令牌仅用于决定语气与内容侧重，禁止在 Markdown 中写 CSS、style 标签或颜色值。
+
+
+            # 输出
+
+
+            仅输出纯 Marp Markdown，不输出 frontmatter、JSON 包裹、markdown 围栏、解释或任何额外文字。'
+        - id: c72d2248-b8a6-427f-9314-20c3e80c59ee
+          role: user
+          text: 请根据系统提示与输入，直接输出完整的 Marp Markdown 课件源码。
+        selected: false
+        structured_output_enabled: false
+        title: PPT 起草
+        type: llm
+        vision:
+          enabled: false
+      height: 98
+      id: '1788785782178'
+      position:
+        x: 683
+        y: 282
+      positionAbsolute:
+        x: 683
+        y: 282
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 241
+      zIndex: 0
+    - data:
+        author: 猪培根
+        desc: ''
+        height: 311
+        selected: false
+        showAuthor: true
+        text: '{"root":{"children":[{"children":[{"detail":0,"format":0,"mode":"normal","style":"","text":"{","type":"text","version":1}],"direction":null,"format":"","indent":0,"type":"paragraph","version":1,"textFormat":0,"textStyle":""},{"children":[{"detail":0,"format":0,"mode":"normal","style":"","text":"  \"type\": \"object\",","type":"text","version":1}],"direction":null,"format":"","indent":0,"type":"paragraph","version":1,"textFormat":0,"textStyle":""},{"children":[{"detail":0,"format":0,"mode":"normal","style":"","text":"  \"properties\": {","type":"text","version":1}],"direction":null,"format":"","indent":0,"type":"paragraph","version":1,"textFormat":0,"textStyle":""},{"children":[{"detail":0,"format":0,"mode":"normal","style":"","text":"    \"lesson_plan\": {","type":"text","version":1}],"direction":null,"format":"","indent":0,"type":"paragraph","version":1,"textFormat":0,"textStyle":""},{"children":[{"detail":0,"format":0,"mode":"normal","style":"","text":"      \"type\": \"string\",","type":"text","version":1}],"direction":null,"format":"","indent":0,"type":"paragraph","version":1,"textFormat":0,"textStyle":""},{"children":[{"detail":0,"format":0,"mode":"normal","style":"","text":"      \"description\": \"教案\"","type":"text","version":1}],"direction":null,"format":"","indent":0,"type":"paragraph","version":1,"textFormat":0,"textStyle":""},{"children":[{"detail":0,"format":0,"mode":"normal","style":"","text":"    },","type":"text","version":1}],"direction":null,"format":"","indent":0,"type":"paragraph","version":1,"textFormat":0,"textStyle":""},{"children":[{"detail":0,"format":0,"mode":"normal","style":"","text":"    \"pptx_md\": {","type":"text","version":1}],"direction":null,"format":"","indent":0,"type":"paragraph","version":1,"textFormat":0,"textStyle":""},{"children":[{"detail":0,"format":0,"mode":"normal","style":"","text":"      \"type\": \"string\",","type":"text","version":1}],"direction":null,"format":"","indent":0,"type":"paragraph","version":1,"textFormat":0,"textStyle":""},{"children":[{"detail":0,"format":0,"mode":"normal","style":"","text":"      \"description\": \"ppt\"","type":"text","version":1}],"direction":null,"format":"","indent":0,"type":"paragraph","version":1,"textFormat":0,"textStyle":""},{"children":[{"detail":0,"format":0,"mode":"normal","style":"","text":"    },","type":"text","version":1}],"direction":null,"format":"","indent":0,"type":"paragraph","version":1,"textFormat":0,"textStyle":""},{"children":[{"detail":0,"format":0,"mode":"normal","style":"","text":"    \"key_points\": {","type":"text","version":1}],"direction":null,"format":"","indent":0,"type":"paragraph","version":1,"textFormat":0,"textStyle":""},{"children":[{"detail":0,"format":0,"mode":"normal","style":"","text":"      \"type\": \"string\",","type":"text","version":1}],"direction":null,"format":"","indent":0,"type":"paragraph","version":1,"textFormat":0,"textStyle":""},{"children":[{"detail":0,"format":0,"mode":"normal","style":"","text":"      \"description\": \"重点\"","type":"text","version":1}],"direction":null,"format":"","indent":0,"type":"paragraph","version":1,"textFormat":0,"textStyle":""},{"children":[{"detail":0,"format":0,"mode":"normal","style":"","text":"    },","type":"text","version":1}],"direction":null,"format":"","indent":0,"type":"paragraph","version":1,"textFormat":0,"textStyle":""},{"children":[{"detail":0,"format":0,"mode":"normal","style":"","text":"    \"homework\": {","type":"text","version":1}],"direction":null,"format":"","indent":0,"type":"paragraph","version":1,"textFormat":0,"textStyle":""},{"children":[{"detail":0,"format":0,"mode":"normal","style":"","text":"      \"type\": \"string\",","type":"text","version":1}],"direction":null,"format":"","indent":0,"type":"paragraph","version":1,"textFormat":0,"textStyle":""},{"children":[{"detail":0,"format":0,"mode":"normal","style":"","text":"      \"description\": \"课后作业\"","type":"text","version":1}],"direction":null,"format":"","indent":0,"type":"paragraph","version":1,"textFormat":0,"textStyle":""},{"children":[{"detail":0,"format":0,"mode":"normal","style":"","text":"    },","type":"text","version":1}],"direction":null,"format":"","indent":0,"type":"paragraph","version":1,"textFormat":0,"textStyle":""},{"children":[{"detail":0,"format":0,"mode":"normal","style":"","text":"    \"lab\": {","type":"text","version":1}],"direction":null,"format":"","indent":0,"type":"paragraph","version":1,"textFormat":0,"textStyle":""},{"children":[{"detail":0,"format":0,"mode":"normal","style":"","text":"      \"type\": \"string\",","type":"text","version":1}],"direction":null,"format":"","indent":0,"type":"paragraph","version":1,"textFormat":0,"textStyle":""},{"children":[{"detail":0,"format":0,"mode":"normal","style":"","text":"      \"description\": \"上机实验\"","type":"text","version":1}],"direction":null,"format":"","indent":0,"type":"paragraph","version":1,"textFormat":0,"textStyle":""},{"children":[{"detail":0,"format":0,"mode":"normal","style":"","text":"    }","type":"text","version":1}],"direction":null,"format":"","indent":0,"type":"paragraph","version":1,"textFormat":0,"textStyle":""},{"children":[{"detail":0,"format":0,"mode":"normal","style":"","text":"  }","type":"text","version":1}],"direction":null,"format":"","indent":0,"type":"paragraph","version":1,"textFormat":0,"textStyle":""},{"children":[{"detail":0,"format":0,"mode":"normal","style":"","text":"}","type":"text","version":1}],"direction":null,"format":"","indent":0,"type":"paragraph","version":1,"textFormat":0,"textStyle":""}],"direction":null,"format":"","indent":0,"type":"root","version":1}}'
+        theme: blue
+        title: ''
+        type: ''
+        width: 565
+      height: 311
+      id: '1788785822910'
+      position:
+        x: 939.4329599109809
+        y: -105.78451229506344
+      positionAbsolute:
+        x: 939.4329599109809
+        y: -105.78451229506344
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom-note
+      width: 565
+      zIndex: 0
+    - data:
+        outputs:
+        - value_selector:
+          - '1788860010003'
+          - output
+          value_type: object
+          variable: output
+        selected: false
+        title: 输出
+        type: end
+      height: 87
+      id: '1788851448034'
+      position:
+        x: 1891
+        y: 282
+      positionAbsolute:
+        x: 1891
+        y: 282
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 241
+      zIndex: 0
+    - data:
+        context:
+          enabled: false
+          variable_selector: []
+        model:
+          completion_params:
+            temperature: 0.4
+          mode: chat
+          name: deepseek-v4-flash
+          provider: langgenius/deepseek/deepseek
+        prompt_template:
+        - id: d2c7a8e1-c4b8-40f2-bbdc-a323a6eff724
+          role: system
+          text: '# 角色
+
+
+            你是一位严格的高级职称评审专家，正在验收一份 Java 课件 PPT 源码（Marp Markdown）。
+
+
+            # 输入
+
+
+            - 【草稿】：
+
+            {{#1788785782178.text#}}
+
+
+            - 【页面素材包】（校对内容的唯一依据）：
+
+            {{#1788785366444.material_pack_json#}}
+
+
+            - 【PPT配置】（pageRange / codeBlockMax / includeOutline / includeSummary）：
+
+            {{#1788785366444.ppt_cfg_json#}}
+
+
+            # 任务
+
+
+            对草稿逐页执行质检清单，能改直接改，改完输出终稿：
+
+
+            - [ ] 每页是否有 2 行以上成句讲解？（纯列表页 → 补写讲解文字）
+
+            - [ ] 代码块是否全部标注 java 且 ≤18 行？（超长 → 删减为核心片段）
+
+            - [ ] 占位符残留？（"第X章""知识点1""P.xx"等 → 用素材包真实内容替换）
+
+            - [ ] 封面/目录/总结三页是否齐全？（缺失 → 按版式系统补齐；includeOutline/includeSummary 为 "0" 时按配置处理）
+
+            - [ ] 页数是否在 pageRange 内？是否有空页/半页？（删除或充实）
+
+            - [ ] 封面是否有 `<!-- _class: lead -->`？对比页分栏 div 是否闭合？
+
+            - [ ] 每个知识点是否标注教材页码？
+
+            - [ ] 是否混入 JSON 包裹、markdown 围栏或任何 HTML（除允许的两类 Marp 指令）？（清除）
+
+            - [ ] 代码演示页是否 ≥ codeBlockMax？易错点页是否 ≥1？
+
+
+            # 红线
+
+
+            - 不改变知识顺序与骨架页面顺序
+
+            - 不新增教材外知识点
+
+            - 不输出 frontmatter、解释或任何额外文字
+
+
+            # 输出
+
+
+            仅输出精修后的完整 Marp Markdown。'
+        - id: 9bcd122c-202e-469d-86c2-785613ce9b0c
+          role: user
+          text: 请按质检清单逐页精修，直接输出终稿 Marp Markdown。
+        selected: false
+        structured_output_enabled: false
+        title: PPT 精修
+        type: llm
+        vision:
+          enabled: false
+      height: 98
+      id: '1788860010001'
+      position:
+        x: 985
+        y: 282
+      positionAbsolute:
+        x: 985
+        y: 282
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 241
+      zIndex: 0
+    - data:
+        context:
+          enabled: false
+          variable_selector: []
+        model:
+          completion_params:
+            temperature: 0.6
+          mode: chat
+          name: deepseek-v4-flash
+          provider: langgenius/deepseek/deepseek
+        prompt_template:
+        - id: 108d5e18-09a4-4477-a807-5530efb738dd
+          role: system
+          text: "## 一、角色定位\n\n你是一位资深的 Java 课程备课专家。你只负责四类教学材料：教案、重难点清单、课后习题、上机实训方案。PPT 由其他节点生成，你禁止输出 pptx_md。\n\n## 二、输入说明\n\n### 2.1 七类备课素材（JSON 字符串；列表字段可能是 JSON 数组字符串）\n{{#1788785366444.material_json#}}\n\n### 2.2 五个生成开关（显式输入，1=生成，0=留空）\n{{#1788785366444.switches_json#}}\n\n### 2.3 用户额外指令（优先级最高）\n{{#1788772390005.user_message#}}\n\n执行优先级：用户额外指令 > 开关设置；两者冲突时以用户指令为准。\n\n## 三、核心约束\n\n1. 只生成开关为 \"1\" 的项目；开关为 \"0\" 的字段必须输出空字符串 \"\"\n2. 所有内容必须来自素材，禁止编造教材外内容\n3. 所有输出值必须为标准 Markdown，禁止任何 HTML 标签\n4. 禁止在 JSON 外输出任何文字\n5. 四个字段的知识点顺序必须一致，并严格遵循教材章节的自然推进顺序\n\n## 四、输出格式（强制 JSON）\n\n{\n  \"key_points\": \"重难点清单，未开启则留空\",\n  \"lesson_plan\": \"教案，未开启则留空\",\n  \"homework\": \"课后习题，未开启则留空\",\n  \"lab\": \"上机实训方案，未开启则留空\"\n}\n\n## 五、各字段格式规范\n\n### 5.1 key_points —— 重难点清单（触发条件：key_points = \"1\"）\n\n输出定位：学生预习/复习的学习指引，说明本章哪些内容必须掌握、哪些容易出错。\n\n格式模板：\n\n## \U0001F4CC 教学重点\n\n1. **[重点名称]**：[掌握程度说明，一句话]\n2. **[重点名称]**：[掌握程度说明，一句话]\n\n---\n\n## ⚠️ 教学难点\n\n1. **[难点名称]**：[难在哪里，一句话]\n   **突破建议**：[1-2条具体学习策略]\n\n---\n\n## \U0001F504 易混淆点辨析\n\n| 易混概念 | 混淆原因 | 区分要点 |\n|----------|----------|----------|\n| A vs B | [原因] | [核心区别] |\n| C vs D | [原因] | [核心区别] |\n\n格式约束：重点 3-5 个；难点 2-4 个；易混淆点 2-3 组且必须使用表格；总篇幅不超过 30 行。\n\n### 5.2 lesson_plan —— 教案（触发条件：lesson_plan = \"1\"）\n\n核心定位：教师的讲课备忘录，简洁、大纲式、可扫描。\n必须包含：时间分配、知识点列表、动作提示（提问/演示/练习/巡视）。\n禁止包含：情感态度价值观目标、教学理论术语（如\"启发式教学法\"）、超过 3 行的段落。\n\n格式模板：\n\n## 一、基本信息\n\n- **章节**：[章节名]\n- **课时**：[X] 分钟\n- **参考**：《Java程序设计基础》第X章 [页码范围]\n\n---\n\n## 二、知识点列表\n\n1. [知识点1名称]（[X]min）\n2. [知识点2名称]（[X]min）\n3. [知识点3名称]（[X]min）\n\n---\n\n## 三、课堂过程\n\n### 1. 导入（[X]min）\n[一句话说明导入方式，如\"学生档案案例提问\"]\n\n### 2. [知识点1名称]（[X]min）\n- [核心内容，1-2句话]\n- [关键代码片段，可选]\n- **动作**：[演示/讲解/提问/学生跟练]\n\n### N. 总结（[X]min）\n[一句话总结核心]\n\n---\n\n## 四、关键代码\n\n// 只放本节课最关键的一段代码（标注 java）\n\n#### 5.2.1 教案生成配置（必须遵循）\n\n{{#1788785366444.lesson_cfg_json#}}\n\n| 配置项 | 执行要求 |\n|---|---|\n| courseType | new=新授课（完整流程）/ review=复习课（以题带点）/ lab=实验课（以实训为主线） |\n| duration | 总课时分钟数；各环节时间分配之和必须等于该值 |\n| detailLevel | brief=只列提纲 / medium=标准版 / detailed=含板书设计+预设提问 |\n| includeBoardDesign | 0=删除板书设计小节；1=必含板书设计 |\n| includeExercise | 0=删除随堂练习环节；1=必含随堂练习 |\n\n格式约束：知识点 3-5 个（不超过 7 个）；代码片段 1-2 段；总篇幅 50-80 行。\n\n### 5.3 homework —— 课后习题（触发条件：homework = \"1\"）\n\n输出定位：学生课后巩固练习材料，必须附带答案和解析。\n\n#### 5.3.1 课后习题配置\n\n{{#1788785366444.hw_cfg_json#}}\n\nquestionBank 非空时（题库推荐模式，优先）：\n- 不要自己编题，从题库列表中挑选题目推荐给老师\n- 按 questionCount 取数；难度分布按 difficultyDistribution（如 \"2,2,1\" = 基础2 + 进阶2 + 拔高1）\n- 每题必须引用题库 id，如\"题库题目 #1001（选择题，难度2）：题干\"\n- 同时给出教材课后习题页码引用（来自素材 page_references）\n- 输出分组：基础巩固（必做）/ 能力提升（选做）/ 拓展思考（可自行拟 2 条开放题）\n\nquestionBank 为空时（降级模式）：\n- 基于素材 exercises 生成：选择题 3-5 题、填空题 2-3 题、编程题 1-2 题\n- 每题附 **答案** 与 **解析**（30-50 字）\n- 编程题只给类名/方法签名的参考框架（标注 java，不提供完整实现）\n\n### 5.4 lab —— 上机实训方案（触发条件：lab = \"1\"）\n\n输出定位：学生上机实验课的任务指导书。\n\n格式模板：\n\n## 一、实训目标\n\n完成本次实训后，学生应能够：\n\n1. [目标1，具体可衡量]\n2. [目标2，具体可衡量]\n\n---\n\n## 二、实训任务\n\n### 任务描述\n[100-200字，说明要完成什么功能]\n\n### 具体要求\n1. [功能要求1]\n2. [功能要求2]\n\n### 实现提示\n- [提示1]\n- [提示2]\n\n---\n\n## 三、验收标准\n\n- [ ] [验收点1]\n- [ ] [验收点2]\n\n---\n\n## 四、参考代码框架\n\n// 只给类/方法骨架（标注 java），不提供完整实现\n\n格式约束：目标 3-4 条（动词开头）；具体要求 3-5 条；验收标准 4-6 条；总篇幅不超过 50 行。\n\n## 六、全局 Markdown 规范\n\n| 项目 | 要求 |\n|------|------|\n| 标题层级 | # / ## / ### / #### |\n| 代码块 | 必须标注语言（java / sql / bash） |\n| 表格 | 标准 Markdown 表格，禁止 HTML |\n| 列表 | 有序 1. 2. 3.；无序 - |\n| 分割线 | --- 单独成行 |\n| 强调 | **加粗** / *斜体* / `行内代码` |\n| 禁止 | 任何 HTML 标签、图片 |\n\n## 七、核心红线\n\n1. ❌ 禁止生成开关为 \"0\" 的内容（对应字段留空 \"\"）\n2. ❌ 禁止使用教材外素材自行编造内容\n3. ❌ 禁止输出 pptx_md 字段\n4. ❌ 禁止在 JSON 外输出任何额外文字\n5. ❌ 禁止输出完整可运行代码（只给思路 + 关键片段 + 代码框架）\n6. ✅ 用户额外指令必须优先执行"
+        - id: d574b17f-8ab1-447b-89de-616db4c17d49
+          role: user
+          text: 请按要求输出四字段 JSON（key_points / lesson_plan / homework / lab）。
+        selected: false
+        structured_output_enabled: true
+        title: 其他材料生成
+        type: llm
+        vision:
+          enabled: false
+        structured_output:
+          schema:
+            additionalProperties: false
+            properties:
+              homework:
+                description: 课后作业
+                type: string
+              key_points:
+                description: 重点
+                type: string
+              lab:
+                description: 上机实验
+                type: string
+              lesson_plan:
+                description: 教案
+                type: string
+            required:
+            - key_points
+            - lesson_plan
+            - homework
+            - lab
+            type: object
+      height: 98
+      id: '1788860010002'
+      position:
+        x: 1287
+        y: 282
+      positionAbsolute:
+        x: 1287
+        y: 282
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 241
+      zIndex: 0
+    - data:
+        code: "import json\n\n\ndef _as_obj(value):\n    if isinstance(value, dict):\n        return value\n    if isinstance(value, str):\n        try:\n            data = json.loads(value or \"{}\")\n            return data if isinstance(data, dict) else {}\n        except Exception:\n            return {}\n    return {}\n\n\ndef main(pptx_final: str, others, switches_json: str) -> dict:\n    \"\"\"合并 PPT 终稿与其他四类材料；开关关闭的字段强制置空（双保险）。\"\"\"\n    switches = _as_obj(switches_json)\n    others = _as_obj(others)\n\n    def pick(key):\n        value = others.get(key, \"\")\n        return \"\" if value is None else str(value)\n\n    return {\n        \"output\": {\n            \"pptx_md\": str(pptx_final or \"\") if switches.get(\"pptx\") == \"1\" else \"\",\n            \"lesson_plan\": pick(\"lesson_plan\") if switches.get(\"lesson_plan\") == \"1\" else \"\",\n            \"key_points\": pick(\"key_points\") if switches.get(\"key_points\") == \"1\" else \"\",\n            \"homework\": pick(\"homework\") if switches.get(\"homework\") == \"1\" else \"\",\n            \"lab\": pick(\"lab\") if switches.get(\"lab\") == \"1\" else \"\",\n        }\n    }"
+        code_language: python3
+        outputs:
+          output:
+            children: null
+            type: object
+        selected: false
+        title: 汇总输出
+        type: code
+        variables:
+        - value_selector:
+          - '1788860010001'
+          - text
+          value_type: string
+          variable: pptx_final
+        - value_selector:
+          - '1788860010002'
+          - structured_output
+          value_type: object
+          variable: others
+        - value_selector:
+          - '1788785366444'
+          - switches_json
+          value_type: string
+          variable: switches_json
+      height: 51
+      id: '1788860010003'
+      position:
+        x: 1589
+        y: 282
+      positionAbsolute:
+        x: 1589
+        y: 282
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 241
+      zIndex: 0
+    viewport:
+      x: 0
+      y: 420
+      zoom: 0.8
+  rag_pipeline_variables: []

@@ -48,6 +48,17 @@ public class PrepareRecordController {
         return Result.success(teachPrepareRecordService.getRecordDetail(id));
     }
 
+    /**
+     * 备课记录状态轮询：data 为状态码（2=生成中，1=成功，0=失败）
+     * <p>
+     * 备课接口秒回 recordId 后，前端按此接口轮询到非 2 再去取 /detail。
+     */
+    @PreAuthorize("hasRole('TEACHER')")
+    @GetMapping("/status")
+    public Result<Integer> status(@RequestParam Long id) {
+        return Result.success(teachPrepareRecordService.getRecordStatus(id));
+    }
+
     /** 教案导出 Word 文件流（.docx） */
     @PreAuthorize("hasRole('TEACHER')")
     @GetMapping("/export")

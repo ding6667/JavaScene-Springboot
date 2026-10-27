@@ -1,5 +1,6 @@
 package com.amlve.teach.service.impl;
 
+import com.amlve.common.constant.ErrorMessageConstant;
 import com.amlve.common.constant.ErrorCodeConstant;
 import com.amlve.common.exception.BusinessException;
 import com.amlve.common.request.Result;
@@ -77,7 +78,7 @@ public class TeachServiceImpl implements TeachService, TeachHomeworkService {
         boolean hasClass = request.getClassId() != null;
         boolean hasGrade = request.getGrade() != null && !request.getGrade().isBlank();
         if (hasClass == hasGrade) {
-            throw new BusinessException(ErrorCodeConstant.PARAM_INVALID, "发布范围必须且只能在班级ID与年级中二选一");
+            throw new BusinessException(ErrorCodeConstant.PARAM_INVALID, ErrorMessageConstant.TEACH_SCOPE_MISSING);
         }
         List<HomeworkQuestionItem> questions = request.getQuestions();
         // 题目ID去重校验（快照表有 homework_id+question_id 唯一约束，重复直接拒绝）
@@ -194,7 +195,8 @@ public class TeachServiceImpl implements TeachService, TeachHomeworkService {
         Homework homework = homeworkMapper.selectById(homeworkId);
         // 作业不存在时返回 NOT_FOUND 错误码，调用方通过 code 判断而非判空
         if (homework == null) {
-            return Result.error(ErrorCodeConstant.NOT_FOUND, "作业不存在: id=" + homeworkId);
+            log.warn("HOMEWORK_NOT_FOUND 定位: {}", homeworkId);
+            return Result.error(ErrorCodeConstant.NOT_FOUND, ErrorMessageConstant.HOMEWORK_NOT_FOUND);
         }
         return Result.success(toDTO(homework));
     }
@@ -254,7 +256,8 @@ public class TeachServiceImpl implements TeachService, TeachHomeworkService {
     public Result<StudentHomeworkDetailResponse> getStudentHomeworkDetail(Long homeworkId) {
         Homework homework = homeworkMapper.selectById(homeworkId);
         if (homework == null) {
-            return Result.error(ErrorCodeConstant.NOT_FOUND, "作业不存在: id=" + homeworkId);
+            log.warn("HOMEWORK_NOT_FOUND 定位: {}", homeworkId);
+            return Result.error(ErrorCodeConstant.NOT_FOUND, ErrorMessageConstant.HOMEWORK_NOT_FOUND);
         }
         // 学生端仅可查看已发布的作业
         if (!Objects.equals(homework.getStatus(), HomeworkStatusEnum.PUBLISHED.getCode())) {
@@ -334,13 +337,15 @@ public class TeachServiceImpl implements TeachService, TeachHomeworkService {
     private Homework requireOwnedHomework(Long homeworkId) {
         Homework homework = homeworkMapper.selectById(homeworkId);
         if (homework == null) {
-            throw new BusinessException(ErrorCodeConstant.NOT_FOUND, "作业不存在: id=" + homeworkId);
+            log.warn("HOMEWORK_NOT_FOUND 定位: {}", homeworkId);
+            throw new BusinessException(ErrorCodeConstant.NOT_FOUND, ErrorMessageConstant.HOMEWORK_NOT_FOUND);
         }
         Long teacherId = SecurityUtils.getUserId();
         if (!Objects.equals(homework.getTeacherId(), teacherId)) {
             // 越权访问他人作业按资源不存在处理，避免暴露作业存在性
             log.warn("教师{}尝试访问非本人作业: 作业ID={}, 归属教师={}", teacherId, homeworkId, homework.getTeacherId());
-            throw new BusinessException(ErrorCodeConstant.NOT_FOUND, "作业不存在: id=" + homeworkId);
+            log.warn("HOMEWORK_NOT_FOUND 定位: {}", homeworkId);
+            throw new BusinessException(ErrorCodeConstant.NOT_FOUND, ErrorMessageConstant.HOMEWORK_NOT_FOUND);
         }
         return homework;
     }

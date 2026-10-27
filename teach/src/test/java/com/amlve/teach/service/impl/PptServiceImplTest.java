@@ -78,7 +78,7 @@ class PptServiceImplTest {
         // 越权下载他人 PPT：必须拒绝
         assertThatThrownBy(() -> service.downloadPpt(RECORD_ID))
                 .isInstanceOf(BusinessException.class)
-                .hasMessageContaining("无权访问");
+                .hasMessageContaining("没有访问权限");
     }
 
     @Test
@@ -90,7 +90,7 @@ class PptServiceImplTest {
 
         assertThatThrownBy(() -> service.downloadPpt(RECORD_ID))
                 .isInstanceOf(BusinessException.class)
-                .hasMessageContaining("未生成PPT");
+                .hasMessageContaining("还没有生成 PPT");
     }
 
     @Test
@@ -102,7 +102,7 @@ class PptServiceImplTest {
 
         assertThatThrownBy(() -> service.downloadPpt(RECORD_ID))
                 .isInstanceOf(BusinessException.class)
-                .hasMessageContaining("文件已过期");
+                .hasMessageContaining("文件链接已过期");
     }
 
     @Test

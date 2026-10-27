@@ -1,5 +1,6 @@
 package com.amlve.agentqa.bean;
 
+import com.amlve.common.constant.ErrorMessageConstant;
 import com.amlve.common.exception.BusinessException;
 import jakarta.annotation.PostConstruct;
 import lombok.extern.slf4j.Slf4j;
@@ -62,7 +63,7 @@ public class DifyClient {
                                 .flatMap(errorBody -> {
                                     log.error("Dify 客户端错误: status={}, body={}",
                                             response.statusCode(), errorBody);
-                                    return Mono.error(new BusinessException("Dify 工作流请求参数错误: " + errorBody));
+                                    return Mono.error(new BusinessException(ErrorMessageConstant.AGENT_UNAVAILABLE));
                                 })
                 )
                 .onStatus(HttpStatusCode::is5xxServerError, response ->
@@ -70,7 +71,7 @@ public class DifyClient {
                                 .flatMap(errorBody -> {
                                     log.error("Dify 服务端错误: status={}, body={}",
                                             response.statusCode(), errorBody);
-                                    return Mono.error(new BusinessException("Dify 服务暂时不可用: " + errorBody));
+                                    return Mono.error(new BusinessException(ErrorMessageConstant.AGENT_UNAVAILABLE));
                                 })
                 )
                 .bodyToMono(String.class)
@@ -105,7 +106,7 @@ public class DifyClient {
                                 .flatMap(errorBody -> {
                                     log.error("Dify 客户端错误: status={}, body={}",
                                             response.statusCode(), errorBody);
-                                    return Mono.error(new BusinessException("Dify 工作流请求参数错误: " + errorBody));
+                                    return Mono.error(new BusinessException(ErrorMessageConstant.AGENT_UNAVAILABLE));
                                 })
                 )
                 .onStatus(HttpStatusCode::is5xxServerError, response ->
@@ -113,11 +114,11 @@ public class DifyClient {
                                 .flatMap(errorBody -> {
                                     log.error("Dify 服务端错误: status={}, body={}",
                                             response.statusCode(), errorBody);
-                                    return Mono.error(new BusinessException("Dify 服务暂时不可用: " + errorBody));
+                                    return Mono.error(new BusinessException(ErrorMessageConstant.AGENT_UNAVAILABLE));
                                 })
                 )
                 .bodyToFlux(new ParameterizedTypeReference<ServerSentEvent<String>>() {})
                 .onErrorMap(e -> !(e instanceof BusinessException),
-                        e -> new BusinessException("Dify 流式请求异常: " + e.getMessage(), e));
+                        e -> new BusinessException(ErrorMessageConstant.AGENT_UNAVAILABLE, e));
     }
 }
