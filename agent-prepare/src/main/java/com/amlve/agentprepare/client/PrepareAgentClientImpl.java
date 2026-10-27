@@ -25,8 +25,9 @@ import java.util.Map;
 /**
  * 备课智能体客户端实现。
  * <p>
- * 职责：把 teach 模块传入的开关与七类素材组装为 Dify 工作流入参（settings + reference + user_message），
- * blocking 调用备课工作流并解析返回的教案/PPT大纲/重难点/习题/实训五字段。
+ * 职责：把 teach 模块传入的开关、七类素材、三个生成配置与风格令牌组装为 Dify 工作流入参
+ * （settings + reference + user_message + styleTokens + 三个配置），blocking 调用备课工作流
+ * 并解析返回的教案/PPT大纲/重难点/习题/实训五字段。
  * 未配置工作流密钥时走 Mock 兜底，便于本地无 Dify 环境跑通链路。
  */
 @Service
@@ -51,6 +52,7 @@ public class PrepareAgentClientImpl implements PrepareAgentClient {
     private static final String KEY_PPT_CONFIG = "ppt_config";
     private static final String KEY_LESSON_PLAN_CONFIG = "lesson_plan_config";
     private static final String KEY_HOMEWORK_CONFIG = "homework_config";
+    private static final String KEY_STYLE_TOKENS = "styleTokens";
 
     @Override
     public Result<PrepareResponse> generate(PrepareRequest request, TeachingMaterialDTO teachingMaterial) {
@@ -108,6 +110,8 @@ public class PrepareAgentClientImpl implements PrepareAgentClient {
         inputs.put("reference", reference);
         // 工作流开始节点要求 user_message 必填，为空传空字符串
         inputs.put("user_message", nullToEmpty(request.getUserMessage()));
+        // 风格令牌：teach 侧已序列化为 JSON 字符串，工作流做白名单过滤；空串表示默认风格
+        inputs.put(KEY_STYLE_TOKENS, nullToEmpty(request.getStyleTokens()));
         // 三个生成配置（工作流 v2 新增）：始终传完整对象，config 为 null 时传空键值对，
         // 由工作流代码节点兜底默认值；null 字段键统一空字符串，避免提取节点缺键异常
         inputs.put(KEY_PPT_CONFIG, buildPptConfigMap(request.getPptConfig()));

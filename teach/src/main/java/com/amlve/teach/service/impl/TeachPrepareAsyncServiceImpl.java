@@ -189,9 +189,16 @@ public class TeachPrepareAsyncServiceImpl implements TeachPrepareAsyncService {
         if (themeCode == null || themeCode.isBlank()) {
             return null;
         }
-        TeachPptTheme theme = teachPptThemeMapper.selectOne(
-                new LambdaQueryWrapper<TeachPptTheme>()
-                        .eq(TeachPptTheme::getThemeCode, themeCode));
+        TeachPptTheme theme;
+        try {
+            theme = teachPptThemeMapper.selectOne(
+                    new LambdaQueryWrapper<TeachPptTheme>()
+                            .eq(TeachPptTheme::getThemeCode, themeCode));
+        } catch (Exception e) {
+            // 主题表缺失或查询异常时降级为无主题：备课材料已生成，不能因样式查不到就整单失败
+            log.warn("主题样式不可用，本次按无主题生成: themeCode={}, cause={}", themeCode, e.getMessage());
+            return null;
+        }
 
         return theme == null ? null : theme.getCssText();
     }

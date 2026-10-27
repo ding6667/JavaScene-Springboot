@@ -40,7 +40,11 @@ class HomeworkControllerTest {
               "title": "第一次Java作业",
               "content": "完成教材第1章课后习题",
               "chapterId": 1,
-              "deadline": "2026-09-15T23:59:59"
+              "deadline": "2026-09-15T23:59:59",
+              "classId": 10,
+              "questions": [
+                {"questionId": 9001, "score": 20, "sortOrder": 1}
+              ]
             }
             """;
 
@@ -83,6 +87,27 @@ class HomeworkControllerTest {
         // 标题缺失，触发 @NotBlank 校验
         String invalidBody = """
                 {
+                  "content": "完成教材第1章课后习题",
+                  "chapterId": 1,
+                  "deadline": "2026-09-15T23:59:59"
+                }
+                """;
+
+        mockMvc.perform(post("/api/teach/homework/publish")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(invalidBody))
+                .andExpect(status().isBadRequest());
+
+        verify(teachService, never()).publishHomework(any());
+    }
+
+    @Test
+    @WithMockUser(roles = "TEACHER")
+    void publish_shouldReject400_whenQuestionsMissing() throws Exception {
+        // 题目列表缺失，触发 @NotEmpty 校验（发布必须携带题目）
+        String invalidBody = """
+                {
+                  "title": "第一次Java作业",
                   "content": "完成教材第1章课后习题",
                   "chapterId": 1,
                   "deadline": "2026-09-15T23:59:59"

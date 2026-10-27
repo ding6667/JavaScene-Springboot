@@ -7,6 +7,7 @@ import com.amlve.common.request.Result;
 import com.amlve.common.utils.SecurityUtils;
 import com.amlve.teach.dto.request.HomeworkCloseRequest;
 import com.amlve.teach.dto.request.HomeworkPublishRequest;
+import com.amlve.teach.dto.request.HomeworkQuestionItem;
 import com.amlve.teach.dto.response.HomeworkDetailResponse;
 import com.amlve.teach.enums.HomeworkStatusEnum;
 import com.amlve.teach.enums.QuestionTypeEnum;
@@ -21,7 +22,15 @@ import com.amlve.teachapi.dto.response.HomeworkResponse;
 import com.amlve.teachapi.dto.response.HomeworkSubmitCheckResponse;
 import com.amlve.teachapi.dto.response.StudentHomeworkBriefResponse;
 import com.amlve.teachapi.dto.response.StudentHomeworkDetailResponse;
+import com.amlve.examapi.dto.response.QuestionBaseDTO;
+import com.amlve.examapi.dto.response.QuestionDetailResponse;
+import com.amlve.examapi.service.ExamQuestionApi;
+import com.amlve.knowledgeapi.dto.request.ChapterNamesRequest;
+import com.amlve.knowledgeapi.dto.response.ChapterNameDTO;
+import com.amlve.knowledgeapi.dto.response.ChapterNamesResponse;
+import com.amlve.knowledgeapi.service.KnowledgeChapterApi;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -29,10 +38,17 @@ import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 /**
  * 教师教学业务实现，同时实现 teach-api 对外接口供其他模块调用
@@ -47,9 +63,16 @@ public class TeachServiceImpl implements TeachService, TeachHomeworkService {
     @Resource
     private TeachHomeworkQuestionMapper homeworkQuestionMapper;
 
+    @Resource
+    private ExamQuestionApi examQuestionApi;
+
+    @Resource
+    private KnowledgeChapterApi knowledgeChapterApi;
+
     // ==================== 教师端接口（TeachService） ====================
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public Long publishHomework(HomeworkPublishRequest request) {
         // 发布范围二选一：classId（指定班级）或 grade（全年级），都不传或都传视为参数错误
         boolean hasClass = request.getClassId() != null;
@@ -57,6 +80,30 @@ public class TeachServiceImpl implements TeachService, TeachHomeworkService {
         if (hasClass == hasGrade) {
             throw new BusinessException(ErrorCodeConstant.PARAM_INVALID, ErrorMessageConstant.TEACH_SCOPE_MISSING);
         }
+        List<HomeworkQuestionItem> questions = request.getQuestions();
+        // 题目ID去重校验（快照表有 homework_id+question_id 唯一约束，重复直接拒绝）
+        Set<Long> questionIds = new LinkedHashSet<>();
+        for (HomeworkQuestionItem item : questions) {
+            questionIds.add(item.getQuestionId());
+        }
+        if (questionIds.size() != questions.size()) {
+            throw new BusinessException(ErrorCodeConstant.PARAM_INVALID, "作业题目存在重复，请去重后再发布");
+        }
+        // 批量校验题目存在性：题库接口失败或任一题目缺失则发布失败
+        Result<List<QuestionBaseDTO>> checkResult = examQuestionApi.getQuestionsByIds(new ArrayList<>(questionIds));
+        if (checkResult == null || checkResult.getCode() != 200) {
+            log.warn("发布作业题目校验失败: 题目IDs={}, result={}", questionIds,
+                    checkResult == null ? "null" : checkResult.getCode() + "/" + checkResult.getMessage());
+            throw new BusinessException(ErrorCodeConstant.BUSINESS_ERROR, "题目校验服务不可用，请稍后重试");
+        }
+        List<QuestionBaseDTO> questionBases = checkResult.getData();
+        if (questionBases == null || questionBases.size() != questionIds.size()) {
+            Set<Long> foundIds = questionBases == null ? Set.of()
+                    : questionBases.stream().map(QuestionBaseDTO::getId).collect(Collectors.toSet());
+            List<Long> missing = questionIds.stream().filter(id -> !foundIds.contains(id)).toList();
+            throw new BusinessException(ErrorCodeConstant.PARAM_INVALID, "以下题目不存在或已删除: " + missing);
+        }
+        // 写作业主表
         Homework homework = new Homework();
         homework.setTitle(request.getTitle());
         homework.setContent(request.getContent());
@@ -68,15 +115,34 @@ public class TeachServiceImpl implements TeachService, TeachHomeworkService {
         // 迟交开关与总分：入参未传时用默认值（0）
         homework.setAllowLateSubmit(request.getAllowLateSubmit() == null ? 0 : request.getAllowLateSubmit());
         homework.setTotalScore(request.getTotalScore() == null ? 0 : request.getTotalScore());
-        // 题目快照写入依赖 exam-api 题目查询接口（协作申请中），当前恒为 0
-        homework.setQuestionCount(0);
+        homework.setQuestionCount(questions.size());
         // 发布即已发布状态（1=未发布，2=已发布）；createTime/updateTime 由 MetaHandler 自动填充
         homework.setStatus(2);
         homework.setPublishTime(LocalDateTime.now());
         homeworkMapper.insert(homework);
-        log.info("教师{}发布作业: {} (作业ID={}, 范围={})",
+        // 写题目快照：基础字段来自批量校验结果，答案与解析逐题补充（弱依赖，失败降级留空不阻塞发布）
+        Map<Long, QuestionBaseDTO> baseMap = questionBases.stream()
+                .collect(Collectors.toMap(QuestionBaseDTO::getId, Function.identity()));
+        for (int i = 0; i < questions.size(); i++) {
+            HomeworkQuestionItem item = questions.get(i);
+            QuestionBaseDTO base = baseMap.get(item.getQuestionId());
+            TeachHomeworkQuestion snapshot = new TeachHomeworkQuestion();
+            snapshot.setHomeworkId(homework.getId());
+            snapshot.setQuestionId(base.getId());
+            snapshot.setContent(base.getContent());
+            snapshot.setType(base.getType());
+            snapshot.setOptions(toOptionItemsJson(base.getOptions()));
+            snapshot.setDifficulty(base.getDifficulty());
+            snapshot.setChapterId(base.getChapterId());
+            snapshot.setDefaultScore(base.getScore());
+            snapshot.setScore(item.getScore());
+            snapshot.setSortOrder(item.getSortOrder() != null ? item.getSortOrder() : i + 1);
+            fillAnswerAndAnalysis(snapshot);
+            homeworkQuestionMapper.insert(snapshot);
+        }
+        log.info("教师{}发布作业: {} (作业ID={}, 范围={}, 题目数={})",
                 homework.getTeacherId(), homework.getTitle(), homework.getId(),
-                hasClass ? "班级" + request.getClassId() : "年级" + request.getGrade());
+                hasClass ? "班级" + request.getClassId() : "年级" + request.getGrade(), questions.size());
         return homework.getId();
     }
 
@@ -179,10 +245,10 @@ public class TeachServiceImpl implements TeachService, TeachHomeworkService {
             StudentHomeworkBriefResponse brief = new StudentHomeworkBriefResponse();
             BeanUtils.copyProperties(homework, brief);
             brief.setHomeworkId(homework.getId());
-            // 章节名聚合依赖 knowledge-api 章节查询接口（协作申请中），当前降级为空
-            brief.setChapterName(null);
             return brief;
         }).toList();
+        // 章节名批量聚合（页内章节去重后一次查询），接口异常降级为 null 不阻塞列表
+        fillChapterNames(list);
         return Result.success(list);
     }
 
@@ -201,7 +267,7 @@ public class TeachServiceImpl implements TeachService, TeachHomeworkService {
         StudentHomeworkDetailResponse response = new StudentHomeworkDetailResponse();
         BeanUtils.copyProperties(homework, response);
         response.setHomeworkId(homework.getId());
-        response.setChapterName(null);
+        response.setChapterName(resolveChapterName(homework.getChapterId()));
         response.setQuestions(loadSnapshotQuestions(homeworkId).stream()
                 .map(item -> {
                     StudentHomeworkDetailResponse.StudentQuestionItem question = new StudentHomeworkDetailResponse.StudentQuestionItem();
@@ -251,9 +317,15 @@ public class TeachServiceImpl implements TeachService, TeachHomeworkService {
 
     @Override
     public Result<Void> notifySubmit(Long homeworkId) {
-        // teach_homework 表暂无 submitted_count 列（已向 sql 负责人发起加列申请），
-        // 当前降级为仅记录提交回调日志，待列就绪后补 UPDATE submitted_count = submitted_count + 1
-        log.info("收到作业提交通知: 作业ID={}（提交人数计数待表结构支持）", homeworkId);
+        Homework homework = homeworkMapper.selectById(homeworkId);
+        if (homework == null) {
+            return Result.error(ErrorCodeConstant.NOT_FOUND, "作业不存在: id=" + homeworkId);
+        }
+        // 提交数量自增（submitted_count 允许 NULL，用 IFNULL 兜底避免 NULL+1 恒为 NULL）
+        homeworkMapper.update(null, new LambdaUpdateWrapper<Homework>()
+                .eq(Homework::getId, homeworkId)
+                .setSql("submitted_count = IFNULL(submitted_count, 0) + 1"));
+        log.info("收到作业提交通知: 作业ID={}, 原提交数={}", homeworkId, homework.getSubmittedCount());
         return Result.success(null);
     }
 
@@ -314,6 +386,112 @@ public class TeachServiceImpl implements TeachService, TeachHomeworkService {
 
     /** options JSON 解析用 Jackson 映射器（无 hutool 依赖，用模块内已有 Jackson） */
     private static final ObjectMapper JSON_MAPPER = new ObjectMapper();
+
+    /**
+     * 批量填充学生端作业列表的章节名：页内章节去重后调 knowledge-api 单次批量查询，
+     * 接口失败或数据缺失时保持 null（章节名属展示字段，不阻塞列表返回）
+     */
+    private void fillChapterNames(List<StudentHomeworkBriefResponse> briefs) {
+        if (briefs == null || briefs.isEmpty()) {
+            return;
+        }
+        List<Long> chapterIds = briefs.stream()
+                .map(StudentHomeworkBriefResponse::getChapterId)
+                .filter(Objects::nonNull)
+                .distinct()
+                .toList();
+        if (chapterIds.isEmpty()) {
+            return;
+        }
+        try {
+            ChapterNamesRequest request = new ChapterNamesRequest();
+            request.setChapterIds(chapterIds);
+            Result<ChapterNamesResponse> result = knowledgeChapterApi.getChapterNamesById(request);
+            if (result == null || result.getCode() != 200 || result.getData() == null) {
+                log.warn("章节名批量查询失败，降级为空: chapterIds={}", chapterIds);
+                return;
+            }
+            Map<Long, String> nameMap = result.getData().getChapters() == null ? Map.of()
+                    : result.getData().getChapters().stream()
+                            .collect(Collectors.toMap(ChapterNameDTO::getChapterId,
+                                    ChapterNameDTO::getChapterName, (a, b) -> a));
+            briefs.forEach(brief -> brief.setChapterName(nameMap.get(brief.getChapterId())));
+        } catch (Exception e) {
+            // knowledge-api 调用异常：章节名降级为空，不影响作业列表主流程
+            log.warn("章节名批量查询异常，降级为空: {}", e.getMessage());
+        }
+    }
+
+    /**
+     * 查询单个章节名（学生端详情展示用），接口失败或章节不存在时返回 null
+     */
+    private String resolveChapterName(Long chapterId) {
+        if (chapterId == null) {
+            return null;
+        }
+        try {
+            Result<ChapterNameDTO> result = knowledgeChapterApi.getChapterNameById(chapterId);
+            if (result != null && result.getCode() == 200 && result.getData() != null) {
+                return result.getData().getChapterName();
+            }
+            log.warn("章节名查询未命中: chapterId={}", chapterId);
+        } catch (Exception e) {
+            log.warn("章节名查询异常，降级为空: chapterId={}, err={}", chapterId, e.getMessage());
+        }
+        return null;
+    }
+
+    /**
+     * 逐题补充快照的答案与解析（弱依赖：失败降级留空，不阻塞发布主流程）
+     */
+    private void fillAnswerAndAnalysis(TeachHomeworkQuestion snapshot) {
+        try {
+            Result<QuestionDetailResponse> detail = examQuestionApi.getQuestionDetail(snapshot.getQuestionId());
+            if (detail != null && detail.getCode() == 200 && detail.getData() != null) {
+                snapshot.setAnswer(detail.getData().getAnswer());
+                snapshot.setAnalysis(detail.getData().getAnalysis());
+            } else {
+                log.warn("题目详情获取失败，快照答案解析留空: questionId={}", snapshot.getQuestionId());
+            }
+        } catch (Exception e) {
+            log.warn("题目详情获取异常，快照答案解析留空: questionId={}, err={}",
+                    snapshot.getQuestionId(), e.getMessage());
+        }
+    }
+
+    /**
+     * exam 题目选项 List&lt;String&gt;（如 "A. 选项内容"）转学生端键值 JSON：
+     * 识别 "A." / "A、" / "A:" / "A：" / "A " 前缀拆出 key，否则按序号补 A/B/C；
+     * 序列化失败降级为 null（读取侧 parseOptions 对 null 已做空处理）
+     */
+    private String toOptionItemsJson(List<String> options) {
+        if (options == null || options.isEmpty()) {
+            return null;
+        }
+        List<StudentHomeworkDetailResponse.OptionItem> items = new ArrayList<>(options.size());
+        for (int i = 0; i < options.size(); i++) {
+            String text = options.get(i) == null ? "" : options.get(i);
+            StudentHomeworkDetailResponse.OptionItem item = new StudentHomeworkDetailResponse.OptionItem();
+            item.setKey(String.valueOf((char) ('A' + i)));
+            item.setValue(text);
+            if (text.length() >= 2) {
+                char key = text.charAt(0);
+                char sep = text.charAt(1);
+                if (key >= 'A' && key <= 'Z' && (sep == '.' || sep == '、' || sep == ':'
+                        || sep == '：' || sep == ' ')) {
+                    item.setKey(String.valueOf(key));
+                    item.setValue(text.substring(2).trim());
+                }
+            }
+            items.add(item);
+        }
+        try {
+            return JSON_MAPPER.writeValueAsString(items);
+        } catch (Exception e) {
+            log.warn("题目选项序列化失败，降级为空: {}", e.getMessage());
+            return null;
+        }
+    }
 
     private HomeworkResponse toDTO(Homework homework) {
         HomeworkResponse dto = new HomeworkResponse();

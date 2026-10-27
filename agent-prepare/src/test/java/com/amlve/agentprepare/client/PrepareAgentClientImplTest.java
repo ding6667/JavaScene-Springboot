@@ -143,7 +143,7 @@ class PrepareAgentClientImplTest {
 
         assertThatThrownBy(() -> client.generate(buildRequest(), buildMaterial()))
                 .isInstanceOf(BusinessException.class)
-                .hasMessageContaining("LLM 超时");
+                .hasMessageContaining("AI 服务暂时不可用");
     }
 
     @Test

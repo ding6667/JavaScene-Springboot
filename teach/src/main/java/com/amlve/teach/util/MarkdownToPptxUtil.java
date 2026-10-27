@@ -85,8 +85,7 @@ public class MarkdownToPptxUtil {
      * 独立成方法便于单测断言命令结构。
      */
     java.util.List<String> buildCommand(String mdFilePath, String pptxPath) {
-        return java.util.List.of(marpCommand, "-o", pptxPath, mdFilePath);
-
+        return java.util.List.of(marpCommand, "convert", mdFilePath, "-o", pptxPath);
     }
 
     /**
@@ -113,6 +112,9 @@ public class MarkdownToPptxUtil {
         long startTime = System.currentTimeMillis();
         try {
             Process process = pb.start();
+            // marp2pptx 即使已通过文件参数拿到 Markdown，仍会阻塞等待 stdin 的 EOF；
+            // 不关闭子进程输入流会一直挂到超时，PPT 转换必然失败
+            process.getOutputStream().close();
             // 异步消费输出流：防止缓冲区写满阻塞子进程；
             // 同时避免子进程的孙进程（node/Marp CLI/浏览器）继承并长期持有 stdout 句柄时
             // 同步 readLine() 永久阻塞、waitFor 超时保护永远无法触发的挂死问题
