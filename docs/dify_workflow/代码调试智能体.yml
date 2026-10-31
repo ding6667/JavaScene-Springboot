@@ -1,0 +1,1221 @@
+app:
+  description: 'Java 课程代码调试智能体：定位编译 / 运行 / 逻辑错误，输出错误行、人话错因、分步引导、代码质量评分、复杂度分析、常见错误对比、改进建议、关联教材与相似题。全程只给思路不给完整答案。
+
+    '
+  icon: 🐞
+  icon_background: '#E0F2FE'
+  icon_type: emoji
+  mode: workflow
+  name: 代码调试智能体
+  use_icon_as_answer_icon: false
+dependencies:
+  - current_identifier: null
+    type: marketplace
+    value:
+      marketplace_plugin_unique_identifier: langgenius/deepseek:0.0.26@bdf47cb41e9062bba00d26625d2a795c1874011d8ce64bff738c44b5a31787ea
+      version: null
+kind: app
+version: 0.7.0
+workflow:
+  conversation_variables: []
+  environment_variables: []
+  features:
+    file_upload: {}
+    opening_statement: ''
+    retriever_resource:
+      enabled: false
+    sensitive_word_avoidance:
+      enabled: false
+    suggested_questions: []
+    suggested_questions_after_answer:
+      enabled: false
+    text_to_speech:
+      enabled: false
+      language: ''
+      voice: ''
+  graph:
+    edges:
+      - data:
+          isInIteration: false
+          isInLoop: false
+          sourceType: start
+          targetType: code
+        id: edge-start-parse
+        selected: false
+        source: start
+        sourceHandle: source
+        target: parse_inputs
+        targetHandle: target
+        type: custom
+        zIndex: 0
+      - data:
+          isInIteration: false
+          isInLoop: false
+          sourceType: code
+          targetType: if-else
+        id: edge-parse-check
+        selected: false
+        source: parse_inputs
+        sourceHandle: source
+        target: check_inputs
+        targetHandle: target
+        type: custom
+        zIndex: 0
+      - data:
+          isInIteration: false
+          isInLoop: false
+          sourceType: if-else
+          targetType: llm
+        id: edge-check-valid-llm
+        selected: false
+        source: check_inputs
+        sourceHandle: case_valid
+        target: llm_debug
+        targetHandle: target
+        type: custom
+        zIndex: 0
+      - data:
+          isInIteration: false
+          isInLoop: false
+          sourceType: if-else
+          targetType: code
+        id: edge-check-invalid-build
+        selected: false
+        source: check_inputs
+        sourceHandle: 'false'
+        target: build_invalid
+        targetHandle: target
+        type: custom
+        zIndex: 0
+      - data:
+          isInIteration: false
+          isInLoop: false
+          sourceType: llm
+          targetType: variable-aggregator
+        id: edge-llm-aggregate
+        selected: false
+        source: llm_debug
+        sourceHandle: source
+        target: aggregate_raw
+        targetHandle: target
+        type: custom
+        zIndex: 0
+      - data:
+          isInIteration: false
+          isInLoop: false
+          sourceType: code
+          targetType: variable-aggregator
+        id: edge-invalid-aggregate
+        selected: false
+        source: build_invalid
+        sourceHandle: source
+        target: aggregate_raw
+        targetHandle: target
+        type: custom
+        zIndex: 0
+      - data:
+          isInIteration: false
+          isInLoop: false
+          sourceType: variable-aggregator
+          targetType: code
+        id: edge-aggregate-finalize
+        selected: false
+        source: aggregate_raw
+        sourceHandle: source
+        target: finalize_result
+        targetHandle: target
+        type: custom
+        zIndex: 0
+      - data:
+          isInIteration: false
+          isInLoop: false
+          sourceType: code
+          targetType: end
+        id: edge-finalize-end
+        selected: false
+        source: finalize_result
+        sourceHandle: source
+        target: end_main
+        targetHandle: target
+        type: custom
+        zIndex: 0
+    nodes:
+      - data:
+          selected: false
+          title: 开始
+          type: start
+          variables:
+            - hint: 学生提交的完整 Java 源码
+              label: 学生代码
+              options: []
+              placeholder: 粘贴学生提交的 Java 代码
+              required: true
+              type: paragraph
+              variable: code
+            - hint: 所属章节 ID
+              label: 章节ID
+              max_length: 64
+              options: []
+              placeholder: ''
+              required: false
+              type: text-input
+              variable: chapter_id
+            - hint: 章节名称
+              label: 章节名称
+              max_length: 256
+              options: []
+              placeholder: ''
+              required: false
+              type: text-input
+              variable: chapter_name
+            - hint: 题目 ID（自由练习时为空）
+              label: 题目ID
+              max_length: 64
+              options: []
+              placeholder: ''
+              required: false
+              type: text-input
+              variable: question_id
+            - hint: 题目题干
+              label: 题目内容
+              options: []
+              placeholder: ''
+              required: false
+              type: paragraph
+              variable: question_content
+            - hint: 题目标准答案
+              label: 题目标准答案
+              options: []
+              placeholder: ''
+              required: false
+              type: paragraph
+              variable: question_standard_answer
+            - hint: 题目要求（JSON 字符串）
+              label: 题目要求
+              options: []
+              placeholder: ''
+              required: false
+              type: paragraph
+              variable: question_requirements
+            - hint: syntax_error / runtime_error / logic_error / timeout / memory_overflow / security_violation / none
+              label: 错误类型
+              max_length: 64
+              options: []
+              placeholder: runtime_error
+              required: false
+              type: text-input
+              variable: error_type
+            - hint: 编译器或运行时返回的原始错误信息
+              label: 错误信息
+              options: []
+              placeholder: ''
+              required: false
+              type: paragraph
+              variable: error_msg
+            - hint: 错误行号
+              label: 错误行号
+              max_length: 64
+              options: []
+              placeholder: ''
+              required: false
+              type: text-input
+              variable: error_line
+            - hint: 程序成功运行时的实际输出
+              label: 运行输出
+              options: []
+              placeholder: ''
+              required: false
+              type: paragraph
+              variable: run_result
+            - hint: 测试用例明细（JSON 字符串）
+              label: 测试用例明细
+              options: []
+              placeholder: ''
+              required: false
+              type: paragraph
+              variable: test_result
+            - hint: 通过的用例数
+              label: 通过用例数
+              max_length: 16
+              options: []
+              placeholder: ''
+              required: false
+              type: text-input
+              variable: passed_count
+            - hint: 总用例数
+              label: 总用例数
+              max_length: 16
+              options: []
+              placeholder: ''
+              required: false
+              type: text-input
+              variable: total_count
+        height: 400
+        id: start
+        position:
+          x: 40
+          y: 300
+        positionAbsolute:
+          x: 40
+          y: 300
+        selected: false
+        sourcePosition: right
+        targetPosition: left
+        type: custom
+        width: 242
+        zIndex: 0
+      - data:
+          code: |
+            import json
+            
+            MAX_CODE_LEN = 20000
+            VALID_ERROR_TYPES = {
+                "syntax_error", "runtime_error", "logic_error",
+                "timeout", "memory_overflow", "security_violation", "none",
+            }
+            
+            TYPE_ALIAS = {
+                "syntax": "syntax_error", "compile_error": "syntax_error",
+                "语法错误": "syntax_error", "编译错误": "syntax_error",
+                "runtime": "runtime_error", "exception": "runtime_error",
+                "运行错误": "runtime_error", "运行时异常": "runtime_error",
+                "logic": "logic_error", "wrong_answer": "logic_error",
+                "逻辑错误": "logic_error", "答案错误": "logic_error",
+                "tle": "timeout", "超时": "timeout",
+                "mle": "memory_overflow", "内存溢出": "memory_overflow",
+                "security": "security_violation", "违规": "security_violation",
+                "ok": "none", "passed": "none", "correct": "none",
+            }
+            
+            SCENE_NAME = {
+                "passed": "全部用例通过，侧重代码质量与优化空间",
+                "logic_error": "部分用例未通过，侧重逻辑错误定位",
+                "syntax_error": "编译不通过，侧重语法问题定位",
+                "runtime_error": "运行时抛出异常，侧重异常成因与触发路径",
+                "timeout": "运行超时，侧重复杂度与死循环排查",
+                "memory_overflow": "内存溢出，侧重内存占用与数据结构选择",
+                "security_violation": "触发安全规则，侧重违规写法说明",
+                "free_practice": "自由练习（无题目约束），侧重通用代码质量",
+                "none": "无明显错误，侧重代码质量与优化空间",
+            }
+            
+            
+            def _s(v) -> str:
+                if v is None:
+                    return ""
+                if isinstance(v, bool):
+                    return "true" if v else "false"
+                if isinstance(v, float) and abs(v - round(v)) < 1e-9:
+                    return str(int(round(v)))
+                if isinstance(v, (dict, list)):
+                    return json.dumps(v, ensure_ascii=False)
+                return str(v).strip()
+            
+            
+            def _int(v, default=-1):
+                s = _s(v)
+                if not s:
+                    return default
+                try:
+                    return int(round(float(s)))
+                except (TypeError, ValueError):
+                    return default
+            
+            
+            def _norm_error_type(raw: str, has_error: bool) -> str:
+                t = raw.lower().replace("-", "_")
+                if t in VALID_ERROR_TYPES:
+                    return t
+                if t in TYPE_ALIAS:
+                    return TYPE_ALIAS[t]
+                return "runtime_error" if has_error else "none"
+            
+            
+            def _case_count(test_result: str, passed_count, total_count):
+                passed = _int(passed_count, -1)
+                total = _int(total_count, -1)
+                if test_result:
+                    try:
+                        parsed = json.loads(test_result)
+                    except Exception:
+                        parsed = None
+                    if isinstance(parsed, dict):
+                        if passed < 0:
+                            passed = _int(parsed.get("passedCount"), -1)
+                        if total < 0:
+                            total = _int(parsed.get("totalCount"), -1)
+                passed = 0 if passed < 0 else passed
+                total = 0 if total < 0 else total
+                if total > 0:
+                    passed = max(0, min(passed, total))
+                return passed, total
+            
+            
+            def main(code=None, chapter_id=None, chapter_name=None, question_id=None,
+                     question_content=None, question_standard_answer=None,
+                     question_requirements=None, error_type=None, error_msg=None,
+                     error_line=None, run_result=None, test_result=None,
+                     passed_count=None, total_count=None) -> dict:
+                problems = []
+                src = _s(code)
+                if not src:
+                    problems.append("学生代码不能为空")
+                elif len(src) > MAX_CODE_LEN:
+                    problems.append("学生代码长度不能超过 %d 字符" % MAX_CODE_LEN)
+            
+                e_msg = _s(error_msg)
+                e_line = _s(error_line)
+                run = _s(run_result)
+                test = _s(test_result)
+                e_type_raw = _s(error_type)
+            
+                passed, total = _case_count(test, passed_count, total_count)
+                case_summary = ("共 %d 个用例，通过 %d 个" % (total, passed)) if total > 0 else "无测试用例"
+            
+                has_error = bool(e_msg) or bool(e_line) or e_type_raw not in ("", "none", "ok", "passed")
+                e_type = _norm_error_type(e_type_raw, has_error)
+            
+                q_id = _s(question_id)
+            
+                if e_type == "none" and total > 0 and passed >= total:
+                    scene = "passed"
+                elif e_type == "none" and total > 0 and passed < total:
+                    scene = "logic_error"
+                elif e_type == "none" and not e_msg and not test and not run:
+                    scene = "free_practice"
+                else:
+                    scene = e_type
+            
+                return {
+                    "ok": "1" if not problems else "0",
+                    "error_msg": "；".join(problems),
+                    "scene": scene,
+                    "scene_name": SCENE_NAME.get(scene, "通用代码分析"),
+                    "code": src,
+                    "code_line_count": len(src.splitlines()) if src else 0,
+                    "chapter_id": _s(chapter_id),
+                    "chapter_name": _s(chapter_name),
+                    "has_question": "1" if q_id else "0",
+                    "question_id": q_id,
+                    "question_content": _s(question_content),
+                    "question_standard_answer": _s(question_standard_answer),
+                    "question_requirements": _s(question_requirements),
+                    "error_type": e_type,
+                    "error_msg_detail": e_msg,
+                    "error_line": e_line,
+                    "run_result": run,
+                    "test_result": test,
+                    "case_summary": case_summary,
+                    "passed_count": passed,
+                    "total_count": total,
+                }
+          code_language: python3
+          outputs:
+            case_summary:
+              type: string
+            chapter_id:
+              type: string
+            chapter_name:
+              type: string
+            code:
+              type: string
+            code_line_count:
+              type: number
+            error_line:
+              type: string
+            error_msg:
+              type: string
+            error_msg_detail:
+              type: string
+            error_type:
+              type: string
+            has_question:
+              type: string
+            ok:
+              type: string
+            passed_count:
+              type: number
+            question_content:
+              type: string
+            question_id:
+              type: string
+            question_requirements:
+              type: string
+            question_standard_answer:
+              type: string
+            run_result:
+              type: string
+            scene:
+              type: string
+            scene_name:
+              type: string
+            test_result:
+              type: string
+            total_count:
+              type: number
+          selected: false
+          title: 解析与校验入参
+          type: code
+          variables:
+            - value_selector:
+                - start
+                - code
+              variable: code
+            - value_selector:
+                - start
+                - chapter_id
+              variable: chapter_id
+            - value_selector:
+                - start
+                - chapter_name
+              variable: chapter_name
+            - value_selector:
+                - start
+                - question_id
+              variable: question_id
+            - value_selector:
+                - start
+                - question_content
+              variable: question_content
+            - value_selector:
+                - start
+                - question_standard_answer
+              variable: question_standard_answer
+            - value_selector:
+                - start
+                - question_requirements
+              variable: question_requirements
+            - value_selector:
+                - start
+                - error_type
+              variable: error_type
+            - value_selector:
+                - start
+                - error_msg
+              variable: error_msg
+            - value_selector:
+                - start
+                - error_line
+              variable: error_line
+            - value_selector:
+                - start
+                - run_result
+              variable: run_result
+            - value_selector:
+                - start
+                - test_result
+              variable: test_result
+            - value_selector:
+                - start
+                - passed_count
+              variable: passed_count
+            - value_selector:
+                - start
+                - total_count
+              variable: total_count
+        height: 50
+        id: parse_inputs
+        position:
+          x: 380
+          y: 230
+        positionAbsolute:
+          x: 380
+          y: 230
+        selected: false
+        sourcePosition: right
+        targetPosition: left
+        type: custom
+        width: 241
+        zIndex: 0
+      - data:
+          cases:
+            - case_id: case_valid
+              conditions:
+                - comparison_operator: is
+                  id: cond-ok
+                  value: '1'
+                  varType: string
+                  variable_selector:
+                    - parse_inputs
+                    - ok
+              id: case_valid
+              logical_operator: and
+          selected: false
+          title: 入参校验分支
+          type: if-else
+        height: 122
+        id: check_inputs
+        position:
+          x: 700
+          y: 230
+        positionAbsolute:
+          x: 700
+          y: 230
+        selected: false
+        sourcePosition: right
+        targetPosition: left
+        type: custom
+        width: 241
+        zIndex: 0
+      - data:
+          context:
+            enabled: false
+            variable_selector: []
+          model:
+            completion_params:
+              temperature: 0.2
+            mode: chat
+            name: deepseek-v4-flash
+            provider: langgenius/deepseek/deepseek
+          prompt_template:
+            - id: code-debug-system
+              role: system
+              text: |
+                # 角色
+                
+                你是「Java 代码调试智能体」，服务于高校《Java程序设计基础》课程的学生编程练习。
+                学生刚提交了一段 Java 代码，你会收到代码本身、题目信息、编译器/运行时原始报错、以及测试用例结果。
+                你的任务是帮学生自己找到问题，而不是替他把题做完。
+                
+                
+                # 学生易错点优先级
+                
+                定位问题时，优先排查这些高频坑：
+                1. 数组下标越界、循环边界写成 <= ；
+                2. 字符串比较用了 == 而不是 equals；
+                3. 基本类型与包装类混用导致空指针拆箱；
+                4. 整数除法丢精度、int 溢出；
+                5. switch 漏 break 导致穿透；
+                6. 构造方法/静态代码块执行顺序理解错误；
+                7. 重写未加 @Override、equals 与 hashCode 不成对；
+                8. 集合遍历中修改集合导致 ConcurrentModificationException。
+                
+                
+                # 分析流程（必须按顺序思考）
+                
+                1. 通读代码，判断它想解决什么问题，与题目要求是否一致；
+                2. 有编译错误：定位到具体行，说明违反的语法规则；
+                3. 有运行时异常：结合异常类型与调用栈，还原触发异常的输入与执行路径；
+                4. 有未通过的用例：逐用例比对期望与实际，指出是逻辑、边界还是类型问题；
+                5. 全部通过：跳过找错，重点评估代码质量、复杂度与可优化点；
+                6. 无论哪种场景，都要给出学生下一步能自己动手验证的路径。
+                
+                
+                # 教学红线
+                
+                - 不给完整可运行答案，不重写整段代码；steps 只给思路、检查点和关键片段；
+                - errorLineList 必须是学生代码里的真实行号（字符串形式的数字），无法定位时给空数组，禁止编造；
+                - 每条结论都要能对应到代码或报错信息；不确定就写明"需要补充运行结果验证"，禁止臆测；
+                - 面向零基础学生，讲清"为什么会错"，而不只是"应该怎么写"；
+                - 只讨论教材范围内知识（语法、数组、类与对象、继承多态、接口、异常、集合、IO、多线程），不引入框架与高级特性；
+                - 代码质量打分要有依据，不能一律给 5 分，也不能恶意压分。
+                
+                
+                # 输出要求
+                
+                只输出一个 JSON 对象，不要输出任何 JSON 之外的说明文字，不要用 markdown 代码块包裹。
+                JSON 结构如下，所有字段都必须出现；没有内容的用空字符串或空数组：
+                
+                {
+                  "errorLineList": ["5"],
+                  "errorReason": "用人话解释错误原因，2-4 句，点明触发条件",
+                  "optimizeSuggest": "针对本次问题的具体修改方向，不给完整代码",
+                  "standardIdea": "本题正确的解题思路，分点描述",
+                  "knowledgePoints": ["涉及的知识点，2-5 个"],
+                  "codeQuality": {
+                    "readability": 1-5 的整数,
+                    "naming": 1-5 的整数,
+                    "structure": 1-5 的整数,
+                    "comment": 1-5 的整数,
+                    "complexityControl": 1-5 的整数,
+                    "reusability": 1-5 的整数,
+                    "overall": 1-5 的整数,
+                    "review": "各维度一句话点评，说明扣分点"
+                  },
+                  "complexity": {
+                    "timeComplexity": "如 O(n)",
+                    "spaceComplexity": "如 O(1)",
+                    "analysis": "复杂度怎么算出来的",
+                    "optimizable": true,
+                    "optimizeDirection": "可优化时给方向，否则空字符串"
+                  },
+                  "steps": [
+                    {"stepNo": 1, "title": "步骤标题", "content": "引导学生自己检查什么、怎么验证，不给答案", "codeLocation": "第N行"}
+                  ],
+                  "commonMistakes": [
+                    {"mistake": "学生常写错的写法", "correct": "正确写法", "reason": "为什么会错"}
+                  ],
+                  "improvements": [
+                    {"type": "READABILITY", "description": "改进说明", "example": "关键代码片段", "priority": "HIGH"}
+                  ],
+                  "relatedKnowledge": [
+                    {"point": "知识点", "chapter": "第X章 章节名", "page": "P.123"}
+                  ],
+                  "similarQuestions": [
+                    {"questionId": 1001, "content": "相似题摘要", "reason": "相似点"}
+                  ],
+                  "encouragement": "一句真诚、不空洞的鼓励",
+                  "learningSuggestion": "接下来该复习或练习什么"
+                }
+                
+                
+                # 数量与取值约束
+                
+                - steps 给 3-5 条，按学生自己动手的顺序排列；
+                - commonMistakes 给 1-3 条，improvements 给 2-4 条；
+                - relatedKnowledge 给 1-3 条，页码不确定时只写章节名，page 留空；
+                - similarQuestions 给 1-3 条，questionId 必须是数字；没有把握就给空数组；
+                - improvements.type 只能是 READABILITY / PERFORMANCE / EDGE_CASE / REUSABILITY；
+                - improvements.priority 只能是 HIGH / MEDIUM / LOW；
+                - codeQuality 六个维度与 overall 必须是 1-5 的整数，禁止 0 分、禁止小数；
+                - errorReason、optimizeSuggest、standardIdea 用中文，不要出现英文长句。
+            - id: code-debug-user
+              role: user
+              text: |
+                【本次场景】{{#parse_inputs.scene#}}（{{#parse_inputs.scene_name#}}）
+                
+                【所属章节】{{#parse_inputs.chapter_name#}}（chapter_id={{#parse_inputs.chapter_id#}}）
+                
+                【题目编号】{{#parse_inputs.question_id#}}（为空表示自由练习）
+                
+                【题目内容】
+                {{#parse_inputs.question_content#}}
+                
+                【题目要求】
+                {{#parse_inputs.question_requirements#}}
+                
+                【参考答案】
+                {{#parse_inputs.question_standard_answer#}}
+                
+                【错误类型】{{#parse_inputs.error_type#}}
+                
+                【错误信息】
+                {{#parse_inputs.error_msg_detail#}}
+                
+                【错误行号】{{#parse_inputs.error_line#}}
+                
+                【运行输出】
+                {{#parse_inputs.run_result#}}
+                
+                【用例统计】{{#parse_inputs.case_summary#}}
+                
+                【用例明细】
+                {{#parse_inputs.test_result#}}
+                
+                【学生代码】（共 {{#parse_inputs.code_line_count#}} 行）
+                {{#parse_inputs.code#}}
+                
+                请严格按系统提示词的 JSON 结构输出分析结果，只输出 JSON 本身。
+          selected: false
+          structured_output_enabled: false
+          title: 代码调试分析
+          type: llm
+          vision:
+            enabled: false
+        height: 89
+        id: llm_debug
+        position:
+          x: 1020
+          y: 60
+        positionAbsolute:
+          x: 1020
+          y: 60
+        selected: false
+        sourcePosition: right
+        targetPosition: left
+        type: custom
+        width: 241
+        zIndex: 0
+      - data:
+          code: |
+            import json
+            
+            
+            def main(error_msg=None, question_id=None) -> dict:
+                msg = (error_msg or "输入校验失败").strip()
+                qid = "" if question_id is None else str(question_id).strip()
+                detail = {
+                    "errorLineList": [],
+                    "errorReason": "本次未执行代码分析：" + msg,
+                    "optimizeSuggest": "请修正提交内容后重新运行，再发起代码分析。",
+                    "standardIdea": "",
+                    "knowledgePoints": [],
+                    "codeQuality": {},
+                    "complexity": {},
+                    "steps": [],
+                    "commonMistakes": [],
+                    "improvements": [],
+                    "relatedKnowledge": [],
+                    "similarQuestions": [],
+                    "encouragement": "先让代码跑起来，再谈写得好不好，这一步谁都要走。",
+                    "learningSuggestion": "",
+                    "questionId": qid,
+                }
+                return {"raw_text": json.dumps(detail, ensure_ascii=False)}
+          code_language: python3
+          outputs:
+            raw_text:
+              type: string
+          selected: false
+          title: 组装校验失败结果
+          type: code
+          variables:
+            - value_selector:
+                - parse_inputs
+                - error_msg
+              variable: error_msg
+            - value_selector:
+                - parse_inputs
+                - question_id
+              variable: question_id
+        height: 50
+        id: build_invalid
+        position:
+          x: 1020
+          y: 430
+        positionAbsolute:
+          x: 1020
+          y: 430
+        selected: false
+        sourcePosition: right
+        targetPosition: left
+        type: custom
+        width: 241
+        zIndex: 0
+      - data:
+          output_type: string
+          selected: false
+          title: 分析结果聚合
+          type: variable-aggregator
+          variables:
+            - - llm_debug
+              - text
+            - - build_invalid
+              - raw_text
+        height: 129
+        id: aggregate_raw
+        position:
+          x: 1350
+          y: 240
+        positionAbsolute:
+          x: 1350
+          y: 240
+        selected: false
+        sourcePosition: right
+        targetPosition: left
+        type: custom
+        width: 241
+        zIndex: 0
+      - data:
+          code: |
+            import json
+            
+            MAX_LIST = 8
+            QUALITY_KEYS = ["readability", "naming", "structure", "comment",
+                            "complexityControl", "reusability", "overall"]
+            IMPROVE_TYPES = {"READABILITY", "PERFORMANCE", "EDGE_CASE", "REUSABILITY"}
+            PRIORITIES = {"HIGH", "MEDIUM", "LOW"}
+            DEFAULT_ENCOURAGEMENT = "代码能跑通是第一步，能写清楚才是真本事，继续加油。"
+            
+            
+            def _s(v) -> str:
+                if v is None:
+                    return ""
+                if isinstance(v, (dict, list)):
+                    return json.dumps(v, ensure_ascii=False)
+                return str(v).strip()
+            
+            
+            def _safe_int(v):
+                try:
+                    return int(round(float(_s(v))))
+                except (TypeError, ValueError):
+                    return None
+            
+            
+            def _load(raw) -> dict:
+                """兼容四种形态：直接 dict / JSON 字符串 / ```json 包裹 / Dify 响应包裹"""
+                if isinstance(raw, dict):
+                    return raw
+                text = _s(raw)
+                if not text:
+                    return {}
+                start = text.find("{")
+                end = text.rfind("}")
+                if start < 0 or end <= start:
+                    return {}
+                try:
+                    data = json.loads(text[start:end + 1])
+                except Exception:
+                    return {}
+                if not isinstance(data, dict):
+                    return {}
+                if isinstance(data.get("data"), dict):
+                    outputs = data["data"].get("outputs")
+                    if isinstance(outputs, dict):
+                        return outputs
+                if isinstance(data.get("outputs"), dict):
+                    return data["outputs"]
+                return data
+            
+            
+            def _str_list(v, limit=MAX_LIST):
+                out = []
+                if isinstance(v, str):
+                    v = [v]
+                if not isinstance(v, list):
+                    return out
+                for item in v:
+                    s = _s(item)
+                    if s and s not in out:
+                        out.append(s)
+                    if len(out) >= limit:
+                        break
+                return out
+            
+            
+            def _score(v):
+                n = _safe_int(v)
+                if n is None:
+                    return None
+                return max(1, min(5, n))
+            
+            
+            def _quality(v) -> dict:
+                if not isinstance(v, dict):
+                    return {}
+                q = {}
+                for key in QUALITY_KEYS:
+                    if key == "overall":
+                        continue
+                    val = _score(v.get(key))
+                    if val is not None:
+                        q[key] = val
+                comment_raw = v.get("comment")
+                if isinstance(comment_raw, (int, float)) and not isinstance(comment_raw, bool):
+                    q["comment"] = _score(comment_raw)
+                review = _s(v.get("review"))
+                if not review and isinstance(comment_raw, str):
+                    review = comment_raw.strip()
+                if review:
+                    q["review"] = review
+                overall = _score(v.get("overall"))
+                if overall is None:
+                    scores = [q[k] for k in q if k in QUALITY_KEYS and k != "overall"]
+                    overall = int(round(sum(scores) / len(scores))) if scores else None
+                if overall is not None:
+                    q["overall"] = overall
+                return q
+            
+            
+            def _complexity(v) -> dict:
+                if not isinstance(v, dict):
+                    return {}
+                c = {}
+                for key in ("timeComplexity", "spaceComplexity", "analysis", "optimizeDirection"):
+                    s = _s(v.get(key))
+                    if s:
+                        c[key] = s
+                opt = v.get("optimizable")
+                if isinstance(opt, bool):
+                    c["optimizable"] = opt
+                elif isinstance(opt, str):
+                    c["optimizable"] = opt.strip().lower() in ("true", "1", "yes", "是", "可优化")
+                return c
+            
+            
+            def _steps(v):
+                out = []
+                if not isinstance(v, list):
+                    return out
+                for item in v:
+                    if not isinstance(item, dict):
+                        continue
+                    title = _s(item.get("title"))
+                    content = _s(item.get("content"))
+                    if not title and not content:
+                        continue
+                    no = _safe_int(item.get("stepNo"))
+                    out.append({
+                        "stepNo": no if no and no > 0 else len(out) + 1,
+                        "title": title,
+                        "content": content,
+                        "codeLocation": _s(item.get("codeLocation")),
+                    })
+                    if len(out) >= MAX_LIST:
+                        break
+                return out
+            
+            
+            def _mistakes(v):
+                out = []
+                if not isinstance(v, list):
+                    return out
+                for item in v:
+                    if not isinstance(item, dict):
+                        continue
+                    mistake = _s(item.get("mistake"))
+                    correct = _s(item.get("correct"))
+                    if not mistake and not correct:
+                        continue
+                    out.append({
+                        "mistake": mistake,
+                        "correct": correct,
+                        "reason": _s(item.get("reason")),
+                    })
+                    if len(out) >= MAX_LIST:
+                        break
+                return out
+            
+            
+            def _improvements(v):
+                out = []
+                if not isinstance(v, list):
+                    return out
+                for item in v:
+                    if not isinstance(item, dict):
+                        continue
+                    desc = _s(item.get("description"))
+                    if not desc:
+                        continue
+                    t = _s(item.get("type")).upper()
+                    p = _s(item.get("priority")).upper()
+                    out.append({
+                        "type": t if t in IMPROVE_TYPES else "READABILITY",
+                        "description": desc,
+                        "example": _s(item.get("example")),
+                        "priority": p if p in PRIORITIES else "MEDIUM",
+                    })
+                    if len(out) >= MAX_LIST:
+                        break
+                return out
+            
+            
+            def _related(v):
+                out = []
+                if not isinstance(v, list):
+                    return out
+                for item in v:
+                    if not isinstance(item, dict):
+                        continue
+                    point = _s(item.get("point"))
+                    if not point:
+                        continue
+                    out.append({
+                        "point": point,
+                        "chapter": _s(item.get("chapter")),
+                        "page": _s(item.get("page")),
+                    })
+                    if len(out) >= MAX_LIST:
+                        break
+                return out
+            
+            
+            def _similar(v):
+                out = []
+                if not isinstance(v, list):
+                    return out
+                for item in v:
+                    if not isinstance(item, dict):
+                        continue
+                    content = _s(item.get("content"))
+                    qid = _safe_int(item.get("questionId"))
+                    if not content or qid is None or qid <= 0:
+                        continue
+                    out.append({
+                        "questionId": qid,
+                        "content": content,
+                        "reason": _s(item.get("reason")),
+                    })
+                    if len(out) >= 5:
+                        break
+                return out
+            
+            
+            def main(raw_text=None, error_msg=None) -> dict:
+                data = _load(raw_text)
+                if not data:
+                    msg = _s(error_msg) or "AI 输出无法解析为约定 JSON 结构"
+                    return {
+                        "errorLineList": [],
+                        "errorReason": "本次未能生成有效的代码分析结果：" + msg,
+                        "optimizeSuggest": "请稍后重试；若持续失败，请联系教师检查智能体配置。",
+                        "standardIdea": "",
+                        "knowledgePoints": [],
+                        "codeQuality": {},
+                        "complexity": {},
+                        "steps": [],
+                        "commonMistakes": [],
+                        "improvements": [],
+                        "relatedKnowledge": [],
+                        "similarQuestions": [],
+                        "encouragement": DEFAULT_ENCOURAGEMENT,
+                        "learningSuggestion": "",
+                    }
+                return {
+                    "errorLineList": _str_list(data.get("errorLineList")),
+                    "errorReason": _s(data.get("errorReason")),
+                    "optimizeSuggest": _s(data.get("optimizeSuggest")),
+                    "standardIdea": _s(data.get("standardIdea")),
+                    "knowledgePoints": _str_list(data.get("knowledgePoints")),
+                    "codeQuality": _quality(data.get("codeQuality")),
+                    "complexity": _complexity(data.get("complexity")),
+                    "steps": _steps(data.get("steps")),
+                    "commonMistakes": _mistakes(data.get("commonMistakes")),
+                    "improvements": _improvements(data.get("improvements")),
+                    "relatedKnowledge": _related(data.get("relatedKnowledge")),
+                    "similarQuestions": _similar(data.get("similarQuestions")),
+                    "encouragement": _s(data.get("encouragement")) or DEFAULT_ENCOURAGEMENT,
+                    "learningSuggestion": _s(data.get("learningSuggestion")),
+                }
+          code_language: python3
+          outputs:
+            codeQuality:
+              type: object
+            commonMistakes:
+              type: array[object]
+            complexity:
+              type: object
+            encouragement:
+              type: string
+            errorLineList:
+              type: array[string]
+            errorReason:
+              type: string
+            improvements:
+              type: array[object]
+            knowledgePoints:
+              type: array[string]
+            learningSuggestion:
+              type: string
+            optimizeSuggest:
+              type: string
+            relatedKnowledge:
+              type: array[object]
+            similarQuestions:
+              type: array[object]
+            standardIdea:
+              type: string
+            steps:
+              type: array[object]
+          selected: false
+          title: 结果规整与校验
+          type: code
+          variables:
+            - value_selector:
+                - aggregate_raw
+                - output
+              value_type: string
+              variable: raw_text
+            - value_selector:
+                - parse_inputs
+                - error_msg
+              variable: error_msg
+        height: 50
+        id: finalize_result
+        position:
+          x: 1680
+          y: 240
+        positionAbsolute:
+          x: 1680
+          y: 240
+        selected: false
+        sourcePosition: right
+        targetPosition: left
+        type: custom
+        width: 241
+        zIndex: 0
+      - data:
+          outputs:
+            - value_selector:
+                - finalize_result
+                - errorLineList
+              value_type: array[string]
+              variable: errorLineList
+            - value_selector:
+                - finalize_result
+                - errorReason
+              value_type: string
+              variable: errorReason
+            - value_selector:
+                - finalize_result
+                - optimizeSuggest
+              value_type: string
+              variable: optimizeSuggest
+            - value_selector:
+                - finalize_result
+                - standardIdea
+              value_type: string
+              variable: standardIdea
+            - value_selector:
+                - finalize_result
+                - knowledgePoints
+              value_type: array[string]
+              variable: knowledgePoints
+            - value_selector:
+                - finalize_result
+                - codeQuality
+              value_type: object
+              variable: codeQuality
+            - value_selector:
+                - finalize_result
+                - complexity
+              value_type: object
+              variable: complexity
+            - value_selector:
+                - finalize_result
+                - steps
+              value_type: array[object]
+              variable: steps
+            - value_selector:
+                - finalize_result
+                - commonMistakes
+              value_type: array[object]
+              variable: commonMistakes
+            - value_selector:
+                - finalize_result
+                - improvements
+              value_type: array[object]
+              variable: improvements
+            - value_selector:
+                - finalize_result
+                - relatedKnowledge
+              value_type: array[object]
+              variable: relatedKnowledge
+            - value_selector:
+                - finalize_result
+                - similarQuestions
+              value_type: array[object]
+              variable: similarQuestions
+            - value_selector:
+                - finalize_result
+                - encouragement
+              value_type: string
+              variable: encouragement
+            - value_selector:
+                - finalize_result
+                - learningSuggestion
+              value_type: string
+              variable: learningSuggestion
+          selected: false
+          title: 输出·代码调试结果
+          type: end
+        height: 260
+        id: end_main
+        position:
+          x: 2010
+          y: 240
+        positionAbsolute:
+          x: 2010
+          y: 240
+        selected: false
+        sourcePosition: right
+        targetPosition: left
+        type: custom
+        width: 241
+        zIndex: 0
+    viewport:
+      x: -140
+      y: 40
+      zoom: 0.8
+  rag_pipeline_variables: []
