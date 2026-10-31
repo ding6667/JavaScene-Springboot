@@ -1,13 +1,13 @@
 package com.amlve.exam.tableEnt;
 
 import com.amlve.common.entity.BaseEntity;
-import com.amlve.exam.enumeration.QuestionDifficultyEnum;
 import com.amlve.common.enums.QuestionTypeEnum;
 import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.baomidou.mybatisplus.extension.handlers.JacksonTypeHandler;
+import com.fasterxml.jackson.databind.JsonNode;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 
@@ -29,6 +29,20 @@ public class ExamQuestion extends BaseEntity {
      * 题干
      */
     private String content;
+
+    /**
+     * 简短题目：一句话概括题意（如「最长k个相等字符串」），用于列表/卡片/作业概览展示
+     */
+    @TableField("short_title")
+    private String shortTitle;
+
+    /**
+     * 前端渲染配置（JSON 对象），按题型定形：
+     * 选择 {@code {"choiceMode":"single"|"multiple"}}、填空 {@code {"blankCount":3}}、
+     * 编程 {@code {"language":"java"}}；未识别的额外键原样保留，供前端自行扩展。
+     */
+    @TableField(value = "render_config", typeHandler = JacksonTypeHandler.class)
+    private JsonNode renderConfig;
 
     /**
      * 题型：1=选择，2=填空，3=判断，4=程序阅读，5=编程，6=简答
@@ -67,7 +81,7 @@ public class ExamQuestion extends BaseEntity {
      * 标准答案（JSON）
      */
     @TableField(value = "answer", typeHandler = JacksonTypeHandler.class)
-    private String answer;
+    private JsonNode answer;
 
     /**
      * 解析
@@ -87,9 +101,10 @@ public class ExamQuestion extends BaseEntity {
     private Long chapterId;
 
     /**
-     * 难度：1=基础，2=进阶，3=拔高
+     * 难度配置ID（逻辑外键 exam_question_difficulty_config.id），难度名称需联表取
      */
-    private QuestionDifficultyEnum difficulty;
+    @TableField("difficulty_config_id")
+    private Long difficultyConfigId;
 
     /**
      * 原始难度分（1.0-5.0）

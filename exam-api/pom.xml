@@ -34,6 +34,12 @@
             <version>${project.version}</version>
         </dependency>
 
+        <!-- 题目答案按结构化对象在接口层透传（JsonNode），需 databind -->
+        <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-databind</artifactId>
+        </dependency>
+
     </dependencies>
 
     <build>

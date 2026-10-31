@@ -33,7 +33,8 @@ create table javascene.exam_homework_submit
     homework_id    bigint                             not null comment '作业ID（关联teach模块）',
     user_id        bigint                             not null comment '提交学生ID',
     question_id    bigint                             not null comment '题目ID',
-    answer_content varchar(2000)                      null comment '学生答案',
+    snapshot_id    bigint   default 0                 not null comment '作业题目快照ID（teach_homework_question.id）；0=未上报（按题库版本归档）',
+    answer_content text                               null comment '学生答案（编程题为完整代码，长度与 study_practice_record 对齐）',
     submit_time    datetime default CURRENT_TIMESTAMP not null comment '提交时间',
     create_time    datetime default CURRENT_TIMESTAMP not null comment '创建时间',
     update_time    datetime default CURRENT_TIMESTAMP not null on update CURRENT_TIMESTAMP comment '更新时间',
@@ -60,6 +61,8 @@ create table javascene.exam_question
     id                   bigint auto_increment comment '主键ID'
         primary key,
     content              text                                    not null comment '题目内容',
+    short_title          varchar(100)                            null comment '简短题目（一句话概括，列表/卡片展示用）',
+    render_config        json                                    null comment '前端渲染配置（JSON对象）：填空 blankCount、选择 choiceMode 等',
     type                 tinyint                                 not null comment '题型（1=选择，2=填空，3=判断，4=程序阅读，5=编程题）',
     options              json                                    null comment '选项（JSON数组，选择题用）',
     requirements         json                                    null comment '主观题要求',
@@ -70,7 +73,7 @@ create table javascene.exam_question
     analysis             text                                    null comment '解析',
     solution_outline     text                                    null comment '解题思路概述',
     chapter_id           bigint                                  not null comment '关联章节ID',
-    difficulty           tinyint       default 1                 null comment '难度（1=基础，2=进阶，3=拔高）',
+    difficulty_config_id bigint                                null comment '难度配置ID（逻辑外键 exam_question_difficulty_config.id）',
     difficulty_score     decimal(3, 1)                           null comment '原始难度分（1.0-5.0）',
     cognitive_level      varchar(20)                             null comment '认知层次',
     ability_dimensions   json                                    null comment '能力维度',
@@ -95,8 +98,8 @@ create index idx_chapter_id
 create index idx_deleted
     on javascene.exam_question (deleted);
 
-create index idx_difficulty
-    on javascene.exam_question (difficulty);
+create index idx_difficulty_config
+    on javascene.exam_question (difficulty_config_id);
 
 create index idx_type
     on javascene.exam_question (type);
@@ -145,13 +148,54 @@ create index idx_status
 create index idx_teacher_chapter
     on javascene.exam_question_difficulty_config (teacher_id, chapter_id);
 
+create table javascene.exam_question_snapshot
+(
+    id                   bigint auto_increment comment '主键ID'
+        primary key,
+    snapshot_key         varchar(80)                            not null
+        comment '快照幂等键：H:{questionId}:{fingerprint}（题库版本） 或 P:{questionId}:{teachSnapshotId}（作业发布快照）',
+    snapshot_type        tinyint      default 1                 not null
+        comment '快照来源：1=题库版本（按内容指纹去重），2=作业发布快照（按 teach 快照ID去重）',
+    question_id          bigint                                 not null comment '题库题目ID（exam_question.id）',
+    teach_snapshot_id    bigint       default 0                 not null
+        comment '作业题目快照ID（teach_homework_question.id）；题库来源为 0',
+    fingerprint          char(32)     default ''                not null
+        comment '内容指纹：题干+选项+标准答案的 MD5，用于判断题库题目是否已修订',
+    short_title          varchar(100)                           null comment '简短题目快照',
+    question_type        tinyint                                null comment '题型快照：1选择 2填空 3判断 4程序阅读 5编程 6简答',
+    score                int                                    null comment '题目分值快照',
+    chapter_id           bigint                                 null comment '章节ID快照',
+    difficulty_config_id bigint                                 null comment '难度配置ID快照',
+    snapshot_view        json                                   null
+        comment '学生可见渲染包：content/shortTitle/type/options/renderConfig/codeFramework/requirements/hints/score/chapterId/knowledgePoints',
+    snapshot_judge       json                                   null
+        comment '判题与解析包：answer/analysis/solutionOutline/testCases/judgeMode。禁止下发学生端',
+    legacy               tinyint      default 0                 not null
+        comment '1=历史迁移数据，题面按迁移时题库回填，可能已非当时版本',
+    create_time          datetime     default CURRENT_TIMESTAMP not null comment '创建时间',
+    update_time          datetime     default CURRENT_TIMESTAMP not null on update CURRENT_TIMESTAMP comment '更新时间',
+    deleted              tinyint      default 0                 not null comment '逻辑删除',
+    constraint uk_snapshot_key
+        unique (snapshot_key)
+)
+    comment '题目快照表（一个题目版本一行，错题本/重做共用，跨学生复用）' collate = utf8mb4_unicode_ci;
+
+create index idx_snapshot_question
+    on javascene.exam_question_snapshot (question_id);
+
+create index idx_snapshot_type_question
+    on javascene.exam_question_snapshot (snapshot_type, question_id);
+
+create index idx_snapshot_deleted
+    on javascene.exam_question_snapshot (deleted);
+
 create table javascene.exam_wrong_question
 (
     id              bigint auto_increment comment '主键ID'
         primary key,
     user_id         bigint                             not null comment '学生ID',
-    question_id     bigint                             not null comment '题目ID',
-    source          tinyint  default 1                 null comment '来源：1=作业，2=刷题',
+    snapshot_id     bigint                             not null comment '题目快照ID（exam_question_snapshot.id），题面/答案/用例都在快照里',
+    source          tinyint  default 1                 not null comment '来源：1=作业，2=刷题',
     wrong_count     int      default 0                 not null comment '累计错误次数',
     last_answer     text                               null comment '最近一次错误答案',
     mastered        tinyint  default 0                 not null comment '是否已掌握：0=未掌握，1=已掌握',
@@ -159,19 +203,22 @@ create table javascene.exam_wrong_question
     create_time     datetime default CURRENT_TIMESTAMP not null comment '创建时间',
     update_time     datetime default CURRENT_TIMESTAMP not null on update CURRENT_TIMESTAMP comment '更新时间',
     deleted         tinyint  default 0                 not null comment '逻辑删除',
-    constraint uk_user_question
-        unique (user_id, question_id)
+    constraint uk_user_snapshot_source
+        unique (user_id, snapshot_id, source)
 )
-    comment '错题归档表' collate = utf8mb4_unicode_ci;
+    comment '错题归档表（学生 x 题目快照 x 来源，不存题面）' collate = utf8mb4_unicode_ci;
 
-create index idx_deleted
-    on javascene.exam_wrong_question (deleted);
+create index idx_wrong_user_time
+    on javascene.exam_wrong_question (user_id, last_wrong_time);
 
-create index idx_question_id
-    on javascene.exam_wrong_question (question_id);
+create index idx_wrong_snapshot
+    on javascene.exam_wrong_question (snapshot_id);
 
 create index idx_user_id
     on javascene.exam_wrong_question (user_id);
+
+create index idx_deleted
+    on javascene.exam_wrong_question (deleted);
 
 create table javascene.intent_draft
 (
@@ -870,10 +917,18 @@ create table javascene.teach_homework_question
     question_id      bigint                             not null comment '题目ID（关联 exam_question）',
     source_type      tinyint                            null comment '来源：1教材习题生成 2AI生成 3人工录入',
     content          text                               null comment '题干快照（发布时固化）',
+    short_title      varchar(100)                       null comment '简短题目快照（一句话概括）',
+    render_config    json                               null comment '前端渲染配置快照（填空 blankCount、选择 choiceMode 等）',
     type             tinyint                            null comment '题型：1选择 2填空 3判断 4程序阅读 5编程 6简答',
     options          json                               null comment '选项快照（选择题用）',
     answer           json                               null comment '标准答案快照（教师可见，学生端不返回）',
     analysis         text                               null comment '解析快照',
+    code_framework   text                               null comment '编程题代码框架快照（发布时固化，学生答题编辑器直接用它初始化）',
+    requirements     json                               null comment '作答要求快照（JSON数组，主观题/编程题）',
+    hints            json                               null comment '阶梯提示快照（JSON数组，学生按需展开）',
+    solution_outline text                               null comment '解题思路快照（做错后可展示）',
+    test_cases       json                               null comment '测试用例快照（JSON数组，重做判题凭据，禁止下发学生端）',
+    judge_mode       tinyint                            null comment '判题方式快照：1=AI批改 2=测试用例判题 3=混合',
     difficulty       tinyint                            null comment '难度：1基础 2进阶 3拔高',
     chapter_id       bigint                             null comment '章节ID快照',
     knowledge_points json                               null comment '知识点快照',
@@ -887,7 +942,7 @@ create table javascene.teach_homework_question
     constraint uk_homework_question
         unique (homework_id, question_id)
 )
-    comment '作业题目关联表' collate = utf8mb4_unicode_ci;
+    comment '作业题目快照表（发布时固化完整题目：题干/选项/答案/解析/代码框架/提示/测试用例/判题方式，题库后续修订不影响已发布作业）' collate = utf8mb4_unicode_ci;
 
 create index idx_deleted
     on javascene.teach_homework_question (deleted);
@@ -958,6 +1013,7 @@ create table javascene.teach_prepare_record
     lab         longtext                           null comment '上机实训方案（Markdown）',
     pptx_md     longtext                           null comment 'PPT原始Markdown内容',
     pptx_url    varchar(500)                       null comment 'PPT文件路径',
+    theme_code  varchar(64)                        null comment '生成PPT时使用的主题编码（补生成按此还原样式）',
     status      tinyint  default 2                 null comment '状态（1=成功，0=失败，2=生成中）',
     error_msg   varchar(500)                       null comment '错误信息',
     create_time datetime default CURRENT_TIMESTAMP not null,

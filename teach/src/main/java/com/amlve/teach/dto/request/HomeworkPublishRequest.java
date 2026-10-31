@@ -1,12 +1,8 @@
 package com.amlve.teach.dto.request;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
 import jakarta.validation.Valid;
-import jakarta.validation.constraints.Max;
-import jakarta.validation.constraints.Min;
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotEmpty;
-import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Size;
+import jakarta.validation.constraints.*;
 import lombok.Data;
 
 import java.time.LocalDateTime;
@@ -30,6 +26,7 @@ public class HomeworkPublishRequest {
     private Long chapterId;
 
     @NotNull(message = "截止时间不能为空")
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private LocalDateTime deadline;
 
     /** 发布班级ID（指定班级发布时必填） */
@@ -44,13 +41,32 @@ public class HomeworkPublishRequest {
     @Max(value = 1, message = "是否允许迟交只能为0或1")
     private Integer allowLateSubmit = 0;
 
-    /** 作业总分，默认 0 */
+    /** 作业总分，默认 0；传了题目时由题目分值汇总覆盖 */
     @Min(value = 0, message = "作业总分不能为负数")
     private Integer totalScore = 0;
 
-    /** 选择的题目列表（发布时校验存在性并写入题目快照） */
-    @NotEmpty(message = "作业题目不能为空")
-    @Size(max = 100, message = "单次作业最多100道题")
+    /**
+     * 发布时选中的题目，数组顺序即题目顺序（sortOrder 从 1 开始）。
+     * 不传或空数组表示只建作业、暂不挂题。
+     */
+    @Size(max = 100, message = "单次最多发布100道题")
     @Valid
-    private List<HomeworkQuestionItem> questions;
+    private List<QuestionItem> questions;
+
+    /** 选中题目：题目ID + 本题分值（可选）+ 来源（可选） */
+    @Data
+    public static class QuestionItem {
+
+        @NotNull(message = "题目ID不能为空")
+        private Long questionId;
+
+        /** 本题分值；不传则用题库中该题的默认分值 */
+        @Min(value = 0, message = "题目分值不能为负数")
+        private Integer score;
+
+        /** 来源：1教材习题生成 2AI生成 3人工录入，默认 3（教师从题库手选） */
+        @Min(value = 1, message = "题目来源只能为1、2、3")
+        @Max(value = 3, message = "题目来源只能为1、2、3")
+        private Integer sourceType;
+    }
 }

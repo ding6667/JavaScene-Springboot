@@ -89,21 +89,27 @@ public class QuestionAgentImpl implements QuestionAgent {
 
     /**
      * 解析 blocking 响应：data.outputs.output 为结束节点结构化输出 { questions, total, status }
+     * <p>
+     * 工作流失败时不再只把 Dify 的 error 写进日志后抛通用文案——把原始错误放进 errorMsg，
+     * 由调用方（exam）落日志，否则只能在前端看到"AI 服务暂时不可用"，排查时无从下手。
      */
     private QuestionGenerateResponse parseResponse(String response) {
         try {
             JsonNode root = MAPPER.readTree(response);
             JsonNode data = root.path("data");
+            String runId = data.path("workflow_run_id").asText(
+                    root.path("workflow_run_id").asText(""));
             String status = data.path("status").asText("");
             if (!"succeeded".equals(status)) {
                 String error = data.path("error").asText("未知错误");
-                log.error("Dify 出题工作流未执行成功: status={}, error={}", status, error);
-                throw new BusinessException(ErrorMessageConstant.AGENT_UNAVAILABLE);
+                log.error("Dify 出题工作流未执行成功: workflowRunId={}, status={}, error={}",
+                        runId, status, error);
+                return failedResponse("出题工作流执行失败（workflowRunId=" + runId + "）：" + error);
             }
             JsonNode outputs = data.path("outputs");
             if (outputs.isMissingNode() || outputs.isNull()) {
-                log.error("Dify 出题工作流响应缺少 outputs 节点");
-                throw new BusinessException(ErrorMessageConstant.AGENT_RESULT_UNREADABLE);
+                log.error("Dify 出题工作流响应缺少 outputs 节点: workflowRunId={}", runId);
+                return failedResponse("出题工作流没有返回任何结果（workflowRunId=" + runId + "）");
             }
             JsonNode outputNode = outputs.path("output");
             JsonNode source = outputNode.isObject() ? outputNode : outputs;
@@ -118,6 +124,8 @@ public class QuestionAgentImpl implements QuestionAgent {
                             .knowledgePoint(q.path("knowledgePoint").asText(null))
                             .knowledgePoints(toStrList(q.path("knowledgePoints")))
                             .content(q.path("content").asText(null))
+                            .shortTitle(q.path("shortTitle").asText(null))
+                            .renderConfig(jsonObjectOrNull(q.path("renderConfig")))
                             .options(toStrList(q.path("options")))
                             .answer(q.path("answer").asText(null))
                             .analysis(q.path("analysis").asText(null))
@@ -135,11 +143,24 @@ public class QuestionAgentImpl implements QuestionAgent {
                             .build());
                 }
             }
+            String resultStatus = source.path("status").asText(null);
+            String resultMsg = source.path("errorMsg").asText(null);
+            if (items.isEmpty()) {
+                // 工作流跑成功但一道题都没出：明确标记失败并留下日志，避免上游只拿到 total=0 无从判断
+                log.warn("Dify 出题工作流执行成功但题目列表为空: workflowRunId={}, status={}, errorMsg={}",
+                        runId, resultStatus, resultMsg);
+                if (resultStatus == null || resultStatus.isBlank()) {
+                    resultStatus = "failed";
+                }
+                if (resultMsg == null || resultMsg.isBlank()) {
+                    resultMsg = "出题智能体没有返回任何题目（workflowRunId=" + runId + "）";
+                }
+            }
             return QuestionGenerateResponse.builder()
                     .questions(items)
                     .total(parseInt(source.path("total")))
-                    .status(source.path("status").asText(null))
-                    .errorMsg(source.path("errorMsg").asText(null))
+                    .status(resultStatus)
+                    .errorMsg(resultMsg)
                     .build();
         } catch (BusinessException e) {
             throw e;
@@ -157,6 +178,8 @@ public class QuestionAgentImpl implements QuestionAgent {
                 .difficultyScore(new BigDecimal("1.5"))
                 .cognitiveLevel("理解")
                 .content("示例题目：请简述 Java 中接口与抽象类的区别（当前为固定出题结果）。")
+                .shortTitle("接口与抽象类的区别")
+                .renderConfig(MAPPER.createObjectNode().put("choiceMode", "single"))
                 .options(List.of("A. 接口可多继承，抽象类单继承", "B. 抽象类可多继承", "C. 接口可含具体方法", "D. 两者完全相同"))
                 .answer("A")
                 .analysis("当前为固定出题结果，暂未配置 Dify 出题密钥。")
@@ -174,6 +197,33 @@ public class QuestionAgentImpl implements QuestionAgent {
         } catch (Exception e) {
             throw new BusinessException(ErrorMessageConstant.AGENT_RESULT_UNREADABLE, e);
         }
+    }
+
+    /**
+     * 渲染配置取值：只接受 JSON 对象（模型偶尔会把对象写成 JSON 字符串，这里一并兼容），
+     * 其余形态（空、数组、数字）返回 null，交给 exam 侧按题型推断默认值。
+     */
+    private JsonNode jsonObjectOrNull(JsonNode node) {
+        if (node == null || node.isNull() || node.isMissingNode()) {
+            return null;
+        }
+        if (node.isObject()) {
+            return node.isEmpty() ? null : node;
+        }
+        if (node.isTextual()) {
+            String text = node.asText("").trim();
+            if (text.startsWith("{")) {
+                try {
+                    JsonNode parsed = MAPPER.readTree(text);
+                    if (parsed != null && parsed.isObject() && !parsed.isEmpty()) {
+                        return parsed;
+                    }
+                } catch (Exception e) {
+                    log.warn("出题返回的 renderConfig 不是合法 JSON，按未提供处理: {}", text);
+                }
+            }
+        }
+        return null;
     }
 
     private Integer parseInt(JsonNode node) {

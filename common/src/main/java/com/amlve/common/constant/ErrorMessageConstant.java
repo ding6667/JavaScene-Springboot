@@ -227,6 +227,8 @@ public class ErrorMessageConstant {
      */
     public static final String HOMEWORK_NOT_FOUND = "没有找到这份作业";
 
+    public static final String HOMEWORK_QUESTION_NOT_FOUND = "没有找到这道作业题目，请刷新后重试";
+
     public static final String HOMEWORK_SUBMIT_SAVE_FAILED = "作业提交保存失败，请稍后重试";
 
     public static final String TEACH_SCOPE_MISSING = "请指定班级或年级，二选一即可";

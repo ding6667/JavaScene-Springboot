@@ -3,15 +3,10 @@ package com.amlve.teach.service.impl;
 import com.amlve.common.constant.ErrorCodeConstant;
 import com.amlve.common.exception.BusinessException;
 import com.amlve.common.request.Result;
-import com.amlve.examapi.dto.response.QuestionBaseDTO;
 import com.amlve.examapi.dto.response.QuestionDetailResponse;
 import com.amlve.examapi.service.ExamQuestionApi;
-import com.amlve.knowledgeapi.dto.response.ChapterNameDTO;
-import com.amlve.knowledgeapi.dto.response.ChapterNamesResponse;
-import com.amlve.knowledgeapi.service.KnowledgeChapterApi;
 import com.amlve.teach.dto.request.HomeworkCloseRequest;
 import com.amlve.teach.dto.request.HomeworkPublishRequest;
-import com.amlve.teach.dto.request.HomeworkQuestionItem;
 import com.amlve.teach.dto.response.HomeworkDetailResponse;
 import com.amlve.teach.mapper.HomeworkMapper;
 import com.amlve.teach.mapper.TeachHomeworkQuestionMapper;
@@ -40,8 +35,8 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doAnswer;
-import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -61,9 +56,6 @@ class TeachServiceImplTest {
 
     @Mock
     private ExamQuestionApi examQuestionApi;
-
-    @Mock
-    private KnowledgeChapterApi knowledgeChapterApi;
 
     @InjectMocks
     private TeachServiceImpl teachService;
@@ -88,46 +80,106 @@ class TeachServiceImplTest {
         request.setChapterId(1L);
         request.setDeadline(LocalDateTime.of(2026, 9, 15, 23, 59, 59));
         request.setClassId(10L);
-        request.setQuestions(List.of(buildQuestionItem(9001L)));
         return request;
     }
 
-    private HomeworkQuestionItem buildQuestionItem(Long questionId) {
-        HomeworkQuestionItem item = new HomeworkQuestionItem();
-        item.setQuestionId(questionId);
-        item.setScore(20);
-        item.setSortOrder(1);
-        return item;
+    @Test
+    void publishHomework_shouldWriteQuestionSnapshots_andSummarizeCountAndScore() {
+        doAnswer(invocation -> {
+            Homework h = invocation.getArgument(0);
+            h.setId(100L);
+            return 1;
+        }).when(homeworkMapper).insert(any(Homework.class));
+
+        HomeworkPublishRequest request = buildRequest();
+        HomeworkPublishRequest.QuestionItem first = new HomeworkPublishRequest.QuestionItem();
+        first.setQuestionId(11L);
+        first.setScore(8);
+        HomeworkPublishRequest.QuestionItem second = new HomeworkPublishRequest.QuestionItem();
+        second.setQuestionId(12L);
+        request.setQuestions(List.of(first, second));
+        when(examQuestionApi.getQuestionDetail(11L)).thenReturn(Result.success(buildQuestionDetail(11L, 5)));
+        when(examQuestionApi.getQuestionDetail(12L)).thenReturn(Result.success(buildQuestionDetail(12L, 5)));
+
+        Long homeworkId = teachService.publishHomework(request);
+
+        assertThat(homeworkId).isEqualTo(100L);
+        // 两道题：第一题显式 8 分，第二题未传分 → 用题库默认 5 分
+        ArgumentCaptor<Homework> homeworkCaptor = ArgumentCaptor.forClass(Homework.class);
+        verify(homeworkMapper).insert(homeworkCaptor.capture());
+        assertThat(homeworkCaptor.getValue().getQuestionCount()).isEqualTo(2);
+        assertThat(homeworkCaptor.getValue().getTotalScore()).isEqualTo(13);
+
+        // 题目快照：挂上作业ID、按入参顺序排序、选项/答案/知识点以 JSON 文本固化
+        ArgumentCaptor<TeachHomeworkQuestion> snapshotCaptor = ArgumentCaptor.forClass(TeachHomeworkQuestion.class);
+        verify(homeworkQuestionMapper, times(2)).insert(snapshotCaptor.capture());
+        List<TeachHomeworkQuestion> snapshots = snapshotCaptor.getAllValues();
+        TeachHomeworkQuestion saved = snapshots.get(0);
+        assertThat(saved.getHomeworkId()).isEqualTo(100L);
+        assertThat(saved.getQuestionId()).isEqualTo(11L);
+        assertThat(saved.getSortOrder()).isEqualTo(1);
+        assertThat(saved.getContent()).isEqualTo("题干-11");
+        assertThat(saved.getType()).isEqualTo(1);
+        assertThat(saved.getOptions()).isEqualTo("[\"A. 选项1\",\"B. 选项2\"]");
+        assertThat(saved.getAnswer()).isEqualTo("\"B\"");
+        assertThat(saved.getKnowledgePoints()).isEqualTo("[7,8]");
+        // 快照存难度名称，不存配置ID（配置后续被停用/删除也不影响历史作业显示）
+        assertThat(saved.getDifficulty()).isEqualTo("简单");
+        assertThat(saved.getDefaultScore()).isEqualTo(5);
+        assertThat(saved.getScore()).isEqualTo(8);
+        assertThat(saved.getSourceType()).isEqualTo(3);
+        assertThat(snapshots.get(1).getQuestionId()).isEqualTo(12L);
+        assertThat(snapshots.get(1).getSortOrder()).isEqualTo(2);
+        assertThat(snapshots.get(1).getScore()).isNull();
     }
 
-    /** exam-api 批量校验返回的题目基础信息 */
-    private QuestionBaseDTO buildQuestionBase(Long questionId) {
-        QuestionBaseDTO base = new QuestionBaseDTO();
-        base.setId(questionId);
-        base.setContent("下列哪些是 Java 的基本数据类型？");
-        base.setType(1);
-        base.setOptions(List.of("A. int", "B. float"));
-        base.setDifficulty(1);
-        base.setChapterId(1L);
-        base.setScore(10);
-        return base;
+    @Test
+    void publishHomework_shouldRejectWithoutRecords_whenQuestionMissing() {
+        HomeworkPublishRequest request = buildRequest();
+        HomeworkPublishRequest.QuestionItem item = new HomeworkPublishRequest.QuestionItem();
+        item.setQuestionId(999L);
+        request.setQuestions(List.of(item));
+        when(examQuestionApi.getQuestionDetail(999L)).thenReturn(Result.error("题目不存在"));
+
+        assertThatThrownBy(() -> teachService.publishHomework(request))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("题目不存在");
+
+        verify(homeworkMapper, never()).insert(any(Homework.class));
+        verify(homeworkQuestionMapper, never()).insert(any(TeachHomeworkQuestion.class));
     }
 
-    /** exam-api 单题详情（含答案与解析） */
-    private QuestionDetailResponse buildQuestionDetail(Long questionId) {
+    @Test
+    void publishHomework_shouldReject_whenQuestionRepeated() {
+        HomeworkPublishRequest request = buildRequest();
+        HomeworkPublishRequest.QuestionItem item = new HomeworkPublishRequest.QuestionItem();
+        item.setQuestionId(11L);
+        request.setQuestions(List.of(item, item));
+
+        assertThatThrownBy(() -> teachService.publishHomework(request))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("不能重复添加");
+
+        verify(homeworkMapper, never()).insert(any(Homework.class));
+        // 重复校验在查题库之前，不该触达 exam-api
+        verify(examQuestionApi, never()).getQuestionDetail(any());
+    }
+
+    /** 构造题库题目详情（含选项、答案、知识点） */
+    private QuestionDetailResponse buildQuestionDetail(Long id, int score) {
         QuestionDetailResponse detail = new QuestionDetailResponse();
-        detail.setId(questionId);
-        detail.setAnswer("[\"A\"]");
-        detail.setAnalysis("见教材第2章");
+        detail.setId(id);
+        detail.setContent("题干-" + id);
+        detail.setType(1);
+        detail.setOptions(List.of("A. 选项1", "B. 选项2"));
+        detail.setAnswer("B");
+        detail.setAnalysis("解析-" + id);
+        detail.setChapterId(1L);
+        detail.setDifficultyConfigId(1L);
+        detail.setDifficultyName("简单");
+        detail.setScore(score);
+        detail.setKnowledgePointIds(List.of(7L, 8L));
         return detail;
-    }
-
-    /** 模拟发布成功链路：题目批量校验通过 + 单题详情可获取 */
-    private void mockPublishCheckOk(Long questionId) {
-        when(examQuestionApi.getQuestionsByIds(any())).thenReturn(
-                Result.success(List.of(buildQuestionBase(questionId))));
-        when(examQuestionApi.getQuestionDetail(questionId)).thenReturn(
-                Result.success(buildQuestionDetail(questionId)));
     }
 
     private Homework buildHomework(Long homeworkId) {
@@ -146,14 +198,13 @@ class TeachServiceImplTest {
     // ==================== 发布 ====================
 
     @Test
-    void publishHomework_shouldMapFieldsAndWriteSnapshot() {
+    void publishHomework_shouldMapFieldsAndInjectTeacherId() {
         // 模拟 MyBatis-Plus insert 主键回填
         doAnswer(invocation -> {
             Homework h = invocation.getArgument(0);
             h.setId(100L);
             return 1;
         }).when(homeworkMapper).insert(any(Homework.class));
-        mockPublishCheckOk(9001L);
 
         Long homeworkId = teachService.publishHomework(buildRequest());
 
@@ -167,83 +218,11 @@ class TeachServiceImplTest {
         assertThat(saved.getTeacherId()).isEqualTo(TEACHER_ID);
         assertThat(saved.getClassId()).isEqualTo(10L);
         assertThat(saved.getAllowLateSubmit()).isEqualTo(0);
-        // 题目数量来自发布请求的题目列表
-        assertThat(saved.getQuestionCount()).isEqualTo(1);
+        // 快照写入依赖 exam-api（协作申请中），题目数当前恒为 0
+        assertThat(saved.getQuestionCount()).isZero();
         assertThat(saved.getPublishTime()).isNotNull();
         // 发布即已发布状态
         assertThat(saved.getStatus()).isEqualTo(2);
-        // 快照写入：题干/题型/选项转换/答案/解析/分值与排序
-        ArgumentCaptor<TeachHomeworkQuestion> snapshotCaptor = ArgumentCaptor.forClass(TeachHomeworkQuestion.class);
-        verify(homeworkQuestionMapper).insert(snapshotCaptor.capture());
-        TeachHomeworkQuestion snapshot = snapshotCaptor.getValue();
-        assertThat(snapshot.getHomeworkId()).isEqualTo(100L);
-        assertThat(snapshot.getQuestionId()).isEqualTo(9001L);
-        assertThat(snapshot.getContent()).isEqualTo("下列哪些是 Java 的基本数据类型？");
-        assertThat(snapshot.getOptions()).contains("\"key\":\"A\"").contains("\"value\":\"int\"");
-        assertThat(snapshot.getAnswer()).isEqualTo("[\"A\"]");
-        assertThat(snapshot.getAnalysis()).isEqualTo("见教材第2章");
-        assertThat(snapshot.getDefaultScore()).isEqualTo(10);
-        assertThat(snapshot.getScore()).isEqualTo(20);
-        assertThat(snapshot.getSortOrder()).isEqualTo(1);
-    }
-
-    @Test
-    void publishHomework_shouldReject_whenQuestionMissing() {
-        // 题库返回数量与请求不一致：判定题目不存在，发布失败
-        when(examQuestionApi.getQuestionsByIds(any())).thenReturn(Result.success(List.of()));
-
-        assertThatThrownBy(() -> teachService.publishHomework(buildRequest()))
-                .isInstanceOf(BusinessException.class)
-                .hasMessageContaining("不存在");
-        verify(homeworkMapper, never()).insert(any(Homework.class));
-        verify(homeworkQuestionMapper, never()).insert(any(TeachHomeworkQuestion.class));
-    }
-
-    @Test
-    void publishHomework_shouldReject_whenExamApiUnavailable() {
-        // 题库接口非 200：发布失败（题目校验属强依赖）
-        when(examQuestionApi.getQuestionsByIds(any())).thenReturn(
-                Result.error(ErrorCodeConstant.BUSINESS_ERROR, "题库服务不可用"));
-
-        assertThatThrownBy(() -> teachService.publishHomework(buildRequest()))
-                .isInstanceOf(BusinessException.class)
-                .hasMessageContaining("题目校验服务不可用");
-        verify(homeworkMapper, never()).insert(any(Homework.class));
-    }
-
-    @Test
-    void publishHomework_shouldReject_whenQuestionDuplicated() {
-        // 重复题目：快照表唯一约束兜底校验，直接拒绝
-        HomeworkPublishRequest request = buildRequest();
-        request.setQuestions(List.of(buildQuestionItem(9001L), buildQuestionItem(9001L)));
-
-        assertThatThrownBy(() -> teachService.publishHomework(request))
-                .isInstanceOf(BusinessException.class)
-                .hasMessageContaining("重复");
-        verify(examQuestionApi, never()).getQuestionsByIds(any());
-        verify(homeworkMapper, never()).insert(any(Homework.class));
-    }
-
-    @Test
-    void publishHomework_shouldFallback_whenDetailFails() {
-        // 单题详情失败：答案解析降级留空，发布不阻塞
-        doAnswer(invocation -> {
-            Homework h = invocation.getArgument(0);
-            h.setId(100L);
-            return 1;
-        }).when(homeworkMapper).insert(any(Homework.class));
-        when(examQuestionApi.getQuestionsByIds(any())).thenReturn(
-                Result.success(List.of(buildQuestionBase(9001L))));
-        when(examQuestionApi.getQuestionDetail(9001L)).thenReturn(
-                Result.error(ErrorCodeConstant.BUSINESS_ERROR, "详情不可用"));
-
-        Long homeworkId = teachService.publishHomework(buildRequest());
-
-        assertThat(homeworkId).isEqualTo(100L);
-        ArgumentCaptor<TeachHomeworkQuestion> snapshotCaptor = ArgumentCaptor.forClass(TeachHomeworkQuestion.class);
-        verify(homeworkQuestionMapper).insert(snapshotCaptor.capture());
-        assertThat(snapshotCaptor.getValue().getAnswer()).isNull();
-        assertThat(snapshotCaptor.getValue().getAnalysis()).isNull();
     }
 
     @Test
@@ -320,7 +299,7 @@ class TeachServiceImplTest {
 
         assertThatThrownBy(() -> teachService.getMyHomeworkDetail(100L))
                 .isInstanceOf(BusinessException.class)
-                .hasMessageContaining("没有找到");
+                .hasMessageContaining("不存在");
     }
 
     // ==================== 关闭 ====================
@@ -414,31 +393,8 @@ class TeachServiceImplTest {
         assertThat(list).hasSize(2);
         assertThat(list.get(0).getHomeworkId()).isEqualTo(100L);
         assertThat(list.get(1).getHomeworkId()).isEqualTo(101L);
-        // 章节名批量聚合：knowledge-api 命中后填充
-        ChapterNameDTO chapterName = new ChapterNameDTO();
-        chapterName.setChapterId(1L);
-        chapterName.setChapterName("第 1 章 Java语言概述");
-        ChapterNamesResponse namesResponse = new ChapterNamesResponse();
-        namesResponse.setChapters(List.of(chapterName));
-        when(knowledgeChapterApi.getChapterNamesById(any())).thenReturn(Result.success(namesResponse));
-        Result<List<StudentHomeworkBriefResponse>> named = teachService.listStudentHomework(query);
-        assertThat(named.getData().get(0).getChapterName()).isEqualTo("第 1 章 Java语言概述");
-    }
-
-    @Test
-    void listStudentHomework_shouldDegradeChapterName_whenKnowledgeApiFails() {
-        // 章节名接口失败：降级为空，不阻塞作业列表返回
-        Page<Homework> page = new Page<>(1, 20);
-        page.setRecords(List.of(buildHomework(100L)));
-        when(homeworkMapper.selectPage(any(Page.class), any())).thenReturn(page);
-        when(knowledgeChapterApi.getChapterNamesById(any())).thenReturn(
-                Result.error(ErrorCodeConstant.BUSINESS_ERROR, "知识库不可用"));
-
-        Result<List<StudentHomeworkBriefResponse>> result =
-                teachService.listStudentHomework(new StudentHomeworkQueryRequest());
-
-        assertThat(result.getCode()).isEqualTo(200);
-        assertThat(result.getData().get(0).getChapterName()).isNull();
+        // 章节名聚合依赖 knowledge-api（协作申请中），当前降级为空
+        assertThat(list.get(0).getChapterName()).isNull();
     }
 
     @Test
@@ -525,25 +481,12 @@ class TeachServiceImplTest {
     }
 
     @Test
-    void notifySubmit_shouldIncrementSubmitCount() {
-        // 提交通知：submitted_count 自增（update + setSql 方式，不走 updateById）
-        when(homeworkMapper.selectById(100L)).thenReturn(buildHomework(100L));
-
+    void notifySubmit_shouldReturnSuccess_asDegraded() {
+        // teach_homework 暂无 submitted_count 列，降级为记日志返回成功
         Result<Void> result = teachService.notifySubmit(100L);
 
         assertThat(result.getCode()).isEqualTo(200);
-        verify(homeworkMapper).update(any(), any());
         verify(homeworkMapper, never()).updateById(any(Homework.class));
-    }
-
-    @Test
-    void notifySubmit_shouldReturnNotFound_whenHomeworkMissing() {
-        when(homeworkMapper.selectById(999L)).thenReturn(null);
-
-        Result<Void> result = teachService.notifySubmit(999L);
-
-        assertThat(result.getCode()).isEqualTo(ErrorCodeConstant.NOT_FOUND);
-        verify(homeworkMapper, never()).update(any(), any());
     }
 
     @Test

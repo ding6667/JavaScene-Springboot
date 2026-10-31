@@ -1,5 +1,6 @@
 package com.amlve.agentquestionapi.dto.response;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import lombok.Builder;
 import lombok.Data;
 
@@ -24,6 +25,13 @@ public class QuestionGenerateResponse {
         private String knowledgePoint;
         private List<String> knowledgePoints;
         private String content;
+        /** 简短题目：一句话概括题意（如「最长k个相等字符串」），列表/卡片展示用 */
+        private String shortTitle;
+        /**
+         * 前端渲染配置（JSON 对象）：填空 {@code {"blankCount":3}}、
+         * 选择 {@code {"choiceMode":"single"|"multiple"}}、编程 {@code {"language":"java"}}
+         */
+        private JsonNode renderConfig;
         private List<String> options; // 仅选择题需要
         private String answer;
         private String analysis;      // 含页码引用

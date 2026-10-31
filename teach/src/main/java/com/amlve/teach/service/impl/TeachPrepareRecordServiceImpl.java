@@ -14,6 +14,7 @@ import com.amlve.teach.enums.PrepareRecordStatusEnum;
 import com.amlve.teach.mapper.TeachPrepareRecordMapper;
 import com.amlve.teach.service.TeachPrepareRecordService;
 import com.amlve.teach.tableEnt.TeachPrepareRecord;
+import com.amlve.teach.util.PptAvailabilityUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import jakarta.annotation.Resource;
@@ -74,7 +75,12 @@ public class TeachPrepareRecordServiceImpl implements TeachPrepareRecordService 
         return response;
     }
 
-    /** 列表项转换：仅携带是否有值标记，不含材料全文 */
+    /**
+     * 列表项转换：仅携带是否有值标记，不含材料全文。
+     * <p>
+     * PPT 按三态判定：只写「有正文」或只写「文件就绪」都会让前端误判——
+     * 异步转换未完成时 pptx_url 为空，若只看它，前端就会把「有正文、待转文件」的记录当成没有 PPT。
+     */
     private PrepareRecordListResponse.Item toListItem(TeachPrepareRecord record) {
         PrepareRecordListResponse.Item item = new PrepareRecordListResponse.Item();
         item.setId(record.getId());
@@ -84,7 +90,10 @@ public class TeachPrepareRecordServiceImpl implements TeachPrepareRecordService 
         item.setHasKeyPoints(StringUtils.hasText(record.getKeyPoints()));
         item.setHasHomework(StringUtils.hasText(record.getHomework()));
         item.setHasLab(StringUtils.hasText(record.getLab()));
-        item.setHasPpt(StringUtils.hasText(record.getPptxUrl()));
+        item.setHasPptMd(PptAvailabilityUtil.hasMd(record.getPptxMd()));
+        int pptStatus = PptAvailabilityUtil.resolve(record.getPptxMd(), record.getPptxUrl());
+        item.setPptStatus(pptStatus);
+        item.setHasPpt(pptStatus == PptAvailabilityUtil.STATUS_READY);
         return item;
     }
 
@@ -100,7 +109,11 @@ public class TeachPrepareRecordServiceImpl implements TeachPrepareRecordService 
         response.setHomework(record.getHomework());
         response.setLab(record.getLab());
         response.setPptxMd(record.getPptxMd());
-        response.setPptxUrl(record.getPptxUrl());
+        // PPT 三态与列表口径一致：文件未产出时 pptxUrl 返回 null，避免把会 404 的死链给前端
+        int pptStatus = PptAvailabilityUtil.resolve(record.getPptxMd(), record.getPptxUrl());
+        response.setHasPptMd(PptAvailabilityUtil.hasMd(record.getPptxMd()));
+        response.setPptStatus(pptStatus);
+        response.setPptxUrl(pptStatus == PptAvailabilityUtil.STATUS_READY ? record.getPptxUrl() : null);
         // templateId 待 teach_ppt / teach_prepare_record 增加 template_id 列后落库，当前降级返回 null
         response.setTemplateId(null);
         response.setStatus(record.getStatus());

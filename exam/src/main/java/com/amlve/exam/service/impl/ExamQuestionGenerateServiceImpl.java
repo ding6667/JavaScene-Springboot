@@ -19,6 +19,7 @@ public class ExamQuestionGenerateServiceImpl implements ExamQuestionGenerateServ
     public Integer generate(QuestionGenerateBizRequest request) {
         QuestionAiGenerateRequest aiRequest = new QuestionAiGenerateRequest();
         aiRequest.setChapterId(request.getChapterId());
+        aiRequest.setChapterName(request.getChapterName());
         aiRequest.setDifficultyConfigId(request.getDifficultyConfigId());
         aiRequest.setQuestionType(request.getQuestionType());
         aiRequest.setCount(request.getCount());

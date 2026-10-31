@@ -31,7 +31,20 @@ public class PrepareRecordDetailResponse {
     /** PPT原始Markdown内容 */
     private String pptxMd;
 
-    /** PPT文件路径 */
+    /** 是否有 PPT 正文（pptx_md 非空）：为 true 即可点击下载，文件没转出来时下载接口会现场补生成 */
+    private Boolean hasPptMd;
+
+    /**
+     * PPT 三态：0=无课件内容，1=有正文·文件未产出，2=文件就绪（与列表接口口径一致）
+     */
+    private Integer pptStatus;
+
+    /**
+     * PPT文件路径。
+     * <p>
+     * 仅在文件真实存在（pptStatus=2）时返回；异步转换未完成或文件已被清理时返回 null，
+     * 不把会 404 的死链给前端——前端此时应按 hasPptMd/pptStatus 展示「待生成」并调下载接口触发补生成。
+     */
     private String pptxUrl;
 
     /** 生成使用的PPT模板ID（待 teach_ppt 增加 template_id 列后落库，当前降级返回 null） */

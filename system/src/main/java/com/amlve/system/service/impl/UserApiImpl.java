@@ -119,6 +119,7 @@ public class UserApiImpl implements com.amlve.systemapi.service.UserApi {
                 dto.setUserNo(student.getStudentNo());
                 dto.setClassId(student.getClassId());
                 dto.setClassName(student.getClassName());
+                dto.setGrade(student.getGrade());
             } else {
                 SysTeacherInfo teacher = teacherMap.get(user.getId());
                 if (teacher != null) {

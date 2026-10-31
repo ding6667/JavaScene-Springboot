@@ -3,10 +3,12 @@ package com.amlve.exam.service.impl;
 import com.amlve.common.constant.ErrorMessageConstant;
 import com.amlve.common.constant.ErrorCodeConstant;
 import com.amlve.common.request.Result;
-import com.amlve.exam.enumeration.QuestionDifficultyEnum;
 import com.amlve.common.enums.QuestionTypeEnum;
 import com.amlve.exam.mapper.ExamQuestionMapper;
+import com.amlve.exam.service.ExamDifficultyConfigService;
 import com.amlve.exam.tableEnt.ExamQuestion;
+import com.amlve.exam.util.QuestionAnswerCodec;
+import com.amlve.exam.util.QuestionRenderConfigCodec;
 import com.amlve.examapi.dto.response.QuestionBaseDTO;
 import com.amlve.examapi.dto.response.QuestionDetailResponse;
 import com.amlve.examapi.service.ExamQuestionApi;
@@ -22,6 +24,7 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 
 /**
  * 题库跨模块 API 实现：供 study / teach 查询题目详情、批量基本信息与回写统计。
@@ -34,6 +37,8 @@ public class ExamQuestionApiImpl implements ExamQuestionApi {
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
     private final ExamQuestionMapper questionMapper;
+
+    private final ExamDifficultyConfigService difficultyConfigService;
 
     @Override
     public Result<QuestionDetailResponse> getQuestionDetail(Long questionId) {
@@ -51,7 +56,9 @@ public class ExamQuestionApiImpl implements ExamQuestionApi {
             return Result.success(List.of());
         }
         List<ExamQuestion> questions = questionMapper.selectBatchIds(questionIds);
-        return Result.success(questions.stream().map(this::toBase).toList());
+        Map<Long, String> difficultyNames = difficultyConfigService.namesByIds(
+                questions.stream().map(ExamQuestion::getDifficultyConfigId).toList());
+        return Result.success(questions.stream().map(question -> toBase(question, difficultyNames)).toList());
     }
 
     @Override
@@ -84,19 +91,25 @@ public class ExamQuestionApiImpl implements ExamQuestionApi {
         }
         List<ExamQuestion> questions = questionMapper.selectList(
                 new LambdaQueryWrapper<ExamQuestion>().eq(ExamQuestion::getChapterId, chapterId));
-        return Result.success(questions.stream().map(this::toBase).toList());
+        Map<Long, String> difficultyNames = difficultyConfigService.namesByIds(
+                questions.stream().map(ExamQuestion::getDifficultyConfigId).toList());
+        return Result.success(questions.stream().map(question -> toBase(question, difficultyNames)).toList());
     }
 
-    private QuestionBaseDTO toBase(ExamQuestion question) {
+    private QuestionBaseDTO toBase(ExamQuestion question, Map<Long, String> difficultyNames) {
         QuestionBaseDTO response = new QuestionBaseDTO();
         response.setId(question.getId());
         response.setContent(question.getContent());
+        response.setShortTitle(question.getShortTitle());
+        response.setRenderConfig(QuestionRenderConfigCodec.forRender(question.getRenderConfig(),
+                question.getType(), question.getContent(), question.getAnswer()));
         response.setType(typeCode(question.getType()));
         response.setOptions(parseOptions(question.getOptions()));
         response.setRequirements(question.getRequirements());
         response.setCodeFramework(question.getCodeFramework());
         response.setChapterId(question.getChapterId());
-        response.setDifficulty(difficultyCode(question.getDifficulty()));
+        response.setDifficultyConfigId(question.getDifficultyConfigId());
+        response.setDifficultyName(difficultyNames.get(question.getDifficultyConfigId()));
         response.setScore(question.getScore());
         response.setJudgeMode(question.getJudgeMode());
         return response;
@@ -106,15 +119,23 @@ public class ExamQuestionApiImpl implements ExamQuestionApi {
         QuestionDetailResponse response = new QuestionDetailResponse();
         response.setId(question.getId());
         response.setContent(question.getContent());
+        response.setShortTitle(question.getShortTitle());
+        // 渲染配置按题型补齐后再给出：发布作业时快照直接拿这个值，历史题也不会缺 blankCount/choiceMode
+        response.setRenderConfig(QuestionRenderConfigCodec.forRender(question.getRenderConfig(),
+                question.getType(), question.getContent(), question.getAnswer()));
         response.setType(typeCode(question.getType()));
         response.setOptions(parseOptions(question.getOptions()));
-        response.setAnswer(question.getAnswer());
+        response.setAnswer(QuestionAnswerCodec.toText(question.getAnswer()));
         response.setAnalysis(question.getAnalysis());
         response.setChapterId(question.getChapterId());
-        response.setDifficulty(difficultyCode(question.getDifficulty()));
+        response.setDifficultyConfigId(question.getDifficultyConfigId());
+        response.setDifficultyName(difficultyConfigService.nameOf(question.getDifficultyConfigId()));
         response.setScore(question.getScore());
         response.setCodeFramework(question.getCodeFramework());
+        response.setKnowledgePointIds(question.getKnowledgePointIds());
         response.setRequirements(question.getRequirements());
+        response.setHints(question.getHints());
+        response.setSolutionOutline(question.getSolutionOutline());
         response.setJudgeMode(question.getJudgeMode());
         response.setTestCases(toTestCaseItems(question.getTestCases()));
         return response;
@@ -139,10 +160,6 @@ public class ExamQuestionApiImpl implements ExamQuestionApi {
 
     private Integer typeCode(QuestionTypeEnum type) {
         return type == null ? null : type.getCode();
-    }
-
-    private Integer difficultyCode(QuestionDifficultyEnum difficulty) {
-        return difficulty == null ? null : difficulty.getCode();
     }
 
     private List<String> parseOptions(String options) {

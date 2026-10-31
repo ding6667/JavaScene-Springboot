@@ -35,6 +35,12 @@
             <artifactId>common</artifactId>
             <version>${project.version}</version>
         </dependency>
+
+        <!-- 出题结果的渲染配置（renderConfig）按 JSON 对象在模块间透传，需 databind -->
+        <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-databind</artifactId>
+        </dependency>
     </dependencies>
 
 

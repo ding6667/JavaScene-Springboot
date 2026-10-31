@@ -50,6 +50,15 @@ public class TeachPrepareRecord extends BaseEntity {
     @TableField("pptx_url")
     private String pptxUrl;
 
+    /**
+     * 生成 PPT 时使用的主题编码（teach_ppt_theme.theme_code）。
+     * <p>
+     * 只在生成时能确定，下载接口补生成文件时必须按这个主题还原样式，
+     * 否则教师选过非默认模板的记录会补出「换了皮肤」的 PPT。历史记录为空时按系统默认模板降级。
+     */
+    @TableField("theme_code")
+    private String themeCode;
+
     /** 状态（1=成功，0=失败，2=生成中），取值见 PrepareRecordStatusEnum */
     private Integer status;
 

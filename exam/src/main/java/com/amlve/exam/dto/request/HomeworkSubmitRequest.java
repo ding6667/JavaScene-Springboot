@@ -27,6 +27,14 @@ public class HomeworkSubmitRequest {
         @NotNull(message = "题目ID不能为空")
         private Long questionId;
 
+        /**
+         * 作业题目快照ID（{@code /student/question} 返回的 {@code id}）。
+         * <p>
+         * 不传也能提交：后端会按 homeworkId + questionId 回查快照补上；
+         * 传了则以传入为准，用于批改时把错题钉在发布那一版题上。
+         */
+        private Long snapshotId;
+
         /** 学生作答内容 */
         private String answerContent;
     }

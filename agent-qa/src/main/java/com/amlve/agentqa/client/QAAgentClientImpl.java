@@ -193,11 +193,6 @@ public class QAAgentClientImpl implements QAAgentClient {
         Map<String, Object> inputs = new HashMap<>();
         if (chapterId != null && !chapterId.isBlank()) {
             Object chapterIdValue = chapterId.trim();
-            try {
-                chapterIdValue = Long.valueOf(chapterId.trim());
-            } catch (NumberFormatException ignored) {
-                // 非数字章节ID按原样传字符串
-            }
             inputs.put("chapterId", chapterIdValue);
         }
         inputs.put("userQuery", userQuery);

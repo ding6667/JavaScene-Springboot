@@ -2,7 +2,7 @@
 package com.amlve.exam.service.impl;
 
 import com.amlve.common.request.Result;
-import com.amlve.exam.enumeration.QuestionDifficultyEnum;
+import com.amlve.exam.service.ExamDifficultyConfigService;
 import com.amlve.common.enums.QuestionTypeEnum;
 import com.amlve.exam.mapper.ExamQuestionMapper;
 import com.amlve.exam.tableEnt.ExamQuestion;
@@ -31,6 +31,9 @@ class ExamQuestionApiImplTest {
     @Mock
     private ExamQuestionMapper questionMapper;
 
+    @Mock
+    private ExamDifficultyConfigService difficultyConfigService;
+
     @InjectMocks
     private ExamQuestionApiImpl examQuestionApi;
 
@@ -41,13 +44,14 @@ class ExamQuestionApiImplTest {
         question.setContent("题干");
         question.setType(QuestionTypeEnum.CHOICE);
         question.setOptions("[\"A\",\"B\"]");
-        question.setAnswer("A");
+        question.setAnswer(com.fasterxml.jackson.databind.node.TextNode.valueOf("A"));
         question.setAnalysis("解析");
         question.setChapterId(5L);
-        question.setDifficulty(QuestionDifficultyEnum.BASIC);
+        question.setDifficultyConfigId(1L);
         question.setScore(5);
         question.setJudgeMode(1);
         when(questionMapper.selectById(1L)).thenReturn(question);
+        when(difficultyConfigService.nameOf(1L)).thenReturn("简单");
 
         Result<QuestionDetailResponse> result = examQuestionApi.getQuestionDetail(1L);
 
@@ -57,7 +61,8 @@ class ExamQuestionApiImplTest {
         assertThat(result.getData().getOptions()).containsExactly("A", "B");
         assertThat(result.getData().getAnswer()).isEqualTo("A");
         assertThat(result.getData().getAnalysis()).isEqualTo("解析");
-        assertThat(result.getData().getDifficulty()).isEqualTo(1);
+        assertThat(result.getData().getDifficultyConfigId()).isEqualTo(1L);
+        assertThat(result.getData().getDifficultyName()).isEqualTo("简单");
     }
 
     @Test

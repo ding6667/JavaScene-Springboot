@@ -21,6 +21,9 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
 
+import java.io.IOException;
+import java.io.UncheckedIOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.LocalDateTime;
 import java.util.Collections;
@@ -78,7 +81,15 @@ class TeachPrepareRecordServiceImplTest {
         record.setHomework("【课后习题】3道");
         record.setLab("");
         record.setPptxMd("# PPT内容");
-        record.setPptxUrl("D:/temp/commonFile/xxx.pptx");
+        // pptx_url 指向真实存在的临时文件：列表/详情按「文件是否就绪」判定，
+        // 只判断 URL 非空的话，死链会被误判成已产出
+        Path pptFile = tempDir.resolve("xxx.pptx");
+        try {
+            Files.write(pptFile, new byte[]{1, 2, 3});
+        } catch (IOException e) {
+            throw new UncheckedIOException(e);
+        }
+        record.setPptxUrl(pptFile.toString());
         record.setStatus(1);
         record.setCreateTime(LocalDateTime.now());
         return record;
@@ -105,9 +116,11 @@ class TeachPrepareRecordServiceImplTest {
         assertThat(item.getHasLessonPlan()).isTrue();
         assertThat(item.getHasKeyPoints()).isTrue();
         assertThat(item.getHasHomework()).isTrue();
-        // lab 为空串：应为 false，且 pptxUrl 有值为 true
+        // lab 为空串：应为 false；pptx_md 有正文且文件真实存在 → hasPpt/hasPptMd 均为 true、状态为文件就绪
         assertThat(item.getHasLab()).isFalse();
         assertThat(item.getHasPpt()).isTrue();
+        assertThat(item.getHasPptMd()).isTrue();
+        assertThat(item.getPptStatus()).isEqualTo(2);
     }
 
     @Test

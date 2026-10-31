@@ -6,18 +6,23 @@ import com.amlve.agentquestionapi.dto.response.QuestionGenerateResponse;
 import com.amlve.agentquestionapi.service.QuestionAgent;
 import com.amlve.common.exception.BusinessException;
 import com.amlve.exam.dto.request.QuestionAiGenerateRequest;
-import com.amlve.exam.enumeration.QuestionDifficultyEnum;
 import com.amlve.common.enums.QuestionTypeEnum;
 import com.amlve.exam.mapper.ExamQuestionDifficultyConfigMapper;
+import com.amlve.exam.service.ExamDifficultyConfigService;
 import com.amlve.exam.mapper.ExamQuestionMapper;
 import com.amlve.exam.tableEnt.ExamQuestion;
+import com.amlve.exam.util.QuestionAnswerCodec;
+import com.amlve.exam.util.QuestionRenderConfigCodec;
 import com.amlve.exam.tableEnt.ExamQuestionDifficultyConfig;
+import com.amlve.knowledgeapi.dto.response.ChapterNameDTO;
 import com.amlve.knowledgeapi.dto.response.WeightConfigVO;
+import com.amlve.knowledgeapi.service.KnowledgeChapterApi;
 import com.amlve.knowledgeapi.service.KnowledgeService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.util.StringUtils;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -40,9 +45,11 @@ public class ExamQuestionGenerator {
     private static final int JUDGE_MODE_TEST_CASE = 2;
 
     private final KnowledgeService knowledgeService;
+    private final KnowledgeChapterApi knowledgeChapterApi;
     private final QuestionAgent questionAgent;
     private final ExamQuestionMapper questionMapper;
     private final ExamQuestionDifficultyConfigMapper difficultyConfigMapper;
+    private final ExamDifficultyConfigService difficultyConfigService;
 
     public int generate(QuestionAiGenerateRequest request) {
         // 1. 查难度配置
@@ -59,8 +66,9 @@ public class ExamQuestionGenerator {
             throw new BusinessException(ErrorMessageConstant.CHAPTER_KNOWLEDGE_NOT_CONFIGURED);
         }
 
-        // 3. 组装出题智能体请求
-        QuestionGenerateRequest agentRequest = buildAgentRequest(request, allocation, config);
+        // 3. 组装出题智能体请求（章节名称缺失时按章节ID回查，避免提示词里"章节"空白）
+        QuestionGenerateRequest agentRequest = buildAgentRequest(request, allocation, config,
+                resolveChapterName(request));
 
         // 4. 调用出题智能体（Dify）
         QuestionGenerateResponse response = questionAgent.generate(agentRequest).getData();
@@ -70,7 +78,7 @@ public class ExamQuestionGenerator {
         }
 
         // 5. 落库
-        int saved = saveGeneratedQuestions(request.getChapterId(), response, allocation);
+        int saved = saveGeneratedQuestions(request.getChapterId(), response, allocation, config);
         return saved > 0 ? 1 : 0;
     }
 
@@ -115,7 +123,8 @@ public class ExamQuestionGenerator {
 
     private QuestionGenerateRequest buildAgentRequest(QuestionAiGenerateRequest request,
                                                        List<QuestionGenerateRequest.AllocationItem> allocation,
-                                                       ExamQuestionDifficultyConfig config) {
+                                                       ExamQuestionDifficultyConfig config,
+                                                       String chapterName) {
         QuestionGenerateRequest.DifficultyConfig difficulty = new QuestionGenerateRequest.DifficultyConfig();
         difficulty.setCode(config.getCode());
         difficulty.setName(config.getName());
@@ -125,7 +134,7 @@ public class ExamQuestionGenerator {
 
         QuestionGenerateRequest agentRequest = new QuestionGenerateRequest();
         agentRequest.setChapterId(request.getChapterId());
-        agentRequest.setChapterName(request.getChapterName());
+        agentRequest.setChapterName(chapterName);
         agentRequest.setDifficulty(difficulty);
         agentRequest.setQuestionType(request.getQuestionType());
         agentRequest.setCount(request.getCount());
@@ -134,9 +143,27 @@ public class ExamQuestionGenerator {
         return agentRequest;
     }
 
+    /**
+     * 章节名称：请求里带了就用请求的，没带则按章节ID回查知识库章节表。
+     * 出题提示词里「章节」为空会让模型失去教材范围约束，所以尽量补上；回查失败不阻断出题。
+     */
+    private String resolveChapterName(QuestionAiGenerateRequest request) {
+        if (StringUtils.hasText(request.getChapterName())) {
+            return request.getChapterName();
+        }
+        try {
+            ChapterNameDTO chapter = knowledgeChapterApi.getChapterNameById(request.getChapterId()).getData();
+            return chapter == null ? null : chapter.getChapterName();
+        } catch (Exception e) {
+            log.warn("回查章节名称失败，出题提示词的章节将为空: chapterId={}, {}", request.getChapterId(), e.getMessage());
+            return null;
+        }
+    }
+
     private int saveGeneratedQuestions(Long chapterId,
                                        QuestionGenerateResponse response,
-                                       List<QuestionGenerateRequest.AllocationItem> allocation) {
+                                       List<QuestionGenerateRequest.AllocationItem> allocation,
+                                       ExamQuestionDifficultyConfig requestedConfig) {
         if (response == null || response.getQuestions() == null) {
             log.warn("出题智能体未返回题目: chapterId={}", chapterId);
             return 0;
@@ -153,6 +180,7 @@ public class ExamQuestionGenerator {
             ExamQuestion question = new ExamQuestion();
             question.setChapterId(chapterId);
             question.setContent(item.getContent());
+            question.setShortTitle(StringUtils.hasText(item.getShortTitle()) ? item.getShortTitle().trim() : null);
             question.setType(type);
             question.setOptions(toOptionsJson(item.getOptions()));
             question.setRequirements(item.getRequirements());
@@ -161,10 +189,13 @@ public class ExamQuestionGenerator {
             question.setCodeFramework(programming ? item.getCodeFramework() : null);
             question.setHints(item.getHints());
             question.setRelatedQuestionIds(toIdList(item.getRelatedQuestions()));
-            question.setAnswer(item.getAnswer());
+            question.setAnswer(QuestionAnswerCodec.toJson(item.getAnswer(), type));
+            // 渲染配置：AI 给了就用，没给按题型推断（选择按答案个数定单选/多选、填空按题干空位数定空数）
+            question.setRenderConfig(QuestionRenderConfigCodec.toStored(item.getRenderConfig(), type,
+                    item.getContent(), question.getAnswer()));
             question.setAnalysis(item.getAnalysis());
             question.setSolutionOutline(item.getSolutionOutline());
-            question.setDifficulty(mapDifficulty(item.getDifficulty()));
+            question.setDifficultyConfigId(resolveDifficultyConfigId(item.getDifficulty(), requestedConfig));
             question.setDifficultyScore(item.getDifficultyScore());
             question.setCognitiveLevel(item.getCognitiveLevel());
             question.setAbilityDimensions(item.getAbilityDimensions());
@@ -278,9 +309,27 @@ public class ExamQuestionGenerator {
         };
     }
 
-    private QuestionDifficultyEnum mapDifficulty(String difficulty) {
-        QuestionDifficultyEnum result = QuestionDifficultyEnum.fromDifficulty(difficulty);
-        return result == null ? QuestionDifficultyEnum.BASIC : result;
+    /**
+     * AI 返回的难度标识（basic/intermediate/advanced 等配置编码）→ 难度配置ID。
+     * <p>
+     * 与本次请求的配置编码一致时直接用请求配置；不一致时按编码查系统预设；
+     * 都查不到就回落到本次请求的配置——否则整批题目会失去难度归属。
+     */
+    private Long resolveDifficultyConfigId(String difficulty, ExamQuestionDifficultyConfig requestedConfig) {
+        if (difficulty == null || difficulty.isBlank()) {
+            return requestedConfig.getId();
+        }
+        String code = difficulty.trim();
+        if (code.equalsIgnoreCase(requestedConfig.getCode())) {
+            return requestedConfig.getId();
+        }
+        Long matched = difficultyConfigService.idByCode(code);
+        if (matched == null) {
+            log.warn("出题返回的难度编码没有对应配置，回落本次请求配置: difficulty={}, configId={}",
+                    code, requestedConfig.getId());
+            return requestedConfig.getId();
+        }
+        return matched;
     }
 
     private String toOptionsJson(List<String> options) {

@@ -6,11 +6,12 @@ import com.amlve.common.exception.BusinessException;
 import com.amlve.common.request.PageResult;
 import com.amlve.common.request.Result;
 import com.amlve.common.utils.SecurityUtils;
-import com.amlve.exam.enumeration.QuestionDifficultyEnum;
+import com.amlve.exam.service.ExamDifficultyConfigService;
 import com.amlve.common.enums.QuestionTypeEnum;
 import com.amlve.exam.mapper.ExamQuestionMapper;
 import com.amlve.exam.service.ExamQuestionPracticeService;
 import com.amlve.exam.tableEnt.ExamQuestion;
+import com.amlve.exam.util.QuestionRenderConfigCodec;
 import com.amlve.examapi.dto.request.PracticeQueryRequest;
 import com.amlve.examapi.dto.response.PracticeDetailVO;
 import com.amlve.examapi.dto.response.PracticeItemVO;
@@ -20,6 +21,7 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -46,6 +48,7 @@ public class ExamQuestionPracticeServiceImpl implements ExamQuestionPracticeServ
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
     private final ExamQuestionMapper questionMapper;
+    private final ExamDifficultyConfigService difficultyConfigService;
     private final ObjectProvider<StudyPracticeApi> studyPracticeServiceProvider;
 
     @Override
@@ -56,12 +59,14 @@ public class ExamQuestionPracticeServiceImpl implements ExamQuestionPracticeServ
         LambdaQueryWrapper<ExamQuestion> wrapper = Wrappers.<ExamQuestion>lambdaQuery()
                 .eq(request.getChapterId() != null, ExamQuestion::getChapterId, request.getChapterId())
                 .eq(request.getType() != null, ExamQuestion::getType, QuestionTypeEnum.fromCode(request.getType()))
-                .eq(request.getDifficulty() != null, ExamQuestion::getDifficulty, QuestionDifficultyEnum.fromCode(request.getDifficulty()))
+                .eq(request.getDifficultyConfigId() != null, ExamQuestion::getDifficultyConfigId, request.getDifficultyConfigId())
                 .orderByDesc(ExamQuestion::getId);
         Page<ExamQuestion> pageData = questionMapper.selectPage(new Page<>(pageNum, pageSize), wrapper);
         List<ExamQuestion> records = pageData.getRecords();
 
         Map<Long, PracticeStatusDTO> statusMap = loadStatusBatch(userId, records);
+        Map<Long, String> difficultyNames = difficultyConfigService.namesByIds(
+                records.stream().map(ExamQuestion::getDifficultyConfigId).toList());
 
         List<PracticeItemVO> items = new ArrayList<>();
         for (ExamQuestion question : records) {
@@ -70,7 +75,7 @@ public class ExamQuestionPracticeServiceImpl implements ExamQuestionPracticeServ
                     && status != null && Boolean.TRUE.equals(status.getDone())) {
                 continue;
             }
-            items.add(toItemVO(question, status));
+            items.add(toItemVO(question, status, difficultyNames));
         }
 
         PageResult<PracticeItemVO> result = new PageResult<>();
@@ -91,10 +96,13 @@ public class ExamQuestionPracticeServiceImpl implements ExamQuestionPracticeServ
         PracticeDetailVO vo = new PracticeDetailVO();
         vo.setId(question.getId());
         vo.setContent(question.getContent());
+        vo.setShortTitle(question.getShortTitle());
+        vo.setRenderConfig(renderConfigOf(question));
         vo.setType(typeCode(question.getType()));
         vo.setOptions(parseOptions(question.getOptions()));
         vo.setChapterId(question.getChapterId());
-        vo.setDifficulty(difficultyCode(question.getDifficulty()));
+        vo.setDifficultyConfigId(question.getDifficultyConfigId());
+        vo.setDifficultyName(difficultyConfigService.nameOf(question.getDifficultyConfigId()));
         vo.setScore(question.getScore());
         vo.setCodeFramework(question.getCodeFramework());
         vo.setRequirements(question.getRequirements());
@@ -109,14 +117,17 @@ public class ExamQuestionPracticeServiceImpl implements ExamQuestionPracticeServ
         return vo;
     }
 
-    private PracticeItemVO toItemVO(ExamQuestion question, PracticeStatusDTO status) {
+    private PracticeItemVO toItemVO(ExamQuestion question, PracticeStatusDTO status, Map<Long, String> difficultyNames) {
         PracticeItemVO vo = new PracticeItemVO();
         vo.setId(question.getId());
         vo.setContent(question.getContent());
+        vo.setShortTitle(question.getShortTitle());
+        vo.setRenderConfig(renderConfigOf(question));
         vo.setType(typeCode(question.getType()));
         vo.setOptions(parseOptions(question.getOptions()));
         vo.setChapterId(question.getChapterId());
-        vo.setDifficulty(difficultyCode(question.getDifficulty()));
+        vo.setDifficultyConfigId(question.getDifficultyConfigId());
+        vo.setDifficultyName(difficultyNames.get(question.getDifficultyConfigId()));
         vo.setScore(question.getScore());
         vo.setCodeFramework(question.getCodeFramework());
         vo.setRequirements(question.getRequirements());
@@ -187,8 +198,10 @@ public class ExamQuestionPracticeServiceImpl implements ExamQuestionPracticeServ
         return type == null ? null : type.getCode();
     }
 
-    private Integer difficultyCode(QuestionDifficultyEnum difficulty) {
-        return difficulty == null ? null : difficulty.getCode();
+    /** 渲染配置回显：存量题为空时按题型补齐（选择定单选/多选、填空定空数） */
+    private JsonNode renderConfigOf(ExamQuestion question) {
+        return QuestionRenderConfigCodec.forRender(question.getRenderConfig(),
+                question.getType(), question.getContent(), question.getAnswer());
     }
 
     private Double toDouble(BigDecimal value) {
