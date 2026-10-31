@@ -24,6 +24,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.nullable;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -106,7 +107,7 @@ class TeachPrepareAsyncServiceImplTest {
     @Test
     void generate_shouldWriteBackMaterials_andInsertPpt_whenSuccess() {
         mockGenerateSuccess(buildAgentResult());
-        when(markdownToPptxUtil.convertContent(anyString())).thenReturn(PPTX_PATH);
+        when(markdownToPptxUtil.convertContent(anyString(), nullable(String.class))).thenReturn(PPTX_PATH);
 
         service.generateAsync(RECORD_ID, CHAPTER_ID, TEACHER_ID, buildAgentRequest(), buildMaterial(), null);
 
@@ -142,7 +143,7 @@ class TeachPrepareAsyncServiceImplTest {
     void generate_shouldMarkFailedInsteadOfSuccess_whenPptRecordInsertFails() {
         // PPT 文件记录没落成，就不能把备课记录标成成功：全程只允许失败终态那一次回写
         mockGenerateSuccess(buildAgentResult());
-        when(markdownToPptxUtil.convertContent(anyString())).thenReturn(PPTX_PATH);
+        when(markdownToPptxUtil.convertContent(anyString(), nullable(String.class))).thenReturn(PPTX_PATH);
         when(teachPptMapper.insert(any(TeachPpt.class))).thenThrow(new BusinessException("teach_ppt 落库失败"));
 
         service.generateAsync(RECORD_ID, CHAPTER_ID, TEACHER_ID, buildAgentRequest(), buildMaterial(), null);
@@ -161,7 +162,7 @@ class TeachPrepareAsyncServiceImplTest {
 
         service.generateAsync(RECORD_ID, CHAPTER_ID, TEACHER_ID, buildAgentRequest(), buildMaterial(), null);
 
-        verify(markdownToPptxUtil, never()).convertContent(anyString());
+        verify(markdownToPptxUtil, never()).convertContent(anyString(), nullable(String.class));
         verify(teachPptMapper, never()).insert(any(TeachPpt.class));
         TeachPrepareRecord update = capturedRecordUpdate();
         assertThat(update.getPptxUrl()).isNull();
@@ -173,7 +174,7 @@ class TeachPrepareAsyncServiceImplTest {
     void generate_shouldDegrade_whenPptxConvertFail() {
         // marp2pptx 不可用：pptxUrl=null，其余材料照常回写
         mockGenerateSuccess(buildAgentResult());
-        when(markdownToPptxUtil.convertContent(anyString())).thenReturn(null);
+        when(markdownToPptxUtil.convertContent(anyString(), nullable(String.class))).thenReturn(null);
 
         service.generateAsync(RECORD_ID, CHAPTER_ID, TEACHER_ID, buildAgentRequest(), buildMaterial(), null);
 
@@ -185,59 +186,62 @@ class TeachPrepareAsyncServiceImplTest {
     }
 
     @Test
-    void generate_shouldInjectTheme_whenMdHasNoFrontmatter() {
+    void generate_shouldPassThemeToConverter_whenMdHasNoFrontmatter() {
         mockGenerateSuccess(buildAgentResult());
         when(teachPptThemeMapper.selectOne(any(LambdaQueryWrapper.class))).thenReturn(theme("java-uncover"));
-        when(markdownToPptxUtil.convertContent(anyString())).thenReturn(PPTX_PATH);
+        when(markdownToPptxUtil.convertContent(anyString(), nullable(String.class))).thenReturn(PPTX_PATH);
 
         service.generateAsync(RECORD_ID, CHAPTER_ID, TEACHER_ID, buildAgentRequest(), buildMaterial(), "java-uncover");
 
-        // 转换入参注入基础 frontmatter + 库内主题样式（<style> 内联，marp2pptx 不支持 --theme-set）
+        // 转换入参只补基础 frontmatter；主题以 CSS 文本作为第二个参数交给转换器映射成 marp2pptx 的 yaml，
+        // 绝不能内联 <style>（marp2pptx 不解析 CSS，会把整段样式渲染到第一页）
         ArgumentCaptor<String> mdCaptor = ArgumentCaptor.forClass(String.class);
-        verify(markdownToPptxUtil).convertContent(mdCaptor.capture());
+        ArgumentCaptor<String> cssCaptor = ArgumentCaptor.forClass(String.class);
+        verify(markdownToPptxUtil).convertContent(mdCaptor.capture(), cssCaptor.capture());
         assertThat(mdCaptor.getValue()).startsWith("---\nmarp: true")
-                .contains("size: 16:9").contains("<style>").contains("@theme java-uncover").contains("第二页");
+                .contains("size: 16:9").contains("第二页").doesNotContain("<style>");
+        assertThat(cssCaptor.getValue()).contains("@theme java-uncover");
 
         // 落库 md 为智能体返回原始内容（不含 frontmatter 与样式块）
         assertThat(capturedRecordUpdate().getPptxMd()).doesNotStartWith("---").contains("第二页");
     }
 
     @Test
-    void generate_shouldInsertStyleAfterFrontmatter_whenAgentMdContainsFrontmatter() {
-        // Dify 输出已含 frontmatter：样式块插到闭合线之后、正文之前，不重复注入基础配置
+    void generate_shouldKeepAgentFrontmatter_whenAgentMdContainsFrontmatter() {
+        // Dify 输出已含 frontmatter：不重复注入基础配置，也不再插入样式块
         PrepareResponse agentResult = buildAgentResult();
         agentResult.setPptx("---\nmarp: true\ntheme: gaia\n---\n\n# PPT\n\n---\n\n# 第二页");
         mockGenerateSuccess(agentResult);
         when(teachPptThemeMapper.selectOne(any(LambdaQueryWrapper.class))).thenReturn(theme("java-uncover"));
-        when(markdownToPptxUtil.convertContent(anyString())).thenReturn(PPTX_PATH);
+        when(markdownToPptxUtil.convertContent(anyString(), nullable(String.class))).thenReturn(PPTX_PATH);
 
         service.generateAsync(RECORD_ID, CHAPTER_ID, TEACHER_ID, buildAgentRequest(), buildMaterial(), "java-uncover");
 
         ArgumentCaptor<String> mdCaptor = ArgumentCaptor.forClass(String.class);
-        verify(markdownToPptxUtil).convertContent(mdCaptor.capture());
+        ArgumentCaptor<String> cssCaptor = ArgumentCaptor.forClass(String.class);
+        verify(markdownToPptxUtil).convertContent(mdCaptor.capture(), cssCaptor.capture());
         String md = mdCaptor.getValue();
         String frontmatterHead = "---\nmarp: true\ntheme: gaia\n---";
-        assertThat(md).startsWith(frontmatterHead).contains("<style>").contains("@theme java-uncover");
-        // 顺序：frontmatter 闭合线 → style 块 → 正文
-        int frontmatterEnd = md.indexOf(frontmatterHead) + frontmatterHead.length();
-        int stylePos = md.indexOf("<style>");
-        int bodyPos = md.indexOf("# PPT");
-        assertThat(stylePos).isGreaterThan(frontmatterEnd);
-        assertThat(bodyPos).isGreaterThan(stylePos);
+        // 原文 frontmatter 原样保留在开头，正文紧随其后，中间不夹 style 块
+        assertThat(md).startsWith(frontmatterHead).doesNotContain("<style>").contains("# PPT");
+        assertThat(md.indexOf("# PPT")).isGreaterThan(frontmatterHead.length());
+        assertThat(cssCaptor.getValue()).contains("@theme java-uncover");
     }
 
     @Test
-    void generate_shouldDegradeWithoutStyle_whenThemeRowMissing() {
-        // 主题码在 teach_ppt_theme 查不到：降级为不注入样式，材料照常回写成功
+    void generate_shouldDegradeWithoutTheme_whenThemeRowMissing() {
+        // 主题码在 teach_ppt_theme 查不到：降级为不传主题（走 marp2pptx 默认外观），材料照常回写成功
         mockGenerateSuccess(buildAgentResult());
         when(teachPptThemeMapper.selectOne(any(LambdaQueryWrapper.class))).thenReturn(null);
-        when(markdownToPptxUtil.convertContent(anyString())).thenReturn(PPTX_PATH);
+        when(markdownToPptxUtil.convertContent(anyString(), nullable(String.class))).thenReturn(PPTX_PATH);
 
         service.generateAsync(RECORD_ID, CHAPTER_ID, TEACHER_ID, buildAgentRequest(), buildMaterial(), "java-dark");
 
         ArgumentCaptor<String> mdCaptor = ArgumentCaptor.forClass(String.class);
-        verify(markdownToPptxUtil).convertContent(mdCaptor.capture());
+        ArgumentCaptor<String> cssCaptor = ArgumentCaptor.forClass(String.class);
+        verify(markdownToPptxUtil).convertContent(mdCaptor.capture(), cssCaptor.capture());
         assertThat(mdCaptor.getValue()).doesNotContain("<style>").contains("第二页");
+        assertThat(cssCaptor.getValue()).isNull();
         assertThat(capturedRecordUpdate().getStatus()).isEqualTo(1);
     }
 
@@ -266,7 +270,7 @@ class TeachPrepareAsyncServiceImplTest {
         TeachPrepareRecord update = capturedRecordUpdate();
         assertThat(update.getStatus()).isEqualTo(0);
         assertThat(update.getErrorMsg()).contains("备课智能体调用失败");
-        verify(markdownToPptxUtil, never()).convertContent(anyString());
+        verify(markdownToPptxUtil, never()).convertContent(anyString(), nullable(String.class));
     }
 
     @Test

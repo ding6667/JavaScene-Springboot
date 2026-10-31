@@ -1,5 +1,6 @@
 package com.amlve.examapi.dto.response;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import lombok.Data;
 
 import java.math.BigDecimal;
@@ -10,6 +11,10 @@ import java.util.List;
  * 管理端题目视图（教师/管理员可见，含答案与解析）。
  * <p>
  * 与出题智能体产出字段保持同一套口径，手动录入与 AI 出题在管理端展示一致。
+ * <p>
+ * answer 直接回传库内结构化对象（{@code {"correct":["A"]}}、{@code {"blanks":["a","b"]}}、
+ * {@code {"correct":true}}、{@code {"output":"9"}}、{@code {"reference":"..."}}），
+ * 前端原样回填到 {@code QuestionSaveRequest.answer} 即可，不再做字符串互转。
  */
 @Data
 public class QuestionAdminVO {
@@ -20,6 +25,18 @@ public class QuestionAdminVO {
      * 题干
      */
     private String content;
+
+    /**
+     * 简短题目：一句话概括题意（如「最长k个相等字符串」），列表/卡片直接用
+     */
+    private String shortTitle;
+
+    /**
+     * 前端渲染配置（JSON 对象）：选择 {@code {"choiceMode":"single"|"multiple"}}、
+     * 填空 {@code {"blankCount":3}}、编程 {@code {"language":"java"}} 等；
+     * 题目保存时原样回填即可
+     */
+    private JsonNode renderConfig;
 
     /**
      * 题型：1=选择，2=填空，3=判断，4=程序阅读，5=编程，6=简答
@@ -37,9 +54,9 @@ public class QuestionAdminVO {
     private List<String> options;
 
     /**
-     * 标准答案
+     * 标准答案（结构化对象，按题型定形）
      */
-    private String answer;
+    private JsonNode answer;
 
     /**
      * 解析
@@ -54,7 +71,8 @@ public class QuestionAdminVO {
     /**
      * 难度：1=基础，2=进阶，3=拔高
      */
-    private Integer difficulty;
+    private Long difficultyConfigId;
+    private String difficultyName;
 
     /**
      * 原始难度分（1.0-5.0）
@@ -115,6 +133,16 @@ public class QuestionAdminVO {
      * 知识点ID列表
      */
     private List<Long> knowledgePointIds;
+
+    /**
+     * 编程题测试用例（修改页面回填用，学生端不下发）
+     */
+    private List<QuestionTestCaseVO> testCases;
+
+    /**
+     * 相似题ID列表
+     */
+    private List<Long> relatedQuestionIds;
 
     /**
      * 总提交次数

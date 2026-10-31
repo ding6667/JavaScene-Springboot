@@ -1,5 +1,6 @@
 package com.amlve.teach.dto.response;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import lombok.Data;
 
 import java.time.LocalDateTime;
@@ -45,6 +46,10 @@ public class HomeworkDetailResponse {
         private Long questionId;
         private Integer sourceType;
         private String content;
+        /** 简短题目快照（一句话概括题意） */
+        private String shortTitle;
+        /** 前端渲染配置快照（JSON 对象）：填空 blankCount、选择 choiceMode 等 */
+        private JsonNode renderConfig;
         private Integer type;
         private String typeName;
         /** 选项 JSON 数组字符串（原始格式，前端自行解析） */
@@ -52,7 +57,17 @@ public class HomeworkDetailResponse {
         /** 标准答案 JSON 字符串 */
         private String answer;
         private String analysis;
-        private Integer difficulty;
+        /** 编程题代码框架快照（发布时固化） */
+        private String codeFramework;
+        /** 作答要求快照（JSON 数组） */
+        private JsonNode requirements;
+        /** 阶梯提示快照（JSON 数组） */
+        private JsonNode hints;
+        /** 解题思路快照 */
+        private String solutionOutline;
+        /** 判题方式快照：1=AI批改 2=测试用例判题 3=混合 */
+        private Integer judgeMode;
+        private String difficulty;
         private Long chapterId;
         /** 知识点 JSON 数组字符串 */
         private String knowledgePoints;

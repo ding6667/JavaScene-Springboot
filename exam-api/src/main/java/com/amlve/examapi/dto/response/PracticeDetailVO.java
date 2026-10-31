@@ -1,5 +1,6 @@
 package com.amlve.examapi.dto.response;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import lombok.Data;
 
 import java.util.List;
@@ -14,13 +15,23 @@ public class PracticeDetailVO {
 
     private String content;
 
+    /** 简短题目：一句话概括题意 */
+    private String shortTitle;
+
+    /**
+     * 前端渲染配置（JSON 对象）：填空 blankCount（要留几个空）、
+     * 选择 choiceMode（single=单选，multiple=多选）等，后端已补齐
+     */
+    private JsonNode renderConfig;
+
     private Integer type;
 
     private List<String> options;
 
     private Long chapterId;
 
-    private Integer difficulty;
+    private Long difficultyConfigId;
+    private String difficultyName;
 
     private Integer score;
 

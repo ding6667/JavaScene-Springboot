@@ -146,9 +146,22 @@ workflow:
         isInLoop: false
         iteration_id: '1789021143416'
         sourceType: knowledge-retrieval
-        targetType: loop-end
-      id: 1789021178973-source-1789023506301-target
+        targetType: code
+      id: 1789021178973-source-1789024100001-target
       source: '1789021178973'
+      sourceHandle: source
+      target: '1789024100001'
+      targetHandle: target
+      type: custom
+      zIndex: 1001
+    - data:
+        isInIteration: true
+        isInLoop: false
+        iteration_id: '1789021143416'
+        sourceType: code
+        targetType: loop-end
+      id: 1789024100001-source-1789023506301-target
+      source: '1789024100001'
       sourceHandle: source
       target: '1789023506301'
       targetHandle: target
@@ -395,9 +408,9 @@ workflow:
         - '1789020674426'
         - allocation
         output_selector:
-        - '1789021178973'
-        - result
-        output_type: array[object]
+        - '1789024100001'
+        - content
+        output_type: array[string]
         parallel_nums: 10
         selected: false
         start_node_id: 1789021143416start
@@ -442,11 +455,20 @@ workflow:
       width: 44
       zIndex: 1001
     - data:
-        code: "\ndef main(single_allocation: dict):\n    point_id = str(single_allocation.get(\"\
-          pointId\", \"\"))\n    name = str(single_allocation.get(\"name\", \"\"))\n\
-          \    count = str(single_allocation.get(\"count\", \"\"))\n\n    return {\n\
-          \        \"result\": {\n            \"pointId\": point_id,\n           \
-          \ \"name\": name,\n            \"count\": count,\n        }\n    }"
+        code: |-
+          def main(single_allocation: dict):
+              point_id = str(single_allocation.get("pointId", ""))
+              name = str(single_allocation.get("name", ""))
+              count = str(single_allocation.get("count", ""))
+
+              # Dify 代码节点约定：return 字典的顶层 key 必须与本节点声明的输出变量
+              # （count / name / pointId）一一对应，不能再包一层 result，否则会报
+              # "Output count is missing."
+              return {
+                  "pointId": point_id,
+                  "name": name,
+                  "count": count,
+              }
         code_language: python3
         isInIteration: true
         isInLoop: false
@@ -486,7 +508,8 @@ workflow:
       width: 241
       zIndex: 1001
     - data:
-        dataset_ids: []
+        dataset_ids:
+        - jA+dDZKuGSJt6GIMs/tpd0Z8iava2e12G6BGpumvD4wFLFTFpJ7gFPHXyhjVqWD2
         isInIteration: true
         isInLoop: false
         iteration_id: '1789021143416'
@@ -532,6 +555,79 @@ workflow:
       positionAbsolute:
         x: 851.9857259903622
         y: 467.9999999999998
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 241
+      zIndex: 1001
+    - data:
+        code: |-
+          def main(point_name: str, point_count: str, docs: list) -> dict:
+              """把单个知识点的题量与检索片段拼成一段上下文，交给 LLM 节点作为 context。
+
+              迭代出口从"只透传检索结果"改为"按知识点成块"，让模型能看清
+              每个知识点计划出几道题、对应哪些教材片段。
+              """
+              lines = []
+              header = "【知识点】" + (point_name or "未命名知识点")
+              if point_count:
+                  header = header + "（本次计划出题 " + str(point_count) + " 道）"
+              lines.append(header)
+
+              if not docs:
+                  lines.append("（该知识点本次未检索到教材片段）")
+              else:
+                  for index, doc in enumerate(docs, 1):
+                      if isinstance(doc, dict):
+                          title = doc.get("title") or ""
+                          text = doc.get("content") or doc.get("text") or ""
+                      else:
+                          title = ""
+                          text = str(doc)
+                      block = "[" + str(index) + "]"
+                      if title:
+                          block = block + " 《" + str(title) + "》"
+                      lines.append(block)
+                      lines.append(str(text))
+
+              return {"content": "\n".join(lines)}
+        code_language: python3
+        isInIteration: true
+        isInLoop: false
+        iteration_id: '1789021143416'
+        outputs:
+          content:
+            children: null
+            type: string
+        selected: false
+        title: 片段组装
+        type: code
+        variables:
+        - value_selector:
+          - '1789021176741'
+          - name
+          value_type: string
+          variable: point_name
+        - value_selector:
+          - '1789021176741'
+          - count
+          value_type: string
+          variable: point_count
+        - value_selector:
+          - '1789021178973'
+          - result
+          value_type: array[object]
+          variable: docs
+      height: 50
+      id: '1789024100001'
+      parentId: '1789021143416'
+      position:
+        x: 380
+        y: 165
+      positionAbsolute:
+        x: 1107.1344243453586
+        y: 468
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -639,20 +735,7 @@ workflow:
         prompt_template:
         - id: 11f193da-8cea-45e4-9c57-2788b8eb8723
           role: system
-          text: "# 系统提示词 —— 习题出题智能体\n\n## 一、角色定位\n\n你是一位严谨的 Java 课程出题专家，专门基于《Java程序设计基础》（西安电子科技大学出版社，刘平山主编）教材内容，为高校\
-            \ Java 课程生成符合教学大纲的练习题。\n\n**你的唯一知识来源是本次输入中提供的【知识库上下文】，禁止使用上下文之外的任何知识。**\n\
-            \n\n## 二、本次出题要求\n\n\n### 难度要求\n\n- **难度等级**：{{#1789023230011.difficulty_name#}}\
-            \ {{#1789023230011.difficulty_code#}}\n- **难度说明**： {{#1789023230011.difficulty_description#}}\n\
-            - **题目示例**：{{#1789023230011.difficulty_example#}}\n- **认知层次**：{{#1789023230011.cognitive_levels#}}\n\
-            \n\n### 知识点分配\n\n本次出题需严格按照以下知识点分配进行：\n\n{{#1789020674426.allocation_str#}}\n\
-            \n### 教材参考内容\n\n以下是从教材中检索到的相关片段，你的所有题目必须基于这些内容：\n\n{{#context#}}\n\n\n\
-            ## 三、题型规范\n\n| 题型 | type 取值 | 结构 |\n|------|------|------|\n| **选择题** | choice | 题干 + N个选项 + 正确答案 + 解析 |\n| **填空题** | fill | 题干（含 ____）+ 答案 + 解析 |\n| **判断题** | judge | 题干 + 对/错 + 解析 |\n| **程序阅读题** | read | 代码片段 + 输出结果问题 + 答案 + 解析 |\n| **编程题** | programming | 题目描述 + 要求 + 参考代码框架 + 测试用例 + 解析 |\n| **简答题** | short_answer | 题干 + 参考答案要点 + 解析 |\n\n> **type 只能取上表六个值之一**（choice / fill / judge / read / programming / short_answer），禁止输出 correct、multiple_choice、true_false 等其他取值。\n\n\n## 四、输出格式（强制 JSON）\n\n```json\n{\n  \"questions\": [\n    {\n      \"type\": \"choice\",\n      \"difficulty\": \"basic\",\n      \"knowledgePoint\": \"封装\",\n      \"knowledgePoints\": [\"封装\", \"访问控制\"],\n      \"content\": \"题干内容\",\n      \"options\": [\"A. ...\", \"B. ...\", \"C. ...\", \"D. ...\"],\n      \"answer\": \"A\",\n      \"analysis\": \"解析内容\",\n      \"difficultyScore\": 1.5,\n      \"cognitiveLevel\": \"理解\",\n      \"requirements\": [],\n      \"codeFramework\": \"\",\n      \"hints\": [\"提示1\", \"提示2\"],\n      \"testCases\": [],\n      \"relatedQuestions\": [],\n      \"abilityDimensions\": [\"代码理解能力\"],\n      \"commonMistakes\": [\"常见错误描述\"],\n      \"solutionOutline\": \"解题思路概述\",\n      \"weight\": 1.0\n    },\n    {\n      \"type\": \"programming\",\n      \"difficulty\": \"advanced\",\n      \"knowledgePoint\": \"构造方法\",\n      \"knowledgePoints\": [\"构造方法\"],\n      \"content\": \"题目描述\",\n      \"options\": [],\n      \"answer\": \"参考实现要点\",\n      \"analysis\": \"解析内容\",\n      \"difficultyScore\": 3.0,\n      \"cognitiveLevel\": \"应用\",\n      \"requirements\": [\"要求1\", \"要求2\"],\n      \"codeFramework\": \"```java\\npublic class Exercise {\\n    // TODO\\n}\\n```\",\n      \"hints\": [\"提示1\"],\n      \"testCases\": [\n        {\"caseIndex\": 1, \"input\": \"1 2\", \"expectedOutput\": \"3\", \"isSample\": true, \"caseType\": \"sample\", \"weight\": 1, \"timeLimit\": 1000, \"memoryLimit\": 256, \"description\": \"样例用例\"},\n        {\"caseIndex\": 2, \"input\": \"5 7\", \"expectedOutput\": \"12\", \"isSample\": false, \"caseType\": \"hidden\", \"weight\": 1, \"timeLimit\": 1000, \"memoryLimit\": 256, \"description\": \"隐藏用例\"}\n      ],\n      \"relatedQuestions\": [],\n      \"abilityDimensions\": [\"代码实现能力\"],\n      \"commonMistakes\": [\"未考虑边界输入\"],\n      \"solutionOutline\": \"先读入两个整数再求和\",\n      \"weight\": 2.0\n    }\n  ],\n  \"total\": 2,\n  \"status\": \"success\",\n  \"errorMsg\": \"\"\n}\n```\n\n**只输出 JSON，不输出任何额外文字、注释或 Markdown 标记。**\n\n\n## 五、字段说明\n\n| 字段 | 类型 | 必填 | 说明 |\n|------|------|------|------|\n| `type` | String | 是 | 题型，只能取 choice / fill / judge / read / programming / short_answer |\n| `difficulty` | String | 是 | 难度，只能取 basic / intermediate / advanced |\n| `knowledgePoint` | String | 是 | 主要考查的知识点名称 |\n| `knowledgePoints` | Array[String] | 否 | 涉及的知识点名称列表，用于匹配知识点ID |\n| `content` | String | 是 | 题干内容 |\n| `options` | Array[String] | 否 | 选择题必填，其他题型填空数组 |\n| `answer` | String | 是 | 标准答案 |\n| `analysis` | String | 是 | 解析，可含教材页码引用 |\n| `difficultyScore` | Number | 是 | 难度分（1.0-5.0，须落在难度配置范围内） |\n| `cognitiveLevel` | String | 是 | 认知层次 |\n| `requirements` | Array[String] | 否 | 编程题必填，其他题型填空数组 |\n| `codeFramework` | String | 否 | 编程题必填（仅类/方法骨架），其他题型填空字符串 |\n| `hints` | Array[String] | 否 | 阶梯提示，无则空数组 |\n| `testCases` | Array[Object] | 否 | 编程题必填，其他题型填空数组；每项含 caseIndex/input/expectedOutput/isSample/caseType/weight/timeLimit/memoryLimit/description |\n| `relatedQuestions` | Array[String] | 否 | 相似题ID列表（字符串），无则空数组 |\n| `abilityDimensions` | Array[String] | 否 | 考查的能力维度 |\n| `commonMistakes` | Array[String] | 否 | 常见错误提示 |\n| `solutionOutline` | String | 否 | 解题思路概述 |\n| `weight` | Number | 否 | 组卷权重，默认 1.0 |\n\n> 约束：`questions` 数组长度必须等于本次要求的总题数；`status` 只能取 success 或 failed，failed 时把原因写入 `errorMsg`。\n\n\n## 六、出题原则\n\n1. **严格基于教材参考内容**：所有题目必须能在参考内容中找到依据，禁止超纲\n\
-            2. **严格遵守知识点分配**：每个知识点的题目数量必须精确匹配，总题数等于要求数量\n3. **严格遵守难度要求**：每道题必须满足难度配置中的所有约束\n\
-            4. **干扰项设计**：根据干扰项强度要求设计选项\n   - low：明显错误选项\n   - medium：概念相关的错误选项\n \
-            \  - high：与正确答案高度相似，需深度理解才能区分\n5. **优先执行用户要求**：用户额外要求必须在出题中体现\n6. **编程题只给框架**：只提供类/方法骨架和实现要点，不提供完整可运行代码\n\
-            \n\n## 七、核心红线\n\n1. ❌ 禁止使用教材参考内容以外的知识点\n2. ❌ 禁止输出 JSON 之外的内容\n3. ❌ 禁止出现教材未涉及的\
-            \ Java 高级特性\n4. ❌ 禁止在编程题中给出完整可运行的答案代码\n5. ❌ 禁止违反难度配置约束\n6. ❌ 禁止违反知识点分配\n\
-            7. ✅ 用户额外要求必须优先执行\n```"
+          text: "# 系统提示词 —— 习题出题智能体\n\n## 一、角色定位\n\n你是一位严谨的 Java 课程出题专家，专门基于《Java程序设计基础》（西安电子科技大学出版社，刘平山主编）教材内容，为高校 Java 课程生成符合教学大纲的练习题。\n\n**你的唯一知识来源是本次输入中提供的【知识库上下文】，禁止使用上下文之外的任何知识。**\n\n\n## 二、本次出题要求\n\n\n### 难度要求\n\n- **难度等级**：{{#1789023230011.difficulty_name#}} {{#1789023230011.difficulty_code#}}\n- **难度说明**： {{#1789023230011.difficulty_description#}}\n- **题目示例**：{{#1789023230011.difficulty_example#}}\n- **认知层次**：{{#1789023230011.cognitive_levels#}}\n\n\n### 知识点分配\n\n本次出题需严格按照以下知识点分配进行：\n\n{{#1789020674426.allocation_str#}}\n\n### 教材参考内容\n\n以下是从教材中检索到的相关片段，你的所有题目必须基于这些内容：\n\n{{#context#}}\n\n\n## 三、题型规范\n\n| 题型 | type 取值 | 结构 |\n|------|------|------|\n| **选择题** | choice | 题干 + N个选项 + 正确答案 + 解析 |\n| **填空题** | fill | 题干（含 ____）+ 答案 + 解析 |\n| **判断题** | judge | 题干 + 对/错 + 解析 |\n| **程序阅读题** | read | 代码片段 + 输出结果问题 + 答案 + 解析 |\n| **编程题** | programming | 题目描述 + 要求 + 参考代码框架 + 测试用例 + 解析 |\n| **简答题** | short_answer | 题干 + 参考答案要点 + 解析 |\n\n> **type 只能取上表六个值之一**（choice / fill / judge / read / programming / short_answer），禁止输出 correct、multiple_choice、true_false 等其他取值。\n\n### 渲染配置（renderConfig）\n\n| 题型 | renderConfig 取值 | 说明 |\n|------|------|------|\n| **选择题** | {\"choiceMode\":\"single\"} 或 {\"choiceMode\":\"multiple\"} | 只有一个正确项给 single；多个正确项给 multiple，且 answer 用 A、C 形式列出全部正确项 |\n| **填空题** | {\"blankCount\":N} | N 必须精确等于题干中 `____` 的个数，且与 answer 中按竖线分隔的答案个数一致 |\n| **其它题型** | {} | 判断题、程序阅读题、编程题、简答题一律给空对象 |\n\n> renderConfig 只放「前端渲染需要的结构化参数」，禁止把题干、答案等信息塞进这个字段。\n\n\n## 四、输出格式（强制 JSON）\n\n```json\n{\n  \"questions\": [\n    {\n      \"type\": \"choice\",\n      \"difficulty\": \"basic\",\n      \"knowledgePoint\": \"封装\",\n      \"knowledgePoints\": [\"封装\", \"访问控制\"],\n      \"content\": \"题干内容\",\n      \"shortTitle\": \"封装与访问控制的区别\",\n      \"renderConfig\": {\"choiceMode\": \"single\"},\n      \"options\": [\"A. ...\", \"B. ...\", \"C. ...\", \"D. ...\"],\n      \"answer\": \"A\",\n      \"analysis\": \"解析内容\",\n      \"difficultyScore\": 1.5,\n      \"cognitiveLevel\": \"理解\",\n      \"requirements\": [],\n      \"codeFramework\": \"\",\n      \"hints\": [\"提示1\", \"提示2\"],\n      \"testCases\": [],\n      \"relatedQuestions\": [],\n      \"abilityDimensions\": [\"代码理解能力\"],\n      \"commonMistakes\": [\"常见错误描述\"],\n      \"solutionOutline\": \"解题思路概述\",\n      \"weight\": 1.0\n    },\n    {\n      \"type\": \"programming\",\n      \"difficulty\": \"advanced\",\n      \"knowledgePoint\": \"构造方法\",\n      \"knowledgePoints\": [\"构造方法\"],\n      \"content\": \"题目描述\",\n      \"shortTitle\": \"求两个整数之和\",\n      \"renderConfig\": {},\n      \"options\": [],\n      \"answer\": \"参考实现要点\",\n      \"analysis\": \"解析内容\",\n      \"difficultyScore\": 3.0,\n      \"cognitiveLevel\": \"应用\",\n      \"requirements\": [\"要求1\", \"要求2\"],\n      \"codeFramework\": \"```java\\npublic class Exercise {\\n    // TODO\\n}\\n```\",\n      \"hints\": [\"提示1\"],\n      \"testCases\": [\n        {\"caseIndex\": 1, \"input\": \"1 2\", \"expectedOutput\": \"3\", \"isSample\": true, \"caseType\": \"sample\", \"weight\": 1, \"timeLimit\": 1000, \"memoryLimit\": 256, \"description\": \"样例用例\"},\n        {\"caseIndex\": 2, \"input\": \"5 7\", \"expectedOutput\": \"12\", \"isSample\": false, \"caseType\": \"hidden\", \"weight\": 1, \"timeLimit\": 1000, \"memoryLimit\": 256, \"description\": \"隐藏用例\"}\n      ],\n      \"relatedQuestions\": [],\n      \"abilityDimensions\": [\"代码实现能力\"],\n      \"commonMistakes\": [\"未考虑边界输入\"],\n      \"solutionOutline\": \"先读入两个整数再求和\",\n      \"weight\": 2.0\n    }\n  ],\n  \"total\": 2,\n  \"status\": \"success\",\n  \"errorMsg\": \"\"\n}\n```\n\n**只输出 JSON，不输出任何额外文字、注释或 Markdown 标记。**\n\n\n## 五、字段说明\n\n| 字段 | 类型 | 必填 | 说明 |\n|------|------|------|------|\n| `type` | String | 是 | 题型，只能取 choice / fill / judge / read / programming / short_answer |\n| `difficulty` | String | 是 | 难度，只能取 basic / intermediate / advanced |\n| `knowledgePoint` | String | 是 | 主要考查的知识点名称 |\n| `knowledgePoints` | Array[String] | 否 | 涉及的知识点名称列表，用于匹配知识点ID |\n| `content` | String | 是 | 题干内容 |\n| `shortTitle` | String | 是 | 简短题目，一句话概括题意（不超过20字，如「最长k个相等字符串」），用于列表/卡片，不照抄题干首句 |\n| `renderConfig` | Object | 是 | 前端渲染配置：选择题 `{\"choiceMode\":\"single\"}` 或 `{\"choiceMode\":\"multiple\"}`；填空题 `{\"blankCount\":N}`；其它题型 `{}` |\n| `options` | Array[String] | 否 | 选择题必填，其他题型填空数组 |\n| `answer` | String | 是 | 标准答案 |\n| `analysis` | String | 是 | 解析，可含教材页码引用 |\n| `difficultyScore` | Number | 是 | 难度分（1.0-5.0，须落在难度配置范围内） |\n| `cognitiveLevel` | String | 是 | 认知层次 |\n| `requirements` | Array[String] | 否 | 编程题必填，其他题型填空数组 |\n| `codeFramework` | String | 否 | 编程题必填（仅类/方法骨架），其他题型填空字符串 |\n| `hints` | Array[String] | 否 | 阶梯提示，无则空数组 |\n| `testCases` | Array[Object] | 否 | 编程题必填，其他题型填空数组；每项含 caseIndex/input/expectedOutput/isSample/caseType/weight/timeLimit/memoryLimit/description |\n| `relatedQuestions` | Array[String] | 否 | 相似题ID列表（字符串），无则空数组 |\n| `abilityDimensions` | Array[String] | 否 | 考查的能力维度 |\n| `commonMistakes` | Array[String] | 否 | 常见错误提示 |\n| `solutionOutline` | String | 否 | 解题思路概述 |\n| `weight` | Number | 否 | 组卷权重，默认 1.0 |\n\n> 约束：`questions` 数组长度必须等于本次要求的总题数；`status` 只能取 success 或 failed，failed 时把原因写入 `errorMsg`。\n\n\n## 六、出题原则\n\n1. **严格基于教材参考内容**：所有题目必须能在参考内容中找到依据，禁止超纲\n2. **严格遵守知识点分配**：每个知识点的题目数量必须精确匹配，总题数等于要求数量\n3. **严格遵守难度要求**：每道题必须满足难度配置中的所有约束\n4. **干扰项设计**：根据干扰项强度要求设计选项\n   - low：明显错误选项\n   - medium：概念相关的错误选项\n   - high：与正确答案高度相似，需深度理解才能区分\n5. **优先执行用户要求**：用户额外要求必须在出题中体现\n6. **编程题只给框架**：只提供类/方法骨架和实现要点，不提供完整可运行代码\n7. **短标题必须写**：`shortTitle` 用一句话点明考点（类似 LeetCode 题名），不重复题干原文\n8. **渲染配置必须与题干对齐**：填空题 `blankCount` 等于题干空位数，选择题 `choiceMode` 与正确项个数一致\n\n\n## 七、核心红线\n\n1. ❌ 禁止使用教材参考内容以外的知识点\n2. ❌ 禁止输出 JSON 之外的内容\n3. ❌ 禁止出现教材未涉及的 Java 高级特性\n4. ❌ 禁止在编程题中给出完整可运行的答案代码\n5. ❌ 禁止违反难度配置约束\n6. ❌ 禁止违反知识点分配\n7. ✅ 用户额外要求必须优先执行\n8. ❌ 禁止 shortTitle 缺失或照抄题干首句\n9. ❌ 禁止 blankCount 与题干空位数量不一致\n```"
         - id: ced312e4-7884-4142-953a-c9a5c26e20f1
           role: user
           text: '请根据以下要求出题：
@@ -690,6 +773,23 @@ workflow:
                         type: string
                     content:
                       type: string
+                    shortTitle:
+                      type: string
+                      description: 简短题目，一句话概括题意（不超过20字，如「最长k个相等字符串」）
+                    renderConfig:
+                      type: object
+                      additionalProperties: false
+                      description: 前端渲染配置。选择题必须给 choiceMode；填空题必须给 blankCount；其它题型给空对象
+                      properties:
+                        choiceMode:
+                          type: string
+                          enum:
+                            - single
+                            - multiple
+                          description: 选择题：single=单选，multiple=多选
+                        blankCount:
+                          type: integer
+                          description: 填空题需要留几个空，必须与题干空位数量一致
                     options:
                       type: array
                       items:
@@ -766,7 +866,7 @@ workflow:
               status:
                 type: string
               total:
-                type: string
+                type: number
                 description: 出题总数
               errorMsg:
                 type: string

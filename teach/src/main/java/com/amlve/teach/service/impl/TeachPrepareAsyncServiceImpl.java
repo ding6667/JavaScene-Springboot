@@ -25,7 +25,6 @@ import org.springframework.stereotype.Service;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
-import java.util.regex.Pattern;
 
 /**
  * 备课材料后台生成实现（运行在 prepareExecutor 虚拟线程上）。
@@ -43,9 +42,6 @@ public class TeachPrepareAsyncServiceImpl implements TeachPrepareAsyncService {
 
     /** 错误信息落库截断长度 */
     private static final int ERROR_MSG_MAX = 500;
-
-    /** frontmatter 分隔线（独占一行的 ---），用于定位已含 frontmatter 内容的闭合位置 */
-    private static final Pattern FRONTMATTER_DELIM = Pattern.compile("(?m)^---\\s*$");
 
     private final PrepareAgentClient prepareAgentClient;
 
@@ -80,12 +76,13 @@ public class TeachPrepareAsyncServiceImpl implements TeachPrepareAsyncService {
         }
         PrepareResponse agentResult = agentResultRaw.getData();
 
-        // 2. PPT Markdown 注入视觉主题 frontmatter 后转 pptx 文件（转换失败返回 null，其余材料照常回写）
+        // 2. PPT Markdown 转 pptx 文件，主题以 marp2pptx 的同名 yaml 配置传入
+        //    （不能内联 <style>：marp2pptx 不解析 CSS，只会把 CSS 全文渲染到第一页）
         String pptxUrl = null;
         Long pptxFileSize = null;
         String pptxFileName = null;
         if (agentResult.getPptx() != null && !agentResult.getPptx().isBlank()) {
-            pptxUrl = markdownToPptxUtil.convertContent(injectTheme(agentResult.getPptx(), themeCode));
+            pptxUrl = markdownToPptxUtil.convertContent(agentResult.getPptx(), getThemeStylesheet(themeCode));
             if (pptxUrl != null) {
                 pptxFileName = Paths.get(pptxUrl).getFileName().toString();
                 try {
@@ -113,8 +110,9 @@ public class TeachPrepareAsyncServiceImpl implements TeachPrepareAsyncService {
             teachPptMapper.insert(ppt);
         }
 
-        // 4. 材料、pptxUrl 与 status=1 在同一条 UPDATE 里落地：
-        //    拆成两次写会留下"材料已有但仍在生成中"的半态，前端轮询到非2又取不到URL
+        // 4. 材料、pptxUrl、theme_code 与 status=1 在同一条 UPDATE 里落地：
+        //    拆成两次写会留下"材料已有但仍在生成中"的半态，前端轮询到非2又取不到URL；
+        //    theme_code 落库是为了下载接口补生成文件时能按同一主题还原样式
         TeachPrepareRecord update = new TeachPrepareRecord();
         update.setId(recordId);
         update.setLessonPlan(agentResult.getLessonPlan());
@@ -123,11 +121,12 @@ public class TeachPrepareAsyncServiceImpl implements TeachPrepareAsyncService {
         update.setLab(agentResult.getLab());
         update.setPptxMd(agentResult.getPptx());
         update.setPptxUrl(pptxUrl);
+        update.setThemeCode(themeCode);
         update.setStatus(PrepareRecordStatusEnum.SUCCESS.getCode());
         teachPrepareRecordMapper.updateById(update);
 
-        log.info("备课后台生成成功: recordId={}, chapterId={}, teacherId={}, pptxUrl={}",
-                recordId, chapterId, teacherId, pptxUrl);
+        log.info("备课后台生成成功: recordId={}, chapterId={}, teacherId={}, themeCode={}, pptxUrl={}",
+                recordId, chapterId, teacherId, themeCode, pptxUrl);
     }
 
     /** 备课记录置为失败终态（status=0，错误信息截断），回写自身失败只记日志 */
@@ -145,45 +144,11 @@ public class TeachPrepareAsyncServiceImpl implements TeachPrepareAsyncService {
     }
 
     /**
-     * PPT Markdown 注入 Marp 基础 frontmatter 与主题样式。
-     * <p>
-     * marp2pptx 不支持向 Marp CLI 透传 --theme-set，自定义 CSS 主题以 {@code <style>} 块
-     * 内联进 Markdown（Marp 会将其应用到每页并覆盖默认外观）。themeCode 无对应 CSS 时
-     * 仅注入基础 frontmatter（marp/paginate/16:9），走 Marp 默认外观。
-     * <ul>
-     *     <li>内容无 frontmatter：头部拼接 frontmatter + style 块；</li>
-     *     <li>内容已含 frontmatter（如 Dify 输出自带）：style 块插入到 frontmatter 闭合线之后，不重复注入基础配置；</li>
-     *     <li>无主题样式可注入：原样返回。</li>
-     * </ul>
-     */
-    private String injectTheme(String contentMd, String themeCode) {
-        String css = getThemeStylesheet(themeCode);
-        if (css == null) {
-            return contentMd;
-        }
-        String styleBlock = "<style>\n" + css + "\n</style>\n\n";
-        if (!contentMd.startsWith("---")) {
-            // 无 frontmatter：注入基础配置 + 主题样式
-            return "---\nmarp: true\npaginate: true\nsize: 16:9\n---\n\n" + styleBlock + contentMd;
-        }
-        // 已含 frontmatter：定位第 2 条 --- 分隔线（闭合线），样式插在其后；
-        // 找不到闭合线时放弃注入，避免破坏原文结构
-        java.util.regex.Matcher matcher = FRONTMATTER_DELIM.matcher(contentMd);
-        int closeEnd = -1;
-        for (int i = 0; i < 2 && matcher.find(); i++) {
-            closeEnd = matcher.end();
-        }
-        if (closeEnd > 0) {
-            return contentMd.substring(0, closeEnd) + "\n\n" + styleBlock + contentMd.substring(closeEnd);
-        }
-        return contentMd;
-    }
-
-    /**
-     * 读取主题样式表内容。
+     * 读取主题样式表内容（CSS 文本），交由 {@link MarkdownToPptxUtil#convertContent(String, String)}
+     * 映射成 marp2pptx 的设计配置。下载接口补生成走同一份实现，两处样式必须一致。
      *
      * @param themeCode 模板主题码（如 java-default）
-     * @return CSS 文本；themeCode 为空、格式非法、无对应文件或读取失败时返回 null（调用方降级为不注入样式）
+     * @return CSS 文本；themeCode 为空、格式非法、无对应文件或读取失败时返回 null（调用方降级为默认外观）
      */
     public String getThemeStylesheet(String themeCode) {
         if (themeCode == null || themeCode.isBlank()) {

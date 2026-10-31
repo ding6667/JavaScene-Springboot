@@ -20,4 +20,10 @@ public class StudentHomeworkBriefResponse implements Serializable {
     private LocalDateTime deadline;
     private Integer allowLateSubmit;
     private LocalDateTime publishTime;
+
+    /** 作业状态：2=已发布，3=已截止（学生可见范围只有这两种） */
+    private Integer status;
+
+    /** 作业状态名，未匹配时为空串 */
+    private String statusName;
 }

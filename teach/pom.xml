@@ -56,9 +56,16 @@
             <artifactId>exam-api</artifactId>
             <version>${project.version}</version>
         </dependency>
+
         <dependency>
             <groupId>com.amlve</groupId>
             <artifactId>study-api</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <!-- 学生端作业可见范围校验：跨模块查询学生班级/年级 -->
+        <dependency>
+            <groupId>com.amlve</groupId>
+            <artifactId>system-api</artifactId>
             <version>${project.version}</version>
         </dependency>
         <dependency>

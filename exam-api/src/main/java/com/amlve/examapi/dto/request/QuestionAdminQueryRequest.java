@@ -23,7 +23,7 @@ public class QuestionAdminQueryRequest {
     /**
      * 难度：1=基础，2=进阶，3=拔高（可选）
      */
-    private Integer difficulty;
+    private Long difficultyConfigId;
 
     /**
      * 题干关键字（可选，模糊匹配）

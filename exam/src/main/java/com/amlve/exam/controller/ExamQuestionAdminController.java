@@ -1,27 +1,31 @@
 package com.amlve.exam.controller;
 
+import com.amlve.common.constant.ErrorCodeConstant;
 import com.amlve.common.constant.ErrorMessageConstant;
+import com.amlve.common.enums.QuestionTypeEnum;
 import com.amlve.common.exception.BusinessException;
 import com.amlve.common.request.PageResult;
 import com.amlve.common.request.Result;
 import com.amlve.exam.dto.request.QuestionGenerateRequest;
 import com.amlve.exam.dto.request.QuestionSaveRequest;
-import com.amlve.exam.enumeration.QuestionDifficultyEnum;
-import com.amlve.common.enums.QuestionTypeEnum;
 import com.amlve.exam.service.ExamQuestionService;
 import com.amlve.exam.tableEnt.ExamQuestion;
+import com.amlve.exam.util.QuestionAnswerCodec;
+import com.amlve.exam.util.QuestionRenderConfigCodec;
 import com.amlve.examapi.dto.request.QuestionAdminQueryRequest;
 import com.amlve.examapi.dto.response.QuestionAdminVO;
+import com.fasterxml.jackson.databind.JsonNode;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 
 /**
- * 题目管理接口（教师/管理员）：手动新增 / 修改 / 删除 / 管理端列表，以及随机抽题。
- * <p>
+ * 题目管理接口（教师,管理员）：手动新增 修改 删除 管理端列表，以及随机抽题。
+ * <p
  * 类级 {@code @PreAuthorize("hasAnyRole('TEACHER','ADMIN')")} 统一拦截，
  * 角色已在 JWT 过滤器装入 authorities，无需再查库校验。
  */
@@ -66,28 +70,32 @@ public class ExamQuestionAdminController {
         return Result.success(questionService.listForAdmin(request));
     }
 
-    /** 查询单题（管理端） */
+    /** 查询单题（管理端，答案按结构化对象回传，可直接回填到修改接口） */
     @GetMapping("/{id}")
-    public Result<ExamQuestion> get(@PathVariable Long id) {
-        return Result.success(questionService.getById(id));
+    public Result<QuestionAdminVO> get(@PathVariable Long id) {
+        return Result.success(questionService.getForAdmin(id));
     }
 
     /** 按章节随机抽取题目（不调用智能体） */
     @PostMapping("/random")
-    public Result<List<ExamQuestion>> random(@Valid @RequestBody QuestionGenerateRequest request) {
+    public Result<Map<Integer, List<QuestionAdminVO>>> random(@Valid @RequestBody QuestionGenerateRequest request) {
         return Result.success(questionService.generate(request));
     }
 
-    /** 将保存请求转换为题目实体，options 序列化为 JSON 字符串 */
+    /** 将保存请求转换为题目实体，options 序列化为 JSON 字符串，answer 直接落结构化对象 */
     private ExamQuestion toEntity(QuestionSaveRequest request) {
         ExamQuestion question = new ExamQuestion();
         question.setContent(request.getContent());
+        question.setShortTitle(normalizeShortTitle(request.getShortTitle()));
         question.setType(QuestionTypeEnum.fromCode(request.getType()));
         question.setOptions(toOptionsJson(request.getOptions()));
-        question.setAnswer(request.getAnswer());
+        question.setAnswer(normalizeAnswer(request.getAnswer(), question.getType()));
+        // 渲染配置依赖题型与答案推断（选择按答案个数定单选/多选、填空按题干空位定空数），故放在两者之后
+        question.setRenderConfig(QuestionRenderConfigCodec.toStored(request.getRenderConfig(),
+                question.getType(), question.getContent(), question.getAnswer()));
         question.setAnalysis(request.getAnalysis());
         question.setChapterId(request.getChapterId());
-        question.setDifficulty(QuestionDifficultyEnum.fromCode(request.getDifficulty()));
+        question.setDifficultyConfigId(request.getDifficultyConfigId());
         question.setScore(request.getScore() == null ? 5 : request.getScore());
         question.setRequirements(request.getRequirements());
         question.setHints(request.getHints());
@@ -103,6 +111,29 @@ public class ExamQuestionAdminController {
         question.setAbilityDimensions(request.getAbilityDimensions());
         question.setCommonMistakes(request.getCommonMistakes());
         return question;
+    }
+
+    /**
+     * 答案归一化。
+     * <p>
+     * Bean Validation 的 {@code @NotNull} 拦不住 JSON 里的 {@code null}（JsonNode 字段收到的是 NullNode），
+     * 所以这里再兜一层：空答案直接拒；纯文本按题型转结构；对象/数组原样入库。
+     */
+    private JsonNode normalizeAnswer(JsonNode answer, QuestionTypeEnum type) {
+        JsonNode stored = QuestionAnswerCodec.toStored(answer, type);
+        if (stored == null) {
+            throw new BusinessException(ErrorCodeConstant.PARAM_INVALID, "标准答案不能为空");
+        }
+        return stored;
+    }
+
+    /** 简短题目归一化：去首尾空白，空白串视为未填 */
+    private String normalizeShortTitle(String shortTitle) {
+        if (shortTitle == null) {
+            return null;
+        }
+        String trimmed = shortTitle.trim();
+        return trimmed.isEmpty() ? null : trimmed;
     }
 
     /** 选项列表序列化为 JSON 字符串，失败时退化为分号拼接 */

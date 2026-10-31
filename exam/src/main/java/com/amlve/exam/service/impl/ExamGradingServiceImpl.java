@@ -11,11 +11,17 @@ import com.amlve.exam.mapper.ExamGradingTaskMapper;
 import com.amlve.exam.mapper.ExamHomeworkSubmitMapper;
 import com.amlve.exam.mapper.ExamQuestionMapper;
 import com.amlve.exam.service.ExamGradingService;
+import com.amlve.exam.service.ExamQuestionSnapshotService;
 import com.amlve.exam.service.ExamWrongQuestionService;
 import com.amlve.exam.tableEnt.ExamGradingTask;
 import com.amlve.exam.tableEnt.ExamHomeworkSubmit;
 import com.amlve.exam.tableEnt.ExamQuestion;
+import com.amlve.exam.tableEnt.ExamQuestionSnapshot;
+import com.amlve.exam.util.QuestionAnswerCodec;
+import com.amlve.exam.util.QuestionSnapshotCodec;
+import com.amlve.examapi.dto.request.WrongQuestionArchiveRequest;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
+import com.fasterxml.jackson.databind.JsonNode;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Async;
@@ -39,11 +45,15 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class ExamGradingServiceImpl implements ExamGradingService {
 
+    /** 错题来源：1=作业 */
+    private static final int WRONG_SOURCE_HOMEWORK = 1;
+
     private final ExamGradingTaskMapper gradingTaskMapper;
     private final ExamHomeworkSubmitMapper submitMapper;
     private final ExamQuestionMapper questionMapper;
     private final ScoreAgentClient scoreClient;
     private final ExamWrongQuestionService wrongQuestionService;
+    private final ExamQuestionSnapshotService snapshotService;
 
     /**
      * 异步批改指定学生某次作业的全部提交。
@@ -90,16 +100,35 @@ public class ExamGradingServiceImpl implements ExamGradingService {
                 log.warn("提交的题目不存在，跳过: questionId={}", submit.getQuestionId());
                 continue;
             }
+            // 批改口径以「学生实际作答的那一版」为准：作业提交带 teach 快照ID时读发布题干与标准答案，
+            // 题库事后修订不会让已交卷的学生按新答案判分（快照缺失则回退题库）
+            ExamQuestionSnapshot snapshot = snapshotService.resolve(question, submit.getSnapshotId());
+            String questionContent = question.getContent();
+            JsonNode standardAnswerNode = question.getAnswer();
             int fullScore = question.getScore() == null ? 0 : question.getScore();
+            if (snapshot != null) {
+                String snapshotContent = QuestionSnapshotCodec.text(snapshot.getSnapshotView(), "content");
+                JsonNode snapshotAnswer = QuestionSnapshotCodec.node(snapshot.getSnapshotJudge(), "answer");
+                if (snapshotContent != null && !snapshotContent.isBlank()) {
+                    questionContent = snapshotContent;
+                }
+                if (snapshotAnswer != null && !snapshotAnswer.isNull()) {
+                    standardAnswerNode = snapshotAnswer;
+                }
+                if (snapshot.getScore() != null) {
+                    fullScore = snapshot.getScore();
+                }
+            }
             int score = 0;
             String reason;
             try {
                 ScoreEvaluateRequest request = new ScoreEvaluateRequest();
                 request.setStudentAnswer(submit.getAnswerContent());
-                request.setStandardAnswer(question.getAnswer() == null ? "" : question.getAnswer());
+                String standardAnswer = QuestionAnswerCodec.toText(standardAnswerNode);
+                request.setStandardAnswer(standardAnswer == null ? "" : standardAnswer);
                 request.setQuestionType(question.getType() == null ? null : String.valueOf(question.getType().getCode()));
                 request.setFullScore(String.valueOf(fullScore));
-                request.setQuestionContent(question.getContent());
+                request.setQuestionContent(questionContent);
                 request.setChapterId(question.getChapterId() == null ? null : String.valueOf(question.getChapterId()));
                 request.setQuestionId(question.getId() == null ? null : String.valueOf(question.getId()));
 
@@ -115,7 +144,7 @@ public class ExamGradingServiceImpl implements ExamGradingService {
 
             ExamGradingTask.ScoreDetailItem item = new ExamGradingTask.ScoreDetailItem();
             item.setQuestionId(question.getId());
-            item.setQuestionContent(question.getContent());
+            item.setQuestionContent(questionContent);
             item.setFullScore(fullScore);
             item.setScore(score);
             item.setErrorReason(reason);
@@ -123,7 +152,17 @@ public class ExamGradingServiceImpl implements ExamGradingService {
 
             if (score < fullScore) {
                 try {
-                    wrongQuestionService.archive(userId, question.getId(), submit.getAnswerContent(), 1);
+                    // 带上作业快照ID：错题钉在「发布那一版题」上，题库后续修改不影响学生回看
+                    WrongQuestionArchiveRequest archive = new WrongQuestionArchiveRequest();
+                    archive.setQuestionId(question.getId());
+                    archive.setLastAnswer(submit.getAnswerContent());
+                    archive.setSource(WRONG_SOURCE_HOMEWORK);
+                    archive.setHomeworkSnapshotId(submit.getSnapshotId());
+                    // 批改时已解析出快照，直接钉死这一行，避免归档侧再算一次（并发下也保证同一行）
+                    if (snapshot != null) {
+                        archive.setSnapshotId(snapshot.getId());
+                    }
+                    wrongQuestionService.archive(userId, archive);
                 } catch (Exception e) {
                     log.warn("错题归档失败: userId={}, questionId={}", userId, question.getId(), e);
                 }

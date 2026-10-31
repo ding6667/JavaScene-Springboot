@@ -21,7 +21,7 @@ public class PracticeQueryRequest {
     /**
      * 难度（可选）
      */
-    private Integer difficulty;
+    private Long difficultyConfigId;
 
     /**
      * 是否只查未做过的题

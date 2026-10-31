@@ -4,13 +4,17 @@ import com.amlve.common.constant.ErrorMessageConstant;
 import com.amlve.agentscoreapi.dto.request.ScoreEvaluateRequest;
 import com.amlve.agentscoreapi.dto.response.ScoreEvaluateResponse;
 import com.amlve.agentscoreapi.service.ScoreAgentClient;
+import com.amlve.common.constant.ErrorCodeConstant;
 import com.amlve.common.enums.JudgeModeEnum;
 import com.amlve.common.enums.QuestionTypeEnum;
 import com.amlve.common.enums.RunStatusEnum;
 import com.amlve.common.exception.BusinessException;
 import com.amlve.common.request.Result;
+import com.amlve.examapi.dto.request.WrongQuestionArchiveRequest;
 import com.amlve.examapi.dto.response.QuestionDetailResponse;
+import com.amlve.examapi.dto.response.WrongQuestionRetryDTO;
 import com.amlve.examapi.service.ExamQuestionApi;
+import com.amlve.examapi.service.ExamWrongQuestionApi;
 import com.amlve.study.AnswerValidator;
 import com.amlve.study.dto.request.CodeRunRequest;
 import com.amlve.study.dto.request.PracticeDraftRequest;
@@ -68,6 +72,7 @@ public class PracticeServiceImpl
         extends ServiceImpl<PracticeMapper, StudyPracticeRecord>
         implements PracticeService {
     private final ExamQuestionApi examQuestionApi;
+    private final ExamWrongQuestionApi examWrongQuestionApi;
     private final AnswerValidator answerValidator;
     private final JudgeService judgeService;
     private final CodeRunService codeRunService;
@@ -79,22 +84,38 @@ public class PracticeServiceImpl
 
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
+    /** 错题来源：2=刷题（1=作业，由 exam 批改侧写入） */
+    private static final int WRONG_SOURCE_PRACTICE = 2;
+
     @Override
     public PracticeSubmitResponse submit(PracticeSubmitRequest request, Long currentUserId) {
-        // exam-api 获取题目详情（含答案、测试用例、judge_mode）
-        QuestionDetailResponse question = getQuestion(request.getQuestionId());
+        // 错题重做走快照判题，普通刷题读题库最新版
+        RetryContext retry = RetryContext.NONE;
+        QuestionDetailResponse question;
+        if (request.getWrongQuestionId() != null) {
+            WrongQuestionRetryDTO payload = getRetryPayload(currentUserId, request.getWrongQuestionId());
+            question = toQuestionDetail(payload);
+            request.setQuestionId(payload.getQuestionId());
+            retry = new RetryContext(payload.getSnapshotId(), payload.getSource());
+        } else {
+            if (request.getQuestionId() == null) {
+                throw new BusinessException(ErrorCodeConstant.PARAM_INVALID, "题目ID不能为空");
+            }
+            // exam-api 获取题目详情（含答案、测试用例、judge_mode）
+            question = getQuestion(request.getQuestionId());
+        }
         // 按题型二次校验答案形态
         answerValidator.validate(question, request.getAnswerContent());
 
         QuestionTypeEnum type = QuestionTypeEnum.fromCode(question.getType());
         if (type != null && type.isObjective()) {
-            return submitObjective(request, question, currentUserId);
+            return submitObjective(request, question, currentUserId, retry);
         }
         if (type == QuestionTypeEnum.PROGRAMMING) {
-            return submitProgramming(request, question, currentUserId);
+            return submitProgramming(request, question, currentUserId, retry);
         }
         if (type == QuestionTypeEnum.SHORT_ANSWER) {
-            return submitSubjective(request, question, currentUserId);
+            return submitSubjective(request, question, currentUserId, retry);
         }
         log.warn("QUESTION_TYPE_UNSUPPORTED 定位: {}", question.getType());
         throw new BusinessException(ErrorMessageConstant.QUESTION_TYPE_UNSUPPORTED);
@@ -104,7 +125,8 @@ public class PracticeServiceImpl
 
     private PracticeSubmitResponse submitObjective(PracticeSubmitRequest request,
                                                    QuestionDetailResponse question,
-                                                   Long currentUserId) {
+                                                   Long currentUserId,
+                                                   RetryContext retry) {
         JudgeResult result = judgeService.judge(question, request.getAnswerContent());
 
         StudyPracticeRecord existing = findPractice(currentUserId, question.getId());
@@ -120,6 +142,9 @@ public class PracticeServiceImpl
         Long practiceId = recordWriter.savePractice(record, questionStatus);
 
         reportSubmitBehavior(currentUserId, question, record, result.correct() ? 1 : 0, result.score());
+        // 作答落库后上报错题（答错才记），失败不影响本次返回
+        archiveWrongQuestion(currentUserId, question.getId(), request.getAnswerContent(),
+                record.getIsCorrect(), retry);
 
         PracticeSubmitResponse response = new PracticeSubmitResponse();
         response.setPracticeId(practiceId);
@@ -133,14 +158,15 @@ public class PracticeServiceImpl
 
     private PracticeSubmitResponse submitProgramming(PracticeSubmitRequest request,
                                                      QuestionDetailResponse question,
-                                                     Long currentUserId) {
+                                                     Long currentUserId,
+                                                     RetryContext retry) {
         List<TestCase> cases = toTestCases(question.getTestCases());
         JudgeModeEnum mode = JudgeModeEnum.fromCode(question.getJudgeMode());
 
         // AI_GRADING 且未配置用例：转主观题判分（agent-score）
         if (cases.isEmpty()) {
             if (mode == JudgeModeEnum.AI_GRADING) {
-                return submitSubjective(request, question, currentUserId);
+                return submitSubjective(request, question, currentUserId, retry);
             }
             log.warn("PROGRAM_TESTCASE_MISSING 定位: {}", question.getId());
             throw new BusinessException(ErrorMessageConstant.PROGRAM_TESTCASE_MISSING);
@@ -182,6 +208,8 @@ public class PracticeServiceImpl
         PracticeRecordWriter.SavedIds ids = recordWriter.saveProgramming(runRecord, practiceRecord, questionStatus);
 
         reportSubmitBehavior(currentUserId, question, practiceRecord, correct, score);
+        // 判题失败（correct=null）不记错题，只有明确未全部通过才归档
+        archiveWrongQuestion(currentUserId, question.getId(), request.getAnswerContent(), correct, retry);
 
         PracticeSubmitResponse response = new PracticeSubmitResponse();
         response.setPracticeId(ids.practiceId());
@@ -216,7 +244,8 @@ public class PracticeServiceImpl
 
     private PracticeSubmitResponse submitSubjective(PracticeSubmitRequest request,
                                                     QuestionDetailResponse question,
-                                                    Long currentUserId) {
+                                                    Long currentUserId,
+                                                    RetryContext retry) {
         int fullScore = question.getScore() == null ? 0 : question.getScore();
         Integer score = null;
         Integer correct = null;
@@ -251,6 +280,8 @@ public class PracticeServiceImpl
         Long practiceId = recordWriter.savePractice(record, questionStatus);
 
         reportSubmitBehavior(currentUserId, question, record, correct, score);
+        // AI 判分未出结果（correct=null）不记错题；判为未满分才归档
+        archiveWrongQuestion(currentUserId, question.getId(), request.getAnswerContent(), correct, retry);
 
         PracticeSubmitResponse response = new PracticeSubmitResponse();
         response.setPracticeId(practiceId);
@@ -427,6 +458,116 @@ public class PracticeServiceImpl
     }
 
     // ===== 行为埋点 =====
+
+    /**
+     * 判分结果落库后上报错题：只有明确答错（isCorrect=0）才归档，
+     * 判题失败 / AI 判分未出结果（null）不记，避免把系统问题算成学生错误。
+     * <p>
+     * 普通刷题按题库版本归档（source=2）；错题重做时沿用原错题的快照与来源，
+     * 否则重做一次又会多出一条新错题，错题本越用越乱。
+     * <p>
+     * 错题本数据由 exam 模块维护，这里只上报；调用异常只记 warn，不影响本次作答结果的返回。
+     *
+     * @param userId        学生ID
+     * @param questionId    题库题目ID（不是作业题目快照ID）
+     * @param answerContent 学生本次作答原文
+     * @param isCorrect     判分结果：1对 0错 null未判出
+     * @param retry         错题重做上下文；普通作答传 {@link RetryContext#NONE}
+     */
+    private void archiveWrongQuestion(Long userId, Long questionId, String answerContent,
+                                      Integer isCorrect, RetryContext retry) {
+        if (userId == null || questionId == null || isCorrect == null || isCorrect != 0) {
+            return;
+        }
+        try {
+            WrongQuestionArchiveRequest archive = new WrongQuestionArchiveRequest();
+            archive.setQuestionId(questionId);
+            archive.setLastAnswer(answerContent);
+            if (retry != null && retry.isRetry()) {
+                // 钉回原来那一版快照与来源，累计到同一条错题上
+                archive.setSnapshotId(retry.snapshotId());
+                archive.setSource(retry.source() == null ? WRONG_SOURCE_PRACTICE : retry.source());
+            } else {
+                archive.setSource(WRONG_SOURCE_PRACTICE);
+            }
+            Result<Void> result = examWrongQuestionApi.archiveWrongQuestion(userId, archive);
+            if (result == null || result.getCode() != ErrorCodeConstant.SUCCESS) {
+                log.warn("错题归档失败: userId={}, questionId={}, message={}", userId, questionId,
+                        result == null ? "响应为空" : result.getMessage());
+            }
+        } catch (Exception e) {
+            log.warn("错题归档异常: userId={}, questionId={}, error={}", userId, questionId, e.getMessage());
+        }
+    }
+
+    /**
+     * 取错题重做载荷：含该错题冻结的那一版题面与判题包。
+     */
+    private WrongQuestionRetryDTO getRetryPayload(Long userId, Long wrongQuestionId) {
+        Result<WrongQuestionRetryDTO> result;
+        try {
+            result = examWrongQuestionApi.getRetryPayload(userId, wrongQuestionId);
+        } catch (Exception e) {
+            log.warn("获取错题重做载荷失败: userId={}, wrongQuestionId={}", userId, wrongQuestionId, e);
+            throw new BusinessException(ErrorMessageConstant.QUESTION_DETAIL_FETCH_FAILED);
+        }
+        if (result == null || result.getData() == null) {
+            log.warn("错题不存在或不属于当前学生: userId={}, wrongQuestionId={}", userId, wrongQuestionId);
+            throw new BusinessException(ErrorMessageConstant.WRONG_QUESTION_NOT_FOUND);
+        }
+        return result.getData();
+    }
+
+    /**
+     * 快照 → 判题用的题目详情：题型/选项/答案/用例/判题方式全部来自快照，
+     * 这样重做旧题时判题口径与当时一致，不会被题库后续修改影响。
+     */
+    private QuestionDetailResponse toQuestionDetail(WrongQuestionRetryDTO payload) {
+        QuestionDetailResponse question = new QuestionDetailResponse();
+        question.setId(payload.getQuestionId());
+        question.setContent(payload.getContent());
+        question.setShortTitle(payload.getShortTitle());
+        question.setRenderConfig(payload.getRenderConfig());
+        question.setType(payload.getType());
+        question.setOptions(payload.getOptions());
+        question.setAnswer(payload.getAnswer());
+        question.setAnalysis(payload.getAnalysis());
+        question.setCodeFramework(payload.getCodeFramework());
+        question.setRequirements(payload.getRequirements());
+        question.setKnowledgePointIds(payload.getKnowledgePointIds());
+        question.setScore(payload.getScore());
+        question.setChapterId(payload.getChapterId());
+        question.setJudgeMode(payload.getJudgeMode());
+        if (payload.getTestCases() != null && !payload.getTestCases().isEmpty()) {
+            question.setTestCases(payload.getTestCases().stream()
+                    .map(item -> {
+                        QuestionDetailResponse.TestCaseItem testCase = new QuestionDetailResponse.TestCaseItem();
+                        testCase.setCaseIndex(item.getCaseIndex());
+                        testCase.setInput(item.getInput());
+                        testCase.setExpectedOutput(item.getExpectedOutput());
+                        testCase.setIsSample(item.getIsSample());
+                        testCase.setCaseType(item.getCaseType());
+                        testCase.setTimeLimit(item.getTimeLimit());
+                        testCase.setMemoryLimit(item.getMemoryLimit());
+                        return testCase;
+                    })
+                    .toList());
+        }
+        return question;
+    }
+
+    /**
+     * 错题重做上下文：快照ID + 原错题来源。
+     * 普通刷题用 {@link #NONE}，归档时按题库版本 + 刷题来源记。
+     */
+    private record RetryContext(Long snapshotId, Integer source) {
+
+        private static final RetryContext NONE = new RetryContext(null, null);
+
+        private boolean isRetry() {
+            return snapshotId != null;
+        }
+    }
 
     private void reportSubmitBehavior(Long userId, QuestionDetailResponse question,
                                       StudyPracticeRecord record, Integer isCorrect, Integer score) {

@@ -5,7 +5,9 @@ import com.amlve.teach.dto.request.HomeworkCloseRequest;
 import com.amlve.teach.dto.request.HomeworkPublishRequest;
 import com.amlve.teach.dto.response.HomeworkDetailResponse;
 import com.amlve.teach.dto.response.HomeworkResponse;
+import com.amlve.teach.dto.response.StudentHomeworkBrief;
 import com.amlve.teach.service.TeachService;
+import com.amlve.teachapi.dto.response.StudentHomeworkDetailResponse;
 import jakarta.annotation.Resource;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -56,5 +58,32 @@ public class HomeworkController {
     public Result<Void> close(@Valid @RequestBody HomeworkCloseRequest request) {
         teachService.closeHomework(request);
         return Result.success(null);
+    }
+
+    // ==================== 学生端接口 ====================
+
+    /**
+     * 学生端：作业简短信息 + 题目快照ID列表。
+     * <p>
+     * 只返回作业元信息与 {@code teach_homework_question.id} 列表（按 sortOrder 升序），
+     * 不含题干/答案；前端拿 id 列表后逐题调 {@code /student/question} 懒加载。
+     */
+    @PreAuthorize("hasRole('STUDENT')")
+    @GetMapping("/student/brief")
+    public Result<StudentHomeworkBrief> studentBrief(@RequestParam("homeworkId") Long homeworkId) {
+        return Result.success(teachService.getStudentHomeworkBrief(homeworkId));
+    }
+
+    /**
+     * 学生端：按题目快照ID查单题详情（题干、选项、分值、渲染配置），不含答案与解析。
+     * <p>
+     * {@code questionId} 用 {@code /student/brief} 返回的 {@code questionIds} 元素，
+     * 即 {@code teach_homework_question.id}，不是题库题目ID。
+     */
+    @PreAuthorize("hasRole('STUDENT')")
+    @GetMapping("/student/question")
+    public Result<StudentHomeworkDetailResponse.StudentQuestionItem> studentQuestion(
+            @RequestParam("questionId") Long questionId) {
+        return Result.success(teachService.getStudentHomeworkQuestion(questionId));
     }
 }

@@ -11,6 +11,11 @@ import java.time.LocalDateTime;
 
 /**
  * 错题归档表实体。
+ * <p>
+ * 只记录「哪个学生、错了哪一版题、来自作业还是刷题、错了几次」，
+ * 题面/答案/用例都在 {@link ExamQuestionSnapshot} 里，一张快照被所有学生复用。
+ * 唯一键 (user_id, snapshot_id, source)：
+ * 同一题的不同版本、不同来源各自一条，不再互相覆盖。
  */
 @Data
 @EqualsAndHashCode(callSuper = true)
@@ -26,9 +31,9 @@ public class ExamWrongQuestion extends BaseEntity {
     private Long userId;
 
     /**
-     * 题目ID
+     * 题目快照ID（exam_question_snapshot.id）
      */
-    private Long questionId;
+    private Long snapshotId;
 
     /**
      * 来源：1=作业，2=刷题

@@ -30,6 +30,13 @@ public class ExamHomeworkSubmit extends BaseEntity {
     @TableField("question_id")
     private Long questionId;
 
+    /**
+     * 作业题目快照ID（teach_homework_question.id）。
+     * 批改时据此把错题钉在「发布那一版题」上；0 表示未上报，按题库版本归档。
+     */
+    @TableField("snapshot_id")
+    private Long snapshotId;
+
     @TableField("answer_content")
     private String answerContent;
 

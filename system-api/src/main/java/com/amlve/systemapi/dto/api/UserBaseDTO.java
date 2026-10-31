@@ -29,6 +29,12 @@ public class UserBaseDTO {
     private String className;
 
     /**
+     * 年级（学生档案 sys_student_info.grade），用于匹配「全年级作业」；
+     * 非学生或档案未完善时为 null
+     */
+    private String grade;
+
+    /**
      * 0=禁用，1=启用
      */
     private Integer enabled;

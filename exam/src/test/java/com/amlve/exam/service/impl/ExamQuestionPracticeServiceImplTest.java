@@ -1,7 +1,7 @@
 package com.amlve.exam.service.impl;
 
 import com.amlve.common.request.PageResult;
-import com.amlve.exam.enumeration.QuestionDifficultyEnum;
+import com.amlve.exam.service.ExamDifficultyConfigService;
 import com.amlve.common.enums.QuestionTypeEnum;
 import com.amlve.exam.mapper.ExamQuestionMapper;
 import com.amlve.exam.tableEnt.ExamQuestion;
@@ -39,6 +39,9 @@ class ExamQuestionPracticeServiceImplTest {
     @Mock
     private ObjectProvider<StudyPracticeApi> studyPracticeServiceProvider;
 
+    @Mock
+    private ExamDifficultyConfigService difficultyConfigService;
+
     @InjectMocks
     private ExamQuestionPracticeServiceImpl practiceService;
 
@@ -50,7 +53,7 @@ class ExamQuestionPracticeServiceImplTest {
         question.setType(QuestionTypeEnum.CHOICE);
         question.setOptions("[\"A\",\"B\"]");
         question.setChapterId(5L);
-        question.setDifficulty(QuestionDifficultyEnum.BASIC);
+        question.setDifficultyConfigId(1L);
         question.setScore(5);
         question.setAcceptanceRate(new BigDecimal("66.67"));
         question.setSubmitCount(9);
