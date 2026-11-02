@@ -1043,4 +1043,23 @@ create table javascene.user_config
     constraint uk_user_key
         unique (user_id, config_key)
 );
+create table javascene.study_behavior
+(
+    id            bigint auto_increment comment '主键ID'
+        primary key,
+    user_id       bigint                             not null comment '学生ID',
+    behavior_type varchar(32)                        not null comment '行为类型（BehaviorType.code，如 code_debug）',
+    chapter_id    bigint                             null comment '关联章节ID',
+    question_id   bigint                             null comment '关联题目ID',
+    duration      int      default 0                 null comment '行为耗时（秒）',
+    detail        json                               null comment '行为详情（JSON）',
+    create_time   datetime default CURRENT_TIMESTAMP not null comment '创建时间',
+    update_time   datetime default CURRENT_TIMESTAMP not null on update CURRENT_TIMESTAMP comment '更新时间',
+    deleted       tinyint  default 0                 not null comment '逻辑删除：0=未删，1=已删'
+)
+    comment '学习行为记录表' collate = utf8mb4_unicode_ci;
+
+create index idx_user_type_time on javascene.study_behavior (user_id, behavior_type, create_time);
+create index idx_chapter_id      on javascene.study_behavior (chapter_id);
+create index idx_question_id     on javascene.study_behavior (question_id);
 
