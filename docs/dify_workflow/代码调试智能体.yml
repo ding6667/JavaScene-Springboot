@@ -611,52 +611,26 @@ workflow:
                 - 代码质量打分要有依据，不能一律给 5 分，也不能恶意压分。
                 
                 
-                # 输出要求
+                # 输出字段要求
                 
-                只输出一个 JSON 对象，不要输出任何 JSON 之外的说明文字，不要用 markdown 代码块包裹。
-                JSON 结构如下，所有字段都必须出现；没有内容的用空字符串或空数组：
+                本节点已启用结构化输出：你只需按下列字段语义填写内容，格式由输出 schema 约束。
+                不要在正文里自行拼接 JSON，不要用 markdown 代码块包裹，也不要输出 schema 之外的额外字段。
+                所有字段都必须给出：确无内容时，字符串给空字符串，数组给空数组。
                 
-                {
-                  "errorLineList": ["5"],
-                  "errorReason": "用人话解释错误原因，2-4 句，点明触发条件",
-                  "optimizeSuggest": "针对本次问题的具体修改方向，不给完整代码",
-                  "standardIdea": "本题正确的解题思路，分点描述",
-                  "knowledgePoints": ["涉及的知识点，2-5 个"],
-                  "codeQuality": {
-                    "readability": 1-5 的整数,
-                    "naming": 1-5 的整数,
-                    "structure": 1-5 的整数,
-                    "comment": 1-5 的整数,
-                    "complexityControl": 1-5 的整数,
-                    "reusability": 1-5 的整数,
-                    "overall": 1-5 的整数,
-                    "review": "各维度一句话点评，说明扣分点"
-                  },
-                  "complexity": {
-                    "timeComplexity": "如 O(n)",
-                    "spaceComplexity": "如 O(1)",
-                    "analysis": "复杂度怎么算出来的",
-                    "optimizable": true,
-                    "optimizeDirection": "可优化时给方向，否则空字符串"
-                  },
-                  "steps": [
-                    {"stepNo": 1, "title": "步骤标题", "content": "引导学生自己检查什么、怎么验证，不给答案", "codeLocation": "第N行"}
-                  ],
-                  "commonMistakes": [
-                    {"mistake": "学生常写错的写法", "correct": "正确写法", "reason": "为什么会错"}
-                  ],
-                  "improvements": [
-                    {"type": "READABILITY", "description": "改进说明", "example": "关键代码片段", "priority": "HIGH"}
-                  ],
-                  "relatedKnowledge": [
-                    {"point": "知识点", "chapter": "第X章 章节名", "page": "P.123"}
-                  ],
-                  "similarQuestions": [
-                    {"questionId": 1001, "content": "相似题摘要", "reason": "相似点"}
-                  ],
-                  "encouragement": "一句真诚、不空洞的鼓励",
-                  "learningSuggestion": "接下来该复习或练习什么"
-                }
+                - errorLineList：学生代码中的真实行号，元素为字符串形式的数字（如 "12"）；无法定位时给空数组；
+                - errorReason：用人话解释错误原因，2-4 句，点明触发条件；
+                - optimizeSuggest：针对本次问题的具体修改方向，不给完整代码；
+                - standardIdea：本题正确的解题思路，分点描述；
+                - knowledgePoints：本次涉及的知识点，2-5 个；
+                - codeQuality：可读性 / 命名 / 结构 / 注释 / 复杂度控制 / 可复用性 六个 1-5 分维度，加一个 1-5 分的 overall 综合评分，以及 review 维度点评；
+                - complexity：时间复杂度、空间复杂度、计算依据、是否可优化、可优化方向；
+                - steps：分步引导，只写学生自己能动手做的检查与验证，不给答案；
+                - commonMistakes：学生常写错的写法 vs 正确写法，并说明为什么会错；
+                - improvements：改进建议，含类型、说明、关键代码片段、优先级；
+                - relatedKnowledge：关联教材的知识点、章节、页码（页码不确定时留空）；
+                - similarQuestions：相似题推荐，questionId 必须是真实题目 ID，没把握给空数组；
+                - encouragement：一句真诚、不空洞的鼓励；
+                - learningSuggestion：接下来该复习或练习什么。
                 
                 
                 # 数量与取值约束
@@ -705,9 +679,218 @@ workflow:
                 【学生代码】（共 {{#parse_inputs.code_line_count#}} 行）
                 {{#parse_inputs.code#}}
                 
-                请严格按系统提示词的 JSON 结构输出分析结果，只输出 JSON 本身。
+                请按系统提示词中列出的字段要求填写结构化输出，不要自行拼接 JSON 文本。
           selected: false
-          structured_output_enabled: false
+          structured_output:
+            schema:
+              properties:
+                errorLineList:
+                  description: 错误所在行号列表，元素为学生代码中的真实行号字符串，如 "12"；无法定位时为空数组
+                  items:
+                    type: string
+                  type: array
+                errorReason:
+                  description: 用人话解释错误原因，2-4 句，点明触发条件
+                  type: string
+                optimizeSuggest:
+                  description: 针对本次问题的具体修改方向，不给完整代码
+                  type: string
+                standardIdea:
+                  description: 本题正确的解题思路，分点描述
+                  type: string
+                knowledgePoints:
+                  description: 本次涉及的知识点，2-5 个
+                  items:
+                    type: string
+                  type: array
+                codeQuality:
+                  description: 代码质量评分，各维度均为 1-5 分的整数
+                  properties:
+                    readability:
+                      description: 可读性，1-5 分
+                      type: integer
+                    naming:
+                      description: 命名规范，1-5 分
+                      type: integer
+                    structure:
+                      description: 代码结构，1-5 分
+                      type: integer
+                    comment:
+                      description: 注释质量，1-5 分
+                      type: integer
+                    complexityControl:
+                      description: 复杂度控制，1-5 分
+                      type: integer
+                    reusability:
+                      description: 可复用性，1-5 分
+                      type: integer
+                    overall:
+                      description: 综合评分，1-5 分
+                      type: integer
+                    review:
+                      description: 各维度一句话点评，说明扣分点
+                      type: string
+                  required:
+                    - readability
+                    - naming
+                    - structure
+                    - comment
+                    - complexityControl
+                    - reusability
+                    - overall
+                    - review
+                  type: object
+                complexity:
+                  description: 复杂度分析
+                  properties:
+                    timeComplexity:
+                      description: 时间复杂度，如 O(n)
+                      type: string
+                    spaceComplexity:
+                      description: 空间复杂度，如 O(1)
+                      type: string
+                    analysis:
+                      description: 复杂度是怎么算出来的
+                      type: string
+                    optimizable:
+                      description: 是否还有优化空间
+                      type: boolean
+                    optimizeDirection:
+                      description: 可优化时给出优化方向，否则为空字符串
+                      type: string
+                  required:
+                    - timeComplexity
+                    - spaceComplexity
+                    - analysis
+                    - optimizable
+                    - optimizeDirection
+                  type: object
+                steps:
+                  description: 分步引导，3-5 条，只给自查路径与验证方法，不给答案
+                  items:
+                    properties:
+                      stepNo:
+                        description: 步骤序号，从 1 开始
+                        type: integer
+                      title:
+                        description: 步骤标题
+                        type: string
+                      content:
+                        description: 引导内容，说明学生该检查什么、怎么验证
+                        type: string
+                      codeLocation:
+                        description: 关联的代码位置，如 第12行；无则空字符串
+                        type: string
+                    required:
+                      - stepNo
+                      - title
+                      - content
+                      - codeLocation
+                    type: object
+                  type: array
+                commonMistakes:
+                  description: 常见错误对比，1-3 条
+                  items:
+                    properties:
+                      mistake:
+                        description: 学生常写错的代码
+                        type: string
+                      correct:
+                        description: 正确的写法
+                        type: string
+                      reason:
+                        description: 为什么会错
+                        type: string
+                    required:
+                      - mistake
+                      - correct
+                      - reason
+                    type: object
+                  type: array
+                improvements:
+                  description: 代码改进建议，2-4 条
+                  items:
+                    properties:
+                      type:
+                        description: 改进类型，只能是 READABILITY、PERFORMANCE、EDGE_CASE、REUSABILITY 之一
+                        type: string
+                      description:
+                        description: 改进说明
+                        type: string
+                      example:
+                        description: 改进示例代码，只给关键片段
+                        type: string
+                      priority:
+                        description: 优先级，只能是 HIGH、MEDIUM、LOW 之一
+                        type: string
+                    required:
+                      - type
+                      - description
+                      - example
+                      - priority
+                    type: object
+                  type: array
+                relatedKnowledge:
+                  description: 关联教材章节与页码，1-3 条
+                  items:
+                    properties:
+                      point:
+                        description: 知识点名称
+                        type: string
+                      chapter:
+                        description: 章节名称，如 第5章 数组
+                        type: string
+                      page:
+                        description: 页码，如 P.123；不确定时为空字符串
+                        type: string
+                    required:
+                      - point
+                      - chapter
+                      - page
+                    type: object
+                  type: array
+                similarQuestions:
+                  description: 相似题推荐，1-3 条；没有把握时为空数组
+                  items:
+                    properties:
+                      questionId:
+                        description: 题目 ID，必须是正整数
+                        type: integer
+                      content:
+                        description: 题目内容摘要
+                        type: string
+                      reason:
+                        description: 与本题的相似点
+                        type: string
+                    required:
+                      - questionId
+                      - content
+                      - reason
+                    type: object
+                  type: array
+                encouragement:
+                  description: 一句真诚、不空洞的鼓励
+                  type: string
+                learningSuggestion:
+                  description: 接下来该复习或练习什么
+                  type: string
+              required:
+                - errorLineList
+                - errorReason
+                - optimizeSuggest
+                - standardIdea
+                - knowledgePoints
+                - codeQuality
+                - complexity
+                - steps
+                - commonMistakes
+                - improvements
+                - relatedKnowledge
+                - similarQuestions
+                - encouragement
+                - learningSuggestion
+              type: object
+          structured_output_enabled: true
           title: 代码调试分析
           type: llm
           vision:
@@ -728,34 +911,30 @@ workflow:
         zIndex: 0
       - data:
           code: |
-            import json
-            
-            
-            def main(error_msg=None, question_id=None) -> dict:
+            def main(error_msg=None) -> dict:
                 msg = (error_msg or "输入校验失败").strip()
-                qid = "" if question_id is None else str(question_id).strip()
-                detail = {
-                    "errorLineList": [],
-                    "errorReason": "本次未执行代码分析：" + msg,
-                    "optimizeSuggest": "请修正提交内容后重新运行，再发起代码分析。",
-                    "standardIdea": "",
-                    "knowledgePoints": [],
-                    "codeQuality": {},
-                    "complexity": {},
-                    "steps": [],
-                    "commonMistakes": [],
-                    "improvements": [],
-                    "relatedKnowledge": [],
-                    "similarQuestions": [],
-                    "encouragement": "先让代码跑起来，再谈写得好不好，这一步谁都要走。",
-                    "learningSuggestion": "",
-                    "questionId": qid,
+                return {
+                    "detail": {
+                        "errorLineList": [],
+                        "errorReason": "本次未执行代码分析：" + msg,
+                        "optimizeSuggest": "请修正提交内容后重新运行，再发起代码分析。",
+                        "standardIdea": "",
+                        "knowledgePoints": [],
+                        "codeQuality": {},
+                        "complexity": {},
+                        "steps": [],
+                        "commonMistakes": [],
+                        "improvements": [],
+                        "relatedKnowledge": [],
+                        "similarQuestions": [],
+                        "encouragement": "先让代码跑起来，再谈写得好不好，这一步谁都要走。",
+                        "learningSuggestion": "",
+                    }
                 }
-                return {"raw_text": json.dumps(detail, ensure_ascii=False)}
           code_language: python3
           outputs:
-            raw_text:
-              type: string
+            detail:
+              type: object
           selected: false
           title: 组装校验失败结果
           type: code
@@ -764,10 +943,6 @@ workflow:
                 - parse_inputs
                 - error_msg
               variable: error_msg
-            - value_selector:
-                - parse_inputs
-                - question_id
-              variable: question_id
         height: 50
         id: build_invalid
         position:
@@ -783,15 +958,15 @@ workflow:
         width: 241
         zIndex: 0
       - data:
-          output_type: string
+          output_type: object
           selected: false
           title: 分析结果聚合
           type: variable-aggregator
           variables:
             - - llm_debug
-              - text
+              - structured_output
             - - build_invalid
-              - raw_text
+              - detail
         height: 129
         id: aggregate_raw
         position:
@@ -834,7 +1009,7 @@ workflow:
             
             
             def _load(raw) -> dict:
-                """兼容四种形态：直接 dict / JSON 字符串 / ```json 包裹 / Dify 响应包裹"""
+                """LLM 已启用结构化输出，正常入参就是 dict；仍兼容 JSON 字符串、```json 包裹与 Dify 响应包裹"""
                 if isinstance(raw, dict):
                     return raw
                 text = _s(raw)
@@ -1032,10 +1207,10 @@ workflow:
                 return out
             
             
-            def main(raw_text=None, error_msg=None) -> dict:
-                data = _load(raw_text)
+            def main(payload=None, error_msg=None) -> dict:
+                data = _load(payload)
                 if not data:
-                    msg = _s(error_msg) or "AI 输出无法解析为约定 JSON 结构"
+                    msg = _s(error_msg) or "AI 未返回符合约定的结构化结果"
                     return {
                         "errorLineList": [],
                         "errorReason": "本次未能生成有效的代码分析结果：" + msg,
@@ -1105,8 +1280,8 @@ workflow:
             - value_selector:
                 - aggregate_raw
                 - output
-              value_type: string
-              variable: raw_text
+              value_type: object
+              variable: payload
             - value_selector:
                 - parse_inputs
                 - error_msg

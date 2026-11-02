@@ -10,7 +10,7 @@ dependencies:
 - current_identifier: null
   type: marketplace
   value:
-    marketplace_plugin_unique_identifier: langgenius/deepseek:0.0.21@5873fe73395aeb49ba26035059eb4e0ec5af01bb66d0545b031f8917b12e8c29
+    marketplace_plugin_unique_identifier: langgenius/deepseek:0.0.26@bdf47cb41e9062bba00d26625d2a795c1874011d8ce64bff738c44b5a31787ea
     version: null
 kind: app
 version: 0.7.0
@@ -1178,7 +1178,7 @@ workflow:
       width: 241
       zIndex: 0
     viewport:
-      x: -460.0328359904197
-      y: 319.10560435203166
-      zoom: 0.8737815753219493
+      x: -89.10681735648234
+      y: 328.6780957135402
+      zoom: 0.5278031643091582
   rag_pipeline_variables: []

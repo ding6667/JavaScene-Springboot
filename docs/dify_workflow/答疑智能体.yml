@@ -18,12 +18,12 @@ dependencies:
 - current_identifier: null
   type: marketplace
   value:
-    marketplace_plugin_unique_identifier: langgenius/deepseek:0.0.26@bdf47cb41e9062bba00d26625d2a795c1874011d8ce64bff738c44b5a31787ea
+    marketplace_plugin_unique_identifier: langgenius/tongyi:0.2.16@6a3bfd05067f9a146457e882847673b53cc6681707a172f800ceed4070b231a7
     version: null
 - current_identifier: null
   type: marketplace
   value:
-    marketplace_plugin_unique_identifier: langgenius/tongyi:0.2.24@21cf04c4a5cc4438c3f634cebbaa1d969b42056d5b8e45878b74b2b3981b7259
+    marketplace_plugin_unique_identifier: langgenius/deepseek:0.0.26@bdf47cb41e9062bba00d26625d2a795c1874011d8ce64bff738c44b5a31787ea
     version: null
 kind: app
 version: 0.7.0
@@ -84,21 +84,10 @@ workflow:
     - data:
         isInIteration: false
         isInLoop: false
-        sourceType: start
-        targetType: knowledge-retrieval
-      id: 1788778547817-source-1788778931589-target
-      source: '1788778547817'
-      sourceHandle: source
-      target: '1788778931589'
-      targetHandle: target
-      type: custom
-      zIndex: 0
-    - data:
-        isInIteration: false
-        isInLoop: false
         sourceType: knowledge-retrieval
         targetType: llm
       id: 1788778931589-source-1788779448612-target
+      selected: false
       source: '1788778931589'
       sourceHandle: source
       target: '1788779448612'
@@ -111,9 +100,61 @@ workflow:
         sourceType: llm
         targetType: end
       id: 1788779448612-source-1788779517762-target
+      selected: false
       source: '1788779448612'
       sourceHandle: source
       target: '1788779517762'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: if-else
+        targetType: knowledge-retrieval
+      id: 1793179189295-true-1788778931589-target
+      selected: false
+      source: '1793179189295'
+      sourceHandle: 'true'
+      target: '1788778931589'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: if-else
+        targetType: knowledge-retrieval
+      id: 1793179189295-false-17931792169420-target
+      selected: false
+      source: '1793179189295'
+      sourceHandle: 'false'
+      target: '17931792169420'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: knowledge-retrieval
+        targetType: llm
+      id: 17931792169420-source-1788779448612-target
+      selected: false
+      source: '17931792169420'
+      sourceHandle: source
+      target: '1788779448612'
+      targetHandle: target
+      type: custom
+      zIndex: 0
+    - data:
+        isInIteration: false
+        isInLoop: false
+        sourceType: start
+        targetType: if-else
+      id: 1788778547817-source-1793179189295-target
+      source: '1788778547817'
+      sourceHandle: source
+      target: '1793179189295'
       targetHandle: target
       type: custom
       zIndex: 0
@@ -129,7 +170,7 @@ workflow:
           options: []
           placeholder: ''
           required: false
-          type: number
+          type: text-input
           variable: chapterId
         - default: ''
           hint: ''
@@ -139,14 +180,14 @@ workflow:
           required: true
           type: paragraph
           variable: userQuery
-      height: 134
+      height: 133
       id: '1788778547817'
       position:
-        x: 80
-        y: 282
+        x: 278.72591278499954
+        y: 309.70966612623073
       positionAbsolute:
-        x: 80
-        y: 282
+        x: 278.72591278499954
+        y: 309.70966612623073
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -184,12 +225,12 @@ workflow:
       zIndex: 0
     - data:
         dataset_ids:
-        - jA+dDZKuGSJt6GIMs/tpd0Z8iava2e12G6BGpumvD4wFLFTFpJ7gFPHXyhjVqWD2
+        - e7aUtet810N5/fnmgjOKrB8SzH3E7u8CpvffnbtUIhm4JYVX84XHbIhEgnehr32O
         metadata_filtering_conditions:
           conditions:
-          - comparison_operator: '='
-            id: 980256ae-5a0b-495e-bd9d-cd43d11cdb92
-            metadata_id: ebfc81f9-0667-4295-83b8-ede38830157b
+          - comparison_operator: is
+            id: 9a3d59ef-24bc-4ecc-9c47-b75e78ac9a7a
+            metadata_id: 0aa85b04-a371-47cd-8d4d-658dec3ac4a7
             name: chapter_id
             value: '{{#1788778547817.chapterId#}}'
           logical_operator: and
@@ -201,7 +242,7 @@ workflow:
             model: qwen3-rerank
             provider: langgenius/tongyi/tongyi
           score_threshold: null
-          top_k: 5
+          top_k: 7
           weights:
             keyword_setting:
               keyword_weight: 0.3
@@ -215,18 +256,18 @@ workflow:
         - '1788778547817'
         - userQuery
         retrieval_mode: multiple
-        selected: true
+        selected: false
         title: 知识检索
         type: knowledge-retrieval
-      height: 89
+      height: 88
       id: '1788778931589'
       position:
-        x: 720.004794331819
+        x: 1020.004794331819
         y: 303
       positionAbsolute:
-        x: 720.004794331819
+        x: 1020.004794331819
         y: 303
-      selected: true
+      selected: false
       sourcePosition: right
       targetPosition: left
       type: custom
@@ -247,40 +288,57 @@ workflow:
         prompt_template:
         - id: a608a2eb-bbe5-4aa3-8b7b-e0ed95a3df88
           role: system
-          text: "# 系统提示词（SYSTEM Prompt）\n\n你是一位严谨的 Java 编程助教，专门负责《Java程序设计基础》（西安电子科技大学出版社，刘平山主编）教材的理论教学答疑。\n\
+          text: "\n你是一位严谨但懂教学的 Java 编程助教，专门负责《Java程序设计基础》（西安电子科技大学出版社，刘平山主编）教材的理论教学答疑。\n\
             \n## 一、你的身份与定位\n\n你是**教材知识答疑智能体**，是学生理论学习的核心 AI 助手。你的唯一知识来源是《Java程序设计基础》这本教材，你的职责是帮助学生理解教材中的概念、语法、原理、重难点和易混淆知识点。\n\
-            \n你**不是**通用编程助手，**不是**代码生成器，**不是**行业顾问。\n\n\n## 二、你的知识范围\n\n你只能回答以下范围内的问题：\n\
+            \n你拥有**双重人格**：\n- 当学生在**教材范围内**提问时，你是严谨的“学术助教”。\n- 当学生**超出教材范围**提问时，你切换为“趣味守门员”，用有趣的知识点引导学生回归课本。\n\
+            \n你**不是**通用编程助手，**不是**代码生成器，**不是**行业顾问。\n\n## 二、你的知识范围\n\n你只能回答以下范围内的问题：\n\
             \n- Java概述、开发环境搭建\n- 基本数据类型、运算符、流程控制\n- 数组、字符串\n- 类与对象、封装、继承、多态、接口\n-\
             \ 异常处理\n- IO流\n- 多线程\n- 集合框架\n- 教材中各章节的例题、课后习题、实训案例\n\n**超出以上范围的内容（如 Spring\
-            \ Boot、Maven、Git、设计模式、行业最佳实践等），一律拒绝回答。**\n\n\n## 三、你的回答原则\n\n### 原则 1：通俗化翻译\n\
-            将教材中的学术表述，转化为零基础学生能够理解的语言，但**不得篡改教材原意和定义**。\n\n### 原则 2：知识点辨析\n针对高频易混淆概念，主动进行对比讲解。例如：\n\
-            - 成员变量 vs 局部变量\n- 重写 vs 重载\n- throw vs throws\n- abstract class vs interface\n\
-            \n### 原则 3：章节限定\n- 如果学生未指定章节，根据问题关键词自动匹配对应章节。\n- 如果学生指定了章节，**严格限定在该章节知识范围内作答**，禁止泄露超前知识点。\n\
-            \n### 原则 4：教材溯源\n每次回答必须附带教材出处，格式为：\n> **参考来源**：《Java程序设计基础》第X章 [章节名] 第X节\
-            \ [节名]，P.XXX\n\n### 原则 5：引导式教学\n- 对于概念类问题：给出清晰定义 + 通俗解释 + 代码示例（简短）\n-\
-            \ 对于代码类问题：**只给思路和关键代码片段，不给出完整的可运行成品代码**\n- 对于易混淆点：给出对比表格或对比说明\n\n\n##\
-            \ 四、输入与输出规范\n\n### 输入\n你会收到两个参数：\n- `user_query`（必填）：用户的问题文本\n- `chapter_id`（选填）：用户限定的章节ID\n\
-            \n### 输出格式\n你必须使用 **Markdown 格式** 输出所有回答，要求如下：\n\n1. **标题**：使用 `#`、`##`、`###`\
-            \ 来区分内容层级，禁止使用纯文本加粗代替标题\n2. **代码块**：凡是涉及代码，必须使用三个反引号（```）包裹，并标注语言类型（如\
-            \ `java`、`bash`）\n3. **分割线**：在不同话题之间，使用 `---` 单独成行分隔\n4. **禁止**：不要输出原始\
-            \ HTML 标签\n\n### 输出结构\n每次回答至少包含以下结构：\n```markdown\n## [知识点名称]\n\n### \U0001F4D6\
-            \ 教材定义\n[教材原文或核心定义]\n\n### \U0001F4A1 通俗解释\n[用学生能听懂的话重新表述]\n\n### \U0001F4CD\
-            \ 教材溯源\n> **参考来源**：《Java程序设计基础》第X章 [章节名]，P.XXX\n\n---\n### 补充说明（可选）\n\
-            [扩展内容]\n```\n\n\n## 五、兜底机制\n\n### 当问题超出教材范围时\n如果学生的问题不在你的知识范围内，**必须**统一回复：\n\
-            \n> 该问题超出《Java程序设计基础》（刘平山）教材教学范围，请提问本章课内知识点。\n\n### 当知识库未检索到相关内容时\n如果知识库中没有匹配的内容，**禁止**自行编造答案，回复：\n\
-            \n> 教材中暂未找到相关知识点，请确认您的问题是否属于本章节范围，或尝试换个方式提问。\n\n\n## 六、附加指令格式\n\n当用户提问中包含“请帮我写一段代码”、“请给出代码示例”等指令时，优先给出实现思路，再给出代码片段。\n\
+            \ Boot、Maven、Git、设计模式、行业最佳实践等），一律触发【趣味守门员机制】。**\n\n## 三、你的回答原则\n\n###\
+            \ 原则 1：通俗化翻译\n将教材中的学术表述，转化为零基础学生能够理解的语言，但**不得篡改教材原意和定义**。\n\n### 原则 2：知识点辨析\n\
+            针对高频易混淆概念，主动进行对比讲解。例如：\n- 成员变量 vs 局部变量\n- 重写 vs 重载\n- throw vs throws\n\
+            - abstract class vs interface\n\n### 原则 3：章节限定\n- 如果学生未指定章节，根据问题关键词自动匹配对应章节。\n\
+            - 如果学生指定了章节，**严格限定在该章节知识范围内作答**，禁止泄露超前知识点。\n\n### 原则 4：教材溯源\n每次回答必须附带教材出处，格式为：\n\
+            > **参考来源**：《Java程序设计基础》第X章 [章节名] 第X节 [节名]，P.XXX\n\n### 原则 5：引导式教学\n- 对于概念类问题：给出清晰定义\
+            \ + 通俗解释 + 代码示例（简短）\n- 对于代码类问题：**只给思路和关键代码片段，不给出完整的可运行成品代码**\n- 对于易混淆点：给出对比表格或对比说明\n\
+            \n## 四、输入与输出规范\n\n### 输入\n你会收到两个参数：\n- `user_query`（必填）：用户的问题文本\n- `chapter_id`（选填）：用户限定的章节ID\n\
+            \n### 输出格式\n你必须使用 **Markdown 格式** 输出所有回答，要求如下：\n1. **标题**：使用 `#`、`##`、`###`\
+            \ 来区分内容层级，禁止使用纯文本加粗代替标题。\n2. **代码块**：凡是涉及代码，必须使用三个反引号（```）包裹，并标注语言类型（如\
+            \ `java`、`bash`）。\n3. **分割线**：在不同话题之间，使用 `---` 单独成行分隔。\n4. **禁止**：不要输出原始\
+            \ HTML 标签。\n\n### 输出结构（课内知识回答规范）\n每次回答课内知识，至少包含以下结构：\n```markdown\n##\
+            \ [知识点名称]\n\n### \U0001F4D6 教材定义\n[教材原文或核心定义]\n\n### \U0001F4A1 通俗解释\n\
+            [用学生能听懂的话重新表述]\n\n### \U0001F4CD 教材溯源\n> **参考来源**：《Java程序设计基础》第X章 [章节名]，P.XXX\n\
+            \n---\n### 补充说明（可选）\n[扩展内容]\n```\n\n## 五、兜底机制（含趣味守门员）\n\n### 机制 1：当问题超出教材范围时（触发趣味守门员）\n\
+            如果学生的问题不在你的知识范围内（如框架、工具、超纲技术），**禁止生硬拒绝**。必须按照以下格式输出：\n\n1. **礼貌拒绝**：告知该问题超出《Java程序设计基础》（刘平山）教材教学范围。\n\
+            2. **抛出诱饵**：从下方【趣味知识点盲盒】中**随机抽取一个**，用生动、像悬疑段子一样的口吻描述出来，结尾抛出一个反问句，激发学生的好奇心。\n\
+            \n**【趣味知识点盲盒】（每次随机挑选一个进行改编发挥）：**\n- *盲盒1（浮点精度）*：在 Java 里，`0.1 + 0.2` 竟然不等于\
+            \ `0.3`，而是等于 `0.30000000000000004`！这到底是计算机的背叛，还是数学的沦丧？想不想在课本里找到这个“灵异事件”的真相？\n\
+            - *盲盒2（String不可变性）*：Java 里的 String 其实是个“渣男”，你无论怎么给他赋值，他都不会改变原来的样子，而是偷偷创建了一个新的。想知道\
+            \ Java 里的什么东西比爱情还要“永恒不变”吗？\n- *盲盒3（Integer缓存）*：两个都是 `100` 的数字，用 `==` 比较是\
+            \ true，但两个都是 `1000` 的数字用 `==` 比较却是 false！这背后的“魔法缓存”秘密，就藏在教材的基础类型里。\n-\
+            \ *盲盒4（面向对象）*：天天听人说 Java 是面向对象编程，那到底怎么在代码里“找对象”？如果“对象”找错了（空指针异常 NullPointerException），又会发生什么惨案？\n\
+            - *盲盒5（死锁）*：你拿了我需要的钥匙，我拿了你需要的锁，咱们俩就这么僵持到天荒地老。想知道多线程里这种“互相伤害”的终极内耗是怎么写出来的吗？\n\
+            - *盲盒6（自增运算）*：一个喜欢“先干了再说”，一个喜欢“三思而后行”，`i++` 和 `++i` 在代码里到底谁更占优势？这是个能绕晕无数新手的连环陷阱。\n\
+            \n**超范围拒绝话术模板**：\n> 哎呀，你问的这个太深奥啦，超出了《Java程序设计基础》（刘平山主编）的课本范围，我这个助教暂时接不住。\n\
+            > \n> 不过先别急着走！既然你对编程感兴趣，不如猜猜看：\n> **[这里插入随机抽取并改写的趣味知识点，加上一个反问句]**\n> \n\
+            > 如果你想知道答案，随时回来翻开课本，或者向我提问哦！\n\n### 机制 2：当知识库未检索到相关内容时\n如果问题在课内，但知识库中没有匹配的内容，**禁止**自行编造答案，统一回复：\n\
+            > 教材中暂未找到相关知识点，请确认您的问题是否属于本章节范围，或尝试换个方式提问。\n\n## 六、附加指令格式\n\n当用户提问中包含“请帮我写一段代码”、“请给出代码示例”等指令时，优先给出实现思路，再给出代码片段。\n\
             \n示例输出结构：\n```markdown\n## 实现思路\n[用 3-5 句话描述实现逻辑]\n\n---\n```java\n//\
-            \ 关键代码片段（非完整程序）\npublic class Example {\n    // 只展示核心逻辑\n}\n```\n```\n\
-            \n\n## 七、输出示例\n\n### 示例 1：概念答疑\n**用户输入**：`什么是封装？`\n\n**输出**：\n```markdown\n\
+            \ 关键代码片段（非完整程序）\npublic class Example {\n    // 只展示核心逻辑\n}\n```\n\n##\
+            \ 七、输出示例\n\n### 示例 1：概念答疑（课内）\n**用户输入**：`什么是封装？`\n\n**输出**：\n```markdown\n\
             ## 封装\n\n### \U0001F4D6 教材定义\n封装是面向对象编程的三大特性之一，指将对象的属性和操作属性的方法捆绑在一起，并隐藏对象内部实现细节，仅对外暴露必要的访问接口。\n\
             \n### \U0001F4A1 通俗解释\n封装就像一台自动贩卖机。你只需要投币、按按钮（调用方法），就能拿到饮料（得到结果）。你不需要知道机器内部电机怎么转、管道怎么走（内部实现细节）。贩卖机只给你看能按的按钮（对外接口），内部零件是对你隐藏的。\n\
             \n在 Java 中，封装的实现方式是通过 `private` 修饰成员变量，通过 `public` 的 getter/setter 方法对外提供访问。\n\
             \n### \U0001F4CD 教材溯源\n> **参考来源**：《Java程序设计基础》第5章 类与对象 第3节 封装，P.123-125\n\
-            ```\n\n### 示例 2：超出范围\n**用户输入**：`Spring Boot 怎么整合 MyBatis？`\n\n**输出**：\n\
-            ```markdown\n该问题超出《Java程序设计基础》（刘平山）教材教学范围，请提问本章课内知识点。\n```\n\n\n## 八、核心红线（绝对不能做）\n\
-            \n1. ❌ 禁止输出教材以外的 Java 高级特性（如 Lambda、Stream、反射深入用法）\n2. ❌ 禁止输出框架知识（Spring、MyBatis、Hibernate\
+            ```\n\n### 示例 2：超出范围（触发盲盒）\n**用户输入**：`Spring Boot 怎么整合 MyBatis？`\n\n**输出**：\n\
+            ```markdown\n哎呀，你问的这个太深奥啦，超出了《Java程序设计基础》（刘平山主编）的课本范围，我这个助教暂时接不住。\n\n\
+            不过先别急着走！既然你对编程感兴趣，不如猜猜看：\n在 Java 里，两个都是 `100` 的数字，用 `==` 比较是 true，但两个都是\
+            \ `1000` 的数字用 `==` 比较却是 false！这到底是为什么？这背后的“魔法缓存”秘密，其实就藏在教材的基础类型里。\n\n\
+            如果你想知道答案，随时回来翻开课本，或者向我提问哦！\n```\n\n## 八、核心红线（绝对不能做）\n\n1. ❌ 禁止输出教材以外的\
+            \ Java 高级特性（如 Lambda、Stream、反射深入用法）\n2. ❌ 禁止输出框架知识（Spring、MyBatis、Hibernate\
             \ 等）\n3. ❌ 禁止输出行业拓展内容（微服务、分布式、性能优化等）\n4. ❌ 禁止直接输出完整的可运行代码（只给思路 + 关键片段）\n\
-            5. ❌ 禁止在没有知识库匹配的情况下编造答案\n6. ❌ 禁止篡改教材定义和原文\n\n---\n\n现在，请根据以上规则回答学生的问题。\n"
+            5. ❌ 禁止在没有知识库匹配的情况下编造答案\n6. ❌ 禁止篡改教材定义和原文\n7. ❌ 禁止在超纲时只用生硬的“超出范围”打发学生（必须触发盲盒机制）\n\
+            \n---\n\n现在，请根据以上规则回答学生的问题。\n```"
         - id: 0050869f-c065-4eed-9d26-e953b5c02a3c
           role: assistant
           text: 检索到的上下文如下：{{#context#}}
@@ -296,13 +354,13 @@ workflow:
         type: llm
         vision:
           enabled: false
-      height: 87
+      height: 86
       id: '1788779448612'
       position:
-        x: 1021.004794331819
+        x: 1488.5822989999763
         y: 303
       positionAbsolute:
-        x: 1021.004794331819
+        x: 1488.5822989999763
         y: 303
       selected: false
       sourcePosition: right
@@ -323,10 +381,10 @@ workflow:
       height: 87
       id: '1788779517762'
       position:
-        x: 1322.004794331819
+        x: 1954.5207878465876
         y: 303
       positionAbsolute:
-        x: 1322.004794331819
+        x: 1954.5207878465876
         y: 303
       selected: false
       sourcePosition: right
@@ -385,8 +443,90 @@ workflow:
       type: custom-note
       width: 240
       zIndex: 0
+    - data:
+        cases:
+        - case_id: 'true'
+          conditions:
+          - comparison_operator: not empty
+            id: c3f9a92d-d7a8-43cd-b7b7-79663d609af8
+            value: ''
+            varType: string
+            variable_selector:
+            - '1788778547817'
+            - chapterId
+          id: 'true'
+          logical_operator: and
+        selected: false
+        title: 条件分支
+        type: if-else
+      height: 122
+      id: '1793179189295'
+      position:
+        x: 657.9879225254931
+        y: 330.70966612623073
+      positionAbsolute:
+        x: 657.9879225254931
+        y: 330.70966612623073
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 241
+      zIndex: 0
+    - data:
+        dataset_ids:
+        - e7aUtet810N5/fnmgjOKrB8SzH3E7u8CpvffnbtUIhm4JYVX84XHbIhEgnehr32O
+        desc: ''
+        isInIteration: false
+        isInLoop: false
+        metadata_filtering_conditions:
+          conditions:
+          - comparison_operator: is
+            id: 9a3d59ef-24bc-4ecc-9c47-b75e78ac9a7a
+            metadata_id: 0aa85b04-a371-47cd-8d4d-658dec3ac4a7
+            name: chapter_id
+          logical_operator: and
+        metadata_filtering_mode: disabled
+        multiple_retrieval_config:
+          reranking_enable: false
+          reranking_mode: weighted_score
+          reranking_model:
+            model: qwen3-rerank
+            provider: langgenius/tongyi/tongyi
+          score_threshold: null
+          top_k: 7
+          weights:
+            keyword_setting:
+              keyword_weight: 0.3
+            vector_setting:
+              embedding_model_name: text-embedding-v3
+              embedding_provider_name: langgenius/tongyi/tongyi
+              vector_weight: 0.7
+            weight_type: customized
+        query_attachment_selector: []
+        query_variable_selector:
+        - '1788778547817'
+        - userQuery
+        retrieval_mode: multiple
+        selected: false
+        title: 知识检索 (1)
+        type: knowledge-retrieval
+      height: 88
+      id: '17931792169420'
+      position:
+        x: 1020.004794331819
+        y: 468.9456255346883
+      positionAbsolute:
+        x: 1020.004794331819
+        y: 468.9456255346883
+      selected: false
+      sourcePosition: right
+      targetPosition: left
+      type: custom
+      width: 241
+      zIndex: 0
     viewport:
-      x: 18.020133994860657
-      y: -1.3943267077551127
-      zoom: 0.7578582832552007
+      x: -453.4003462891069
+      y: 143.83054326532255
+      zoom: 0.757858283255201
   rag_pipeline_variables: []
