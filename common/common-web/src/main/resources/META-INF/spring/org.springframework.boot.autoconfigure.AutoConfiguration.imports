@@ -1,0 +1,2 @@
+com.amlve.common.web.config.CommonWebAutoConfiguration
+com.amlve.common.web.feign.FeignRelayAutoConfiguration

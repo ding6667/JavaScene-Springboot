@@ -42,3 +42,6 @@ hs_err_pid*.log
 
 ### 本地文档目录（不入库，勿提交远程仓库） ###
 docs/
+
+### 各服务本地环境配置（数据库密码 / api-key / secret，一律不入库） ###
+application-dev.yml

@@ -1,0 +1,69 @@
+# gateway-service：只负责路由与鉴权，不接数据库、不接 AI/Dify
+spring:
+  profiles:
+    active: dev
+  application:
+    name: gateway-service
+  config:
+    # 方案 B：不用 bootstrap.yml；加 optional: 前缀，Nacos 里还没建这些配置也能先起来
+    import:
+      - optional:nacos:common.yaml
+      - optional:nacos:${spring.application.name}.yaml
+      - optional:nacos:${spring.application.name}-${spring.profiles.active}.yaml
+  cloud:
+    nacos:
+      server-addr: ${NACOS_ADDR:localhost:8848}
+      namespace: ${NACOS_NAMESPACE:}
+      config:
+        file-extension: yaml
+      discovery:
+        namespace: ${NACOS_NAMESPACE:}
+    gateway:
+      # 业务控制器的路径本来就带 /api/xxx，这里不做 StripPrefix，转过去的 URI 与原来一致
+      routes:
+        - id: system
+          uri: lb://system-service
+          predicates:
+            - Path=/api/user/**,/api/settings/**,/api/class/**
+        - id: study
+          uri: lb://study-service
+          predicates:
+            - Path=/api/study/**
+        - id: teach
+          uri: lb://teach-service
+          predicates:
+            - Path=/api/teach/**,/api/agent/**
+        - id: exam
+          uri: lb://exam-service
+          predicates:
+            - Path=/api/exam/**
+        - id: knowledge
+          uri: lb://knowledge-service
+          predicates:
+            - Path=/api/knowledge/**
+        - id: dialogue
+          uri: lb://dialogue-service
+          predicates:
+            - Path=/api/chat/**
+        - id: agent-qa
+          uri: lb://agent-qa-service
+          predicates:
+            - Path=/api/qa/**
+
+      default-filters:
+        - DedupeResponseHeader=Access-Control-Allow-Origin Access-Control-Allow-Credentials, RETAIN_FIRST
+      globalcors:
+        cors-configurations:
+          '[default]':
+            allowed-origin-patterns: "*"
+            allowed-methods: "*"
+            allowed-headers: "*"
+            allow-credentials: true
+            max-age: 3600
+
+# 免鉴权路径（Ant 风格，逗号分隔）；登录/注册/登出必须放行，
+# 登出对已失效的 token 也要能进来做幂等处理
+com:
+  amlve:
+    gateway:
+      public-paths: /api/user/auth/login,/api/user/auth/register,/api/user/auth/logout

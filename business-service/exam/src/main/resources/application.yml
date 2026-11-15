@@ -1,0 +1,24 @@
+spring:
+  profiles:
+    active: dev
+  application:
+    name: exam-service
+  config:
+    import:
+      - optional:nacos:common.yaml
+      - optional:nacos:${spring.application.name}.yaml
+      - optional:nacos:${spring.application.name}-${spring.profiles.active}.yaml
+  cloud:
+    nacos:
+      server-addr: ${NACOS_ADDR:localhost:8848}
+      namespace: ${NACOS_NAMESPACE:}
+      config:
+        file-extension: yaml
+      discovery:
+        namespace: ${NACOS_NAMESPACE:}
+
+# 免鉴权路径（Ant 风格，逗号分隔）；common-security 的默认值是 /api/user/auth/**
+com:
+  amlve:
+    security:
+      exclude-paths: ""

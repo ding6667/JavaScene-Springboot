@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>com.amlve</groupId>
+        <artifactId>business-service</artifactId>
+        <version>0.0.1-SNAPSHOT</version>
+    </parent>
+
+    <artifactId>teach</artifactId>
+    <name>teach</name>
+
+    <dependencies>
+        <dependency>
+            <groupId>com.amlve</groupId>
+            <artifactId>teach-api</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.amlve</groupId>
+            <artifactId>system-api</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.amlve</groupId>
+            <artifactId>study-api</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.amlve</groupId>
+            <artifactId>exam-api</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.amlve</groupId>
+            <artifactId>knowledge-api</artifactId>
+        </dependency>
+        <!-- 备课素材：跨模块调用备课智能体接口 -->
+        <dependency>
+            <groupId>com.amlve</groupId>
+            <artifactId>agent-prepare-api</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-security</artifactId>
+        </dependency>
+
+        <!-- 单元测试：@WithMockUser 模拟登录角色，验证 @PreAuthorize 权限 -->
+        <dependency>
+            <groupId>org.springframework.security</groupId>
+            <artifactId>spring-security-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <!-- 集成测试：引入备课智能体真实实现 -->
+        <dependency>
+            <groupId>com.amlve</groupId>
+            <artifactId>agent-prepare</artifactId>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+
+</project>

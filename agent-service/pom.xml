@@ -1,0 +1,99 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>com.amlve</groupId>
+        <artifactId>JavaScene</artifactId>
+        <version>0.0.1-SNAPSHOT</version>
+    </parent>
+
+    <artifactId>agent-service</artifactId>
+    <packaging>pom</packaging>
+    <name>agent-service</name>
+    <description>Agent 服务聚合，下面 7 个模块继承公共依赖</description>
+
+    <modules>
+        <module>agent-analysis</module>
+        <module>agent-code</module>
+        <module>agent-prepare</module>
+        <module>agent-qa</module>
+        <module>agent-question</module>
+        <module>agent-score</module>
+        <module>dialogue</module>
+    </modules>
+
+    <dependencies>
+        <!-- 公共能力：异常/Result、Web 设施、鉴权、持久层、工具 -->
+        <dependency>
+            <groupId>com.amlve</groupId>
+            <artifactId>common-core</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.amlve</groupId>
+            <artifactId>common-web</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.amlve</groupId>
+            <artifactId>common-security</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.amlve</groupId>
+            <artifactId>common-mybatis</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.amlve</groupId>
+            <artifactId>common-dify</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.amlve</groupId>
+            <artifactId>common-util</artifactId>
+        </dependency>
+
+        <!-- 注册中心、配置中心与 Feign 调用 -->
+        <dependency>
+            <groupId>com.alibaba.cloud</groupId>
+            <artifactId>spring-cloud-starter-alibaba-nacos-discovery</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.alibaba.cloud</groupId>
+            <artifactId>spring-cloud-starter-alibaba-nacos-config</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.cloud</groupId>
+            <artifactId>spring-cloud-starter-openfeign</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.cloud</groupId>
+            <artifactId>spring-cloud-starter-loadbalancer</artifactId>
+        </dependency>
+
+        <!-- 独立进程启动需要可执行 jar -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-web</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>org.mapstruct</groupId>
+            <artifactId>mapstruct</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.mapstruct</groupId>
+            <artifactId>mapstruct-processor</artifactId>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <!-- 继承到 7 个 agent：打出可执行 jar（classifier=exec，配置在根 pom 的 pluginManagement）
+                 普通 jar 仍然是主构件，其他模块照常依赖 -->
+            <plugin>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-maven-plugin</artifactId>
+            </plugin>
+        </plugins>
+    </build>
+
+</project>

@@ -1,0 +1,2 @@
+com.amlve.common.security.config.CommonSecurityAutoConfiguration
+com.amlve.common.security.config.SecurityTokenAutoConfiguration

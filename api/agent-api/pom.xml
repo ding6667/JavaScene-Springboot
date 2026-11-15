@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>com.amlve</groupId>
+        <artifactId>api</artifactId>
+        <version>0.0.1-SNAPSHOT</version>
+    </parent>
+
+    <artifactId>agent-api</artifactId>
+    <packaging>pom</packaging>
+    <name>agent-api</name>
+    <description>Agent 域 API 聚合</description>
+
+    <modules>
+        <module>agent-code-api</module>
+        <module>agent-prepare-api</module>
+        <module>agent-qa-api</module>
+        <module>agent-question-api</module>
+        <module>agent-score-api</module>
+        <module>dialogue-api</module>
+    </modules>
+
+</project>
