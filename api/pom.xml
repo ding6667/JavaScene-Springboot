@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>com.amlve</groupId>
+        <artifactId>JavaScene</artifactId>
+        <version>0.0.1-SNAPSHOT</version>
+    </parent>
+
+    <artifactId>api</artifactId>
+    <packaging>pom</packaging>
+    <name>api</name>
+    <description>跨模块 API 聚合：DTO + 调用接口，下面所有 *-api 子模块继承这里的依赖</description>
+
+    <modules>
+        <module>agent-api</module>
+        <module>busi-api</module>
+    </modules>
+
+    <dependencies>
+        <!-- 接口返回值统一包在 common-core 的 Result 里 -->
+        <dependency>
+            <groupId>com.amlve</groupId>
+            <artifactId>common-core</artifactId>
+        </dependency>
+        <!-- @FeignClient 引用的 FeignConfig / ResultFeignDecoder 在这里；
+             标 optional 是为了不把整套 Web/Security 传给只要 DTO 的使用方，
+             各服务本身已经通过聚合 pom 引了 common-web -->
+        <dependency>
+            <groupId>com.amlve</groupId>
+            <artifactId>common-web</artifactId>
+            <optional>true</optional>
+        </dependency>
+
+        <dependency>
+            <groupId>org.springframework.cloud</groupId>
+            <artifactId>spring-cloud-starter-openfeign</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.cloud</groupId>
+            <artifactId>spring-cloud-starter-loadbalancer</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.alibaba.cloud</groupId>
+            <artifactId>spring-cloud-starter-alibaba-nacos-discovery</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>io.github.openfeign</groupId>
+            <artifactId>feign-okhttp</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>io.github.openfeign</groupId>
+            <artifactId>feign-jackson</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>jakarta.validation</groupId>
+            <artifactId>jakarta.validation-api</artifactId>
+        </dependency>
+    </dependencies>
+
+</project>

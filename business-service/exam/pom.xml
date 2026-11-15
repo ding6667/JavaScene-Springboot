@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>com.amlve</groupId>
+        <artifactId>business-service</artifactId>
+        <version>0.0.1-SNAPSHOT</version>
+    </parent>
+
+    <artifactId>exam</artifactId>
+    <name>exam</name>
+
+    <dependencies>
+        <dependency>
+            <groupId>com.amlve</groupId>
+            <artifactId>exam-api</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.amlve</groupId>
+            <artifactId>system-api</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.amlve</groupId>
+            <artifactId>study-api</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.amlve</groupId>
+            <artifactId>teach-api</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.amlve</groupId>
+            <artifactId>knowledge-api</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.amlve</groupId>
+            <artifactId>dialogue-api</artifactId>
+        </dependency>
+        <!-- 主观题判分与出题智能体 -->
+        <dependency>
+            <groupId>com.amlve</groupId>
+            <artifactId>agent-score-api</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.amlve</groupId>
+            <artifactId>agent-question-api</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-webflux</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-databind</artifactId>
+        </dependency>
+    </dependencies>
+
+</project>

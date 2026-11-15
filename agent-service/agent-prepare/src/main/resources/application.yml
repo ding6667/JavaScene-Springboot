@@ -1,0 +1,30 @@
+spring:
+  profiles:
+    active: dev
+  application:
+    name: agent-prepare-service
+  config:
+    import:
+      - optional:nacos:common.yaml
+      - optional:nacos:${spring.application.name}.yaml
+      - optional:nacos:${spring.application.name}-${spring.profiles.active}.yaml
+  cloud:
+    nacos:
+      server-addr: ${NACOS_ADDR:localhost:8848}
+      namespace: ${NACOS_NAMESPACE:}
+      config:
+        file-extension: yaml
+      discovery:
+        namespace: ${NACOS_NAMESPACE:}
+
+dify:
+  # 调用方标识，保持迁移前各 agent 在 Dify 侧看到的 user 不变
+  user: teacher-prepare
+  read-timeout: 600
+  connect-timeout: 10
+
+# 免鉴权路径（Ant 风格，逗号分隔）；common-security 的默认值是 /api/user/auth/**
+com:
+  amlve:
+    security:
+      exclude-paths: ""

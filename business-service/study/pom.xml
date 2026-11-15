@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>com.amlve</groupId>
+        <artifactId>business-service</artifactId>
+        <version>0.0.1-SNAPSHOT</version>
+    </parent>
+
+    <artifactId>study</artifactId>
+    <name>study</name>
+
+    <dependencies>
+        <dependency>
+            <groupId>com.amlve</groupId>
+            <artifactId>study-api</artifactId>
+        </dependency>
+        <!-- 跨模块调用章节接口，仅依赖接口，禁止注入实现类 -->
+        <dependency>
+            <groupId>com.amlve</groupId>
+            <artifactId>knowledge-api</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.amlve</groupId>
+            <artifactId>exam-api</artifactId>
+        </dependency>
+        <!-- 跨模块调用代码调试 / 评分智能体 -->
+        <dependency>
+            <groupId>com.amlve</groupId>
+            <artifactId>agent-code-api</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.amlve</groupId>
+            <artifactId>agent-score-api</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>org.jetbrains</groupId>
+            <artifactId>annotations</artifactId>
+        </dependency>
+    </dependencies>
+
+</project>

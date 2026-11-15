@@ -2,179 +2,406 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
+
     <parent>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-parent</artifactId>
         <version>3.4.5</version>
-        <relativePath/> <!-- lookup parent from repository -->
+        <relativePath/>
     </parent>
-    <packaging>pom</packaging>
+
     <groupId>com.amlve</groupId>
     <artifactId>JavaScene</artifactId>
     <version>0.0.1-SNAPSHOT</version>
+    <packaging>pom</packaging>
     <name>JavaScene</name>
-    <description>JavaScene</description>
-    <url/>
-    <licenses>
-        <license/>
-    </licenses>
-    <developers>
-        <developer/>
-    </developers>
-    <modules>
-        <module>common</module>
-        <module>system</module>
-        <module>exam</module>
-        <module>bootstrap</module>
-        <module>exam-api</module>
-        <module>dialogue</module>
-        <module>dialogue-api</module>
-        <module>system-api</module>
-        <module>knowledge</module>
-        <module>knowledge-api</module>
-        <module>study</module>
-        <module>study-api</module>
-        <module>teach</module>
-        <module>teach-api</module>
-        <module>monitor</module>
-        <module>monitor-api</module>
-        <module>agent-analysis</module>
-        <module>agent-code</module>
-        <module>agent-prepare</module>
-        <module>agent-qa</module>
-        <module>agent-question</module>
-        <module>agent-score</module>
-        <module>agent-qa-api</module>
-        <module>agent-score-api</module>
-        <module>agent-prepare-api</module>
-        <module>agent-code-api</module>
-        <module>agent-question-api</module>
+    <description>JavaScene 根工程：只管版本、BOM、插件与子模块清单</description>
 
+    <modules>
+        <!-- 拆分出的公共模块 -->
+        <module>common/common-core</module>
+        <module>common/common-web</module>
+        <module>common/common-security</module>
+        <module>common/common-dify</module>
+        <module>common/common-mybatis</module>
+        <module>common/common-util</module>
+        <module>api</module>
+        <module>agent-service</module>
+        <module>business-service</module>
+        <module>gateway</module>
     </modules>
-    <scm>
-        <connection/>
-        <developerConnection/>
-        <tag/>
-        <url/>
-    </scm>
+
     <properties>
         <java.version>21</java.version>
-        <maven.compiler.source>21</maven.compiler.source>
-        <maven.compiler.target>21</maven.compiler.target>
-        <junit-jupiter.version>5.11.4</junit-jupiter.version>
-        <junit-platform.version>1.11.4</junit-platform.version>
-        
+        <!-- 用 release 而不是 source/target 成对配置：javac 的 release 参数同时锁定源版本与字节码版本，
+             IDE 里残留的 per-module target 不会再和 source 打架 -->
+        <maven.compiler.source>${java.version}</maven.compiler.source>
+        <maven.compiler.target>${java.version}</maven.compiler.target>
+        <maven.compiler.release>${java.version}</maven.compiler.release>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+
+        <!-- 微服务栈：Spring Cloud 2024.0.x 官方对应 Spring Boot 3.4.x；
+             Spring Cloud Alibaba 没有 2024 线，2023.0.3.4 是该分支最新补丁，
+             其内置 nacos-client 为 2.4.3，与本地 Nacos 服务端 2.4.3 对齐 -->
+        <spring-cloud.version>2024.0.3</spring-cloud.version>
+        <spring-cloud-alibaba.version>2023.0.3.4</spring-cloud-alibaba.version>
+        <spring-ai.version>1.1.7</spring-ai.version>
+        <spring-ai-alibaba.version>1.0.0.3</spring-ai-alibaba.version>
+
+        <mybatis-plus.version>3.5.17</mybatis-plus.version>
+        <mapstruct.version>1.5.5.Final</mapstruct.version>
+        <hutool.version>5.8.34</hutool.version>
+        <jjwt.version>0.11.5</jjwt.version>
+        <poi.version>5.2.5</poi.version>
+        <commons-io.version>2.15.1</commons-io.version>
+        <dashscope-sdk.version>2.22.5</dashscope-sdk.version>
+        <jsonschema-generator.version>4.38.0</jsonschema-generator.version>
+        <jetbrains-annotations.version>13.0</jetbrains-annotations.version>
     </properties>
+
+    <!-- 所有子模块无差别继承的三个依赖，子模块不再重复声明 -->
     <dependencies>
-
-
-
-
-        <dependency>
-            <groupId>ch.qos.logback</groupId>
-            <artifactId>logback-classic</artifactId>
-        </dependency>
-
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-devtools</artifactId>
-            <scope>runtime</scope>
-            <optional>true</optional>
-        </dependency>
-
         <dependency>
             <groupId>org.projectlombok</groupId>
             <artifactId>lombok</artifactId>
             <optional>true</optional>
         </dependency>
         <dependency>
+            <groupId>cn.hutool</groupId>
+            <artifactId>hutool-all</artifactId>
+        </dependency>
+        <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-test</artifactId>
             <scope>test</scope>
         </dependency>
-
-        <!-- Hutool 工具包：BeanUtil 等 -->
-        <dependency>
-            <groupId>cn.hutool</groupId>
-            <artifactId>hutool-all</artifactId>
-            <version>5.8.34</version>
-        </dependency>
-
     </dependencies>
+
     <dependencyManagement>
         <dependencies>
+            <!-- ===== 外部 BOM：顺序即优先级，同名坐标先导入者胜出 ===== -->
+            <dependency>
+                <groupId>org.springframework.cloud</groupId>
+                <artifactId>spring-cloud-dependencies</artifactId>
+                <version>${spring-cloud.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+            <dependency>
+                <groupId>com.alibaba.cloud</groupId>
+                <artifactId>spring-cloud-alibaba-dependencies</artifactId>
+                <version>${spring-cloud-alibaba.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+            <dependency>
+                <groupId>org.springframework.ai</groupId>
+                <artifactId>spring-ai-bom</artifactId>
+                <version>${spring-ai.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+
+            <!-- ===== 第三方组件 ===== -->
             <dependency>
                 <groupId>com.baomidou</groupId>
                 <artifactId>mybatis-plus-spring-boot3-starter</artifactId>
-                <version>3.5.17</version>
+                <version>${mybatis-plus.version}</version>
             </dependency>
             <dependency>
                 <groupId>com.baomidou</groupId>
                 <artifactId>mybatis-plus-extension</artifactId>
-                <version>3.5.17</version>
+                <version>${mybatis-plus.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.baomidou</groupId>
+                <artifactId>mybatis-plus-annotation</artifactId>
+                <version>${mybatis-plus.version}</version>
+            </dependency>
+            <!-- MP 3.5.9+ 分页插件拆分：PaginationInnerInterceptor 依赖 JSqlParser -->
+            <dependency>
+                <groupId>com.baomidou</groupId>
+                <artifactId>mybatis-plus-jsqlparser</artifactId>
+                <version>${mybatis-plus.version}</version>
             </dependency>
             <dependency>
                 <groupId>org.mapstruct</groupId>
                 <artifactId>mapstruct</artifactId>
-                <version>1.5.5.Final</version>
+                <version>${mapstruct.version}</version>
             </dependency>
             <dependency>
                 <groupId>org.mapstruct</groupId>
                 <artifactId>mapstruct-processor</artifactId>
-                <version>1.5.5.Final</version>
+                <version>${mapstruct.version}</version>
                 <scope>provided</scope>
             </dependency>
+            <dependency>
+                <groupId>cn.hutool</groupId>
+                <artifactId>hutool-all</artifactId>
+                <version>${hutool.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.jsonwebtoken</groupId>
+                <artifactId>jjwt-api</artifactId>
+                <version>${jjwt.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.jsonwebtoken</groupId>
+                <artifactId>jjwt-impl</artifactId>
+                <version>${jjwt.version}</version>
+                <scope>runtime</scope>
+            </dependency>
+            <dependency>
+                <groupId>io.jsonwebtoken</groupId>
+                <artifactId>jjwt-jackson</artifactId>
+                <version>${jjwt.version}</version>
+                <scope>runtime</scope>
+            </dependency>
+            <dependency>
+                <groupId>org.apache.poi</groupId>
+                <artifactId>poi-ooxml</artifactId>
+                <version>${poi.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>commons-io</groupId>
+                <artifactId>commons-io</artifactId>
+                <version>${commons-io.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.alibaba.cloud.ai</groupId>
+                <artifactId>spring-ai-alibaba-starter-dashscope</artifactId>
+                <version>${spring-ai-alibaba.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.alibaba</groupId>
+                <artifactId>dashscope-sdk-java</artifactId>
+                <version>${dashscope-sdk.version}</version>
+                <exclusions>
+                    <exclusion>
+                        <groupId>org.slf4j</groupId>
+                        <artifactId>slf4j-simple</artifactId>
+                    </exclusion>
+                </exclusions>
+            </dependency>
+            <dependency>
+                <groupId>com.github.victools</groupId>
+                <artifactId>jsonschema-generator</artifactId>
+                <version>${jsonschema-generator.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.github.victools</groupId>
+                <artifactId>jsonschema-module-jackson</artifactId>
+                <version>${jsonschema-generator.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.jetbrains</groupId>
+                <artifactId>annotations</artifactId>
+                <version>${jetbrains-annotations.version}</version>
+            </dependency>
 
+            <!-- ===== 内部模块：子模块引用彼此时一律不写 version ===== -->
+            <dependency>
+                <groupId>com.amlve</groupId>
+                <artifactId>common-core</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.amlve</groupId>
+                <artifactId>common-web</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.amlve</groupId>
+                <artifactId>common-security</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.amlve</groupId>
+                <artifactId>common-dify</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.amlve</groupId>
+                <artifactId>common-mybatis</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.amlve</groupId>
+                <artifactId>common-util</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>com.amlve</groupId>
+                <artifactId>agent-code-api</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.amlve</groupId>
+                <artifactId>agent-prepare-api</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.amlve</groupId>
+                <artifactId>agent-qa-api</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.amlve</groupId>
+                <artifactId>agent-question-api</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.amlve</groupId>
+                <artifactId>agent-score-api</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.amlve</groupId>
+                <artifactId>dialogue-api</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.amlve</groupId>
+                <artifactId>study-api</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.amlve</groupId>
+                <artifactId>teach-api</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.amlve</groupId>
+                <artifactId>exam-api</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.amlve</groupId>
+                <artifactId>knowledge-api</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.amlve</groupId>
+                <artifactId>monitor-api</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.amlve</groupId>
+                <artifactId>system-api</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>com.amlve</groupId>
+                <artifactId>agent-analysis</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.amlve</groupId>
+                <artifactId>agent-code</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.amlve</groupId>
+                <artifactId>agent-prepare</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.amlve</groupId>
+                <artifactId>agent-qa</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.amlve</groupId>
+                <artifactId>agent-question</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.amlve</groupId>
+                <artifactId>agent-score</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.amlve</groupId>
+                <artifactId>dialogue</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>com.amlve</groupId>
+                <artifactId>study</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.amlve</groupId>
+                <artifactId>teach</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.amlve</groupId>
+                <artifactId>exam</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.amlve</groupId>
+                <artifactId>knowledge</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.amlve</groupId>
+                <artifactId>monitor</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.amlve</groupId>
+                <artifactId>system</artifactId>
+                <version>${project.version}</version>
+            </dependency>
         </dependencies>
-
     </dependencyManagement>
 
     <build>
+        <pluginManagement>
+            <plugins>
+                <!-- 可启动模块只需声明插件坐标，配置在这里统一给 -->
+                <plugin>
+                    <groupId>org.springframework.boot</groupId>
+                    <artifactId>spring-boot-maven-plugin</artifactId>
+                    <configuration>
+                        <!-- 可执行 jar 用 exec 后缀，主构件仍是普通 jar，模块间依赖不受影响 -->
+                        <classifier>exec</classifier>
+                        <excludes>
+                            <exclude>
+                                <groupId>org.projectlombok</groupId>
+                                <artifactId>lombok</artifactId>
+                            </exclude>
+                        </excludes>
+                    </configuration>
+                </plugin>
+            </plugins>
+        </pluginManagement>
         <plugins>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
-                <executions>
-                    <execution>
-                        <id>default-compile</id>
-                        <phase>compile</phase>
-                        <goals>
-                            <goal>compile</goal>
-                        </goals>
-                        <configuration>
-                            <annotationProcessorPaths>
-                                <path>
-                                    <groupId>org.projectlombok</groupId>
-                                    <artifactId>lombok</artifactId>
-                                    <version>${lombok.version}</version>
-                                </path>
-                                <path>
-                                    <groupId>org.mapstruct</groupId>
-                                    <artifactId>mapstruct-processor</artifactId>
-                                    <version>1.5.5.Final</version>
-                                </path>
-                            </annotationProcessorPaths>
-                        </configuration>
-                    </execution>
-                    <execution>
-                        <id>default-testCompile</id>
-                        <phase>test-compile</phase>
-                        <goals>
-                            <goal>testCompile</goal>
-                        </goals>
-                        <configuration>
-                            <annotationProcessorPaths>
-                                <path>
-                                    <groupId>org.projectlombok</groupId>
-                                    <artifactId>lombok</artifactId>
-                                    <version>${lombok.version}</version>
-                                </path>
-                            </annotationProcessorPaths>
-                        </configuration>
-                    </execution>
-                </executions>
+                <version>3.13.0</version>
+                <configuration>
+                    <release>${maven.compiler.release}</release>
+                    <annotationProcessorPaths>
+                        <path>
+                            <groupId>org.projectlombok</groupId>
+                            <artifactId>lombok</artifactId>
+                            <version>${lombok.version}</version>
+                        </path>
+                        <path>
+                            <groupId>org.mapstruct</groupId>
+                            <artifactId>mapstruct-processor</artifactId>
+                            <version>${mapstruct.version}</version>
+                        </path>
+                    </annotationProcessorPaths>
+                </configuration>
             </plugin>
-
         </plugins>
     </build>
 
